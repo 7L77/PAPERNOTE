@@ -1,0 +1,1395 @@
+2888 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+REP: An Interpretable Robustness Enhanced Plugin
+for Differentiable Neural Architecture Search
+Y uqi Feng , Graduate Student Member , IEEE, Y anan Sun , Senior Member , IEEE,G a r yG .Y e n , Fellow, IEEE,
+and Kay Chen Tan , Fellow, IEEE
+Abstract—Neural architecture search (NAS) is widely used to
+automate the design of high-accuracy deep architectures, which
+are often vulnerable to adversarial attacks in practice due to
+the lack of adversarial robustness. Existing methods focus on the
+direct utilization of regularized optimization process to address
+this critical issue, which causes the lack of interpretability for the
+end users to learn how the robust architecture is constructed. In
+this paper, we introduce a robust enhanced plugin (REP) method
+for differentiable NAS to search for robust neural architectures.
+Different from existing peer methods, REP focuses on the robust
+search primitives in the search space of NAS methods, and naturally
+has the merit of contributing to understanding how the robust
+architectures are progressively constructed. Speciﬁcally, we ﬁrst
+propose an effective sampling strategy to sample robust search
+primitives in the search space. In addition, we also propose a prob-
+abilistic enhancement method to guarantee natural accuracy and
+adversarial robustness simultaneously during the search process.
+We conduct experiments on both convolutional neural networks
+and graph neural networks with widely used benchmarks against
+state of the arts. The results reveal that REP can achieve superiority
+in terms of both the adversarial robustness to popular adversarial
+attacks and the natural accuracy of original data. REP is ﬂexible
+and can be easily used by any existing differentiable NAS methods
+to enhance their robustness without much additional effort.
+Index Terms—Neural architecture search, adversarial attacks,
+adversarial robustness, search space, robust search primitives.
+I. I NTRODUCTION
+D
+EEP neural networks (DNNs) have played a crucial role
+in addressing many real-world applications [1].H o w -
+ever, most DNN architectures are manually designed by do-
+main experts, which is often time-consuming, labor-intensive
+and error-prone. Neural architecture search (NAS) [2] which
+aims at automatically designing DNN architectures without vast
+expertise have received extensive attention. Speciﬁcally, NAS
+automates the design of deep architectures by formulating it
+Received 17 June 2024; revised 9 December 2024; accepted 14 February 2025.
+Date of publication 18 February 2025; date of current version 25 March 2025.
+This work was supported in part by the National Natural Science Foundation of
+China under Grant 62276175, and in part by the Research and Develop Program
+of West China Hospital of Stomatology Sichuan University under Grant RD-
+03-202403. Recommended for acceptance by L. Nie. (Corresponding author:
+Yanan Sun.)
+Y uqi Feng, Y anan Sun, and Gary G. Y en are with the College of
+Computer Science, Sichuan University, Chengdu 610065, China (e-mail:
+feng770623@gmail.com; ysun@scu.edu.cn; gyen@okstate.edu).
+Kay Chen Tan is with the Department of Computing, The Hong Kong
+Polytechnic University,, Hong Kong (e-mail: kctan@polyu.edu.hk).
+The source code is available at https://github.com/fyqsama/REP.
+Digital Object Identiﬁer 10.1109/TKDE.2025.3543503
+as an optimization problem, which is often discrete, bi-level,
+computationally expensive and with complicated constraints.
+A traditional NAS method is composed of three parts: the
+search space, the search strategy, and the performance eval-
+uation. Speciﬁcally, the search space deﬁnes all the possible
+DNN architectures, where the optimal one is found through the
+corresponding search strategy. The search strategy refers to the
+algorithm which is used to search the optimal architecture in the
+search space. Currently, the reinforcement learning (RL) [3],
+[4], [5], the evolutionary algorithm (EA) [6] and the differ-
+entiable algorithm [7] are the three popular search strategies
+to realize NAS. Moreover, the performance evaluation decides
+how efﬁcient the NAS methods would be through providing
+a performance reward to the corresponding search strategy. In
+practice, the computational budget of the differentiable NAS is
+much smaller than that of RL-based and EA-based ones[7].T h i s
+is because a supernet is adopted in the performance evaluation
+phase of the differentiable NAS, and the performance of archi-
+tectures is directly evaluated with the weights inherited from
+the trained supernet instead of training each of them like the
+RL-based and EA-based NAS do.
+No matter which search strategy is utilized, the performance
+evaluation of existing NAS methods mainly targets on the
+natural accuracy of the resulted neural architectures, i.e., the
+performance of the neural architectures inputted with original
+data. When it comes to practical applications, such as deploying
+at a vulnerable environment, the adversarial robustness is also
+non-negligible and needs to be greatly concerned for the sake
+of safety. Speciﬁcally, the adversarial robustness refers to the
+accuracy of a neural network inputted with adversarial exam-
+ples, which are often the original data perturbed by speciﬁc
+algorithms. As evidenced by a very recent literature [8],t h e
+neural architectures searched by NAS methods are vulnerable
+against most adversarial examples.
+The adversarial robust NAS is an emerging topic, and the
+current research perspective is relatively simple-minded. Ex-
+isting studies mainly focus on presenting different adversarial
+robustness metrics as regularization into the search strategy of
+NAS, and then the adversarial robustness of the architecture is
+directly achieved through the black-box optimization process.
+For example, Mok et al. [9] take the perspective of the input
+loss landscape. They indicate that a smooth input loss landscape
+can make the model more resistant to perturbations and results
+in a robust model. Consequently, the input loss landscape is
+regularized as an additional search target into the search process
+1041-4347 © 2025 IEEE. All rights reserved, including rights for text and data mining, and training of artiﬁcial intelligence and similar technologi es.
+Personal use is permitted, but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index. html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+FENG et al.: REP: AN INTERPRETABLE ROBUSTNESS ENHANCED PLUGIN FOR DIFFERENTIABLE NEURAL ARCHITECTURE SEARCH 2889
+for the robust NAS. Dong et al. [10] start from the Lipschitz
+constant and the adversarial robustness of architectures, and
+then explore the relationship between both. After that, they
+conclude that the smaller the Lipschitz constant is, the better
+adversarial robustness the models have. Finally, they improve the
+adversarial robustness by reducing the Lipschitz constant during
+the optimization process with an explicit regularization term.
+Moreover, Hosseini et al. [11] propose two adversarial robust-
+ness metrics based on the certiﬁcated lower bound and Jacobian
+regularization, and both metrics are enumerated and regularized
+to the objective functions of differentiable NAS to perform joint
+maximal optimization. In addition, Cheng et al. [12] design
+an adversarial noise estimator to generate adversarial examples
+under different attack strengths, and the adversarial losses of
+these examples are optimized together with the natural loss. As
+a result, the neural architectures with wide spectrum adversarial
+robustness can be determined.
+Although these methods have demonstrated the effectiveness
+in their respective experiments, it is not clear why the result-
+ing architectures are robust when they are used. Speciﬁcally,
+these methods mainly committed to search for robust neural
+architectures through optimization with additional regulariza-
+tion components measuring adversarial robustness. However,
+the optimization process is black-box with poor interpretability,
+and it cannot explain which elements lead to the improvement of
+adversarial robustness. This would inevitably harm the further
+development of robust NAS and the end users still have sufﬁ-
+cient conﬁdence to safely explore the resulting architectures in
+real-world practice. In this paper, we propose a plugin approach
+for robust NAS called Robust Enhanced Plugin (REP), which
+takes the perspective of improving interpretability regarding the
+construction of robust neural architectures. Different from pre-
+vious researches that are often achieved via regularization terms,
+what we particularly concentrated in this work is the robust
+search primitives in the search space, which are beneﬁcial for
+the adversarial robustness of the architecture. By constructing
+the ﬁnal architecture upon the robust search primitives, it is
+easy to understand why the resulting architecture is robust and
+what cause the improvement of the adversarial robustness of the
+resulting neural architectures. As its name states, REP has the
+merit of good ﬂexibility owing to its plugin nature and can be
+generally applied to various differentiable NAS methods which
+are very popular among the existing NAS methods. In summary,
+this paper makes the following contributions:
+r We develop REP to reveal a new research perspective on
+developing robust NAS method focusing on robust search
+primitives, which tends to improve the interpretability
+on the construction of robust architectures. Precisely, we
+propose a sampling strategy for ﬁnding the robust search
+primitives in the search space. Because the primitives are
+the basic building blocks to construct the whole architec-
+ture, the details of generating a robust architecture become
+publicly available.
+r We propose a probabilistic enhancement search strategy
+to additionally combat for the natural accuracy to original
+data. This is with the practical fact that existing work can
+only guarantee the adversarial robustness. In the proposed
+search strategy, the probability of the robust search primi-
+tives being selected is enhanced in the form of a distance
+metric, while other search primitives can still be selected to
+the architecture to guarantee the natural accuracy. Conse-
+quently, the adversarial robustness and the natural accuracy
+can be simultaneously achieved.
+r We show REP with the characteristics for both euclidean
+data and non-euclidean data. In particular, we evaluated
+REP for convolutional neural network (CNN) on CIFAR-
+10, CIFAR-100, and ImageNet datasets, and graph neural
+network (GNN) on Cora, CiteSeer, and PubMed datasets
+against various kinds of popular adversarial attacks. In ad-
+dition, the ablation study also proves that the designed com-
+ponents can positively improve the performance of REP .
+Furthermore, REP also demonstrates promising transfer-
+ability in terms of both adversarial robustness and natural
+accuracy.
+The remainder of this article is organized as follows. The
+background is introduced in Section II. Then, the preliminary
+and the proposed REP method are detailed in Section III.A f t e r
+that, the design and the results of experiments are demonstrated
+in Sections IV and V, respectively. Finally, the conclusion and
+discussion are presented in Section VI.
+II. R ELA TEDWORK
+To help readers better understand REP , the related work
+of NAS and adversarial attacks and defenses are detailed in
+Sections II-A and II-B, respectively.
+A. Neural Architecture Search (NAS)
+Generally, the NAS methods are mainly divided into three cat-
+egories according to the different search strategies adopted: RL-
+based NAS [3], [13], EA-based NAS[6], [14], and differentiable
+NAS [7]. The earliest proposed NAS method [3] is based on RL,
+which ﬁrst constructs a controller to generate the architecture
+representation, and then the corresponding architecture is trained
+from scratch and evaluated for obtaining reward. This process
+is repeated until the termination condition is met. After that,
+the ﬁnal architecture is selected from the candidates. The EA-
+based NAS initially encodes a set of different architectures into
+population individuals, and then the ﬁtness of each individual is
+evaluated to iteratively guide the heuristic search through genetic
+operators, until the architecture with the promising ﬁtness is
+found conditioned with some criterion. When evaluating the
+ﬁtness of individuals, the EA-based NAS needs to train each
+individual on the training set and get the validation accuracy of
+them on the validation set. For both kinds of NAS, the training
+process of each neural architecture leads to much computational
+budget of the RL-based NAS and EA-based NAS.
+As for the differentiable NAS, they often relax the discrete
+NAS problem into a continuous one through a supernet, where
+the connection possibility of nodes is modeled as classiﬁcation
+problems. After that, the gradient-based algorithm is adopted for
+solving. Owing to the efﬁciency and efﬁcacy, the differentiable
+NAS methods currently dominate the development of NAS and
+have diverse variants [15], [16], and this is also the reason why
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+2890 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+the work in this paper is dedicated to the differentiable NAS.
+Among the variants of the differentiable NAS, DARTS [7] is
+the most popular one. Speciﬁcally, there are nodes and edges
+organized as a directed acyclic graph (DAG) in the supernet of
+DARTS, where each node x(i) is a latent representation (such
+as a feature map), and each edge (i,j ) between nodes i andj is
+associated with an operation o(i,j) adopted on node i.D A R T S
+constructs a mixed operation o(i,j) on each edge formulated
+by (1):
+o(i,j)(x)=
+∑
+o∈O
+exp(α(i,j)
+o )
+∑
+o′∈Oexp(α(i,j)
+o′ )
+o(x), (1)
+where O represents all the candidate operations and α(i,j)
+o
+denotes the weight of operation o on edge (i,j ). Therefore,
+the choice of operations on each edge is parameterized as a
+vector α(i,j) with dimension |O|. After that, the differentiable
+algorithm, such as the gradient-based algorithm, is used for
+learning a set of weights α= {α(i,j)}. With the αlearned, the
+operation on edge (i,j ) can be obtained through (2):
+o(i,j) = arg max
+o∈O
+α(i,j)
+o . (2)
+Finally, the resulting architecture is determined. Based on the
+idea of supernet in DARTS, some recent work has further
+explored the topology search in the supernet. For example,
+Gu et al. [17] decouple the operation and topology search in
+DARTS. Y ang et al. [18] search for the topology based on the
+designed cells. Although these methods have achieved decent
+performance, they still suffer from the limitation of poor inter-
+pretability caused by the black-box properties of the gradient-
+based algorithms. Speciﬁcally, they directly used the optimized
+weights of search primitives to determine their merits. However,
+because the optimization process is a black-box process, they
+cannot know why the selected search primitives are beneﬁcial,
+leading to the poor interpretability of the search process. This is
+also the motivation of REP in this paper.
+B. Adversarial Attacks and Defenses
+Adversarial attacks add imperceptible perturbations to the
+input data to check if the attacked neural network models are
+robust [11]. This is based on the observation that neural networks
+are easily fooled by adversarial examples [19].
+In practice, the fast gradient sign method (FGSM) [20],p r o -
+jected gradient descent (PGD)[21], automatic projected gradient
+descent (AutoPGD) [22], and Carlini&Wagner (C&W) [23] at-
+tacks are often used to generate adversarial examples for CNNs,
+which is achieved by modifying a small number of pixels in the
+input image of CNN. Speciﬁcally, the FGSM attack ﬁrst com-
+putes the gradient of the model on the input data, and then the di-
+rection of the gradient is determined. After that, the perturbation
+is generated by multiplying the direction of the gradient by the
+preset step size. Finally, the adversarial example is determined
+by adding the perturbation to the input data. Furthermore, the
+PGD attack employs a multi-step perturbation adding method.
+In each step, the direction of the gradient will be redetermined to
+add perturbations more precisely. Therefore, PGD attack is much
+stronger than FGSM attack. To further improve the PGD attack,
+AutoPGD adds the automatic adjustment of attack parameters
+to PGD. Speciﬁcally, AutoPGD can adjust the step size for each
+step in PGD. The experiments [22] have shown that AutoPGD
+attack is slightly stronger than PGD attack. Different from three
+methods introduced above, C&W attack takes the perspective
+of optimization to generate adversarial examples. The C&W
+attack minimizes the distance between the original data and
+the adversarial examples generated. Meanwhile, the probability
+of adversarial examples being classiﬁed into a wrong class is
+maximized. By solving this optimization problem, C&W can
+generate stronger adversarial examples than those generated by
+FGSM, PGD, and AutoPGD.
+For GNNs, the DICE [24] and the node embedding [25]
+attacks are representative attacks, which aim to generate adver-
+sarial examples through adding or deleting edges in the original
+graph. Speciﬁcally, DICE generates adversarial examples by
+randomly deleting edges between the nodes of the same class
+and adding edges between the nodes of the different classes in
+the original graph. The percentage of add or delete operations
+performed on edges cannot exceed the predetermined perturba-
+tion rate. Moreover, the node embedding attack adds or deletes
+a certain number of edges in the original graph with the limit
+of the predetermined perturbation rate, in order to damage the
+embedding of the GNN learned from the input data. Then the
+performance of GNN suffers in the case of the poorly learned
+embedding. Although the attack schemes are different for CNNs
+and GNNs, the effectiveness of REP would not be affected when
+applied to both CNNs and GNNs. This is because REP only
+needs the values of adversarial robustness, which is independent
+to the particular attack schemes. Speciﬁcally, the robust search
+primitives are selected by comparing the adversarial robustness
+of architectures sampled in adjacent epochs. In the comparison
+process, only the values of the adversarial robustness are com-
+pared, no matter which scheme is adopted to obtain the values.
+On the other hand, the adversarial defenses aim to improve
+the adversarial robustness of neural networks to resist adver-
+sarial attacks. The popular defense methods mainly include the
+adversarial example detection [26], the random smooth [27],t h e
+robust loss functions[28], [29], and the adversarial training[30],
+[31]. Among those, the adversarial training is widely used due
+to its simplicity and effectiveness [9]. Speciﬁcally, adversarial
+training ﬁrst generates adversarial examples from the training
+data according to the trainable parameters of the model in the
+ith training epoch. After that, the adversarial examples are used
+to train the model, and the trainable parameters of the model in
+the (i +1 )th epoch will be obtained. This process is repeated
+until the end of the training. However, all these methods assume
+the neural network whose architecture has been established in
+advance, and then the adversarial robustness is obtained through
+the learning process driven by these methods. In this paper,
+the proposed work aims to improve the robustness of neural
+networks via NAS.
+III. M ETHODOLOGY
+In this section, we ﬁrst present the preliminary in
+Section III-A. Then, the overall framework of the proposed
+REP method is shown in Section III-B. After that, the two main
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+FENG et al.: REP: AN INTERPRETABLE ROBUSTNESS ENHANCED PLUGIN FOR DIFFERENTIABLE NEURAL ARCHITECTURE SEARCH 2891
+components of REP are detailed in Sections III-C and III-D,
+respectively. Finally, the interpretability and effectiveness of
+REP are discussed in Sections III-E and III-F, respectively.
+A. Preliminary
+The proposed REP method is a plugin method, which relies
+on the speciﬁc search spaces of the differentiable NAS method
+to be plugged by REP . However, existing NAS methods have
+different search spaces with different deﬁnitions. In order to
+better use REP , the search spaces in REP are redeﬁned, and the
+details are provided below.
+In differentiable NAS methods, the search space is indicated
+by a supernet where nodes and edges are formed as a DAG.
+In REP , we deﬁne a search primitive as one edge e afﬁliated
+with an operation o and represented as (e,o ). With this, the
+search space S can be redeﬁned as nodes with a set of search
+primitivesS = {(e,o ) | e ∈E,o ∈O }whereE denotes the set
+of all possible edges between nodes and O denotes the set of all
+the candidate operations on edges. Moreover, an architecture
+with n search primitives can be denoted as {b1,b 2,...,b n |
+bi ∈S,i =1 , 2,...,n }. Based on these, we further give the
+deﬁnition of robust search primitives. Given two different pairs
+of architectures Ai, Aj and Ak, Al, the adversarial robustness
+of them satisﬁes Ri > Rj and Rk < Rl. In this condition, if
+a search primitive b satisﬁes b ∈Ai,Al and b/∈Aj,Ak,t h i s
+search primitive is considered as a robust search primitive.
+B. Algorithm Overview
+Based on the deﬁnitions above, the overall framework of
+the proposed REP method is shown in Algorithm 1, where the
+contributions of this paper are in bold and italic. To begin with,
+the search spaceS and the search strategyP of the NAS method
+which is plugged by REP are given, and through a series of
+main components of REP , the architecture with both high natural
+accuracy and adversarial robustness is discovered. The main
+components of REP consist of three consequential parts: adver-
+sarial robustness evaluation (lines 3-13), robust search primitives
+sampling strategy (line 14), and probability enhancement search
+strategy (line 15).
+In the ﬁrst part, two empty setsA andR which will record the
+searched architectures and their respective adversarial robust-
+ness are created. Then, a counter i indicating the current search
+epoch is initialized (line 3). After that, the given NAS method
+is iteratively performed for N search epochs. In each search
+epoch i, the architecture Ai searched in this epoch is recorded
+and stored (lines 5-6). After that, the adversarial robustness
+of the architecture is evaluated and recorded (lines 7-11). In
+particular, to accelerate the evaluation process, if the architecture
+Ai is the same as an architectureAj wherej<i , its adversarial
+robustnessRi will be directly referred to the same value as Rj
+(line 8). Otherwise, the weights of the architectureAi are directly
+inherited from the supernet, and then its adversarial robustness
+will be evaluated by the adversarial attack (line 10). In the second
+part, the proposed robust search primitives sampling strategy is
+performed upon the stored architectures and their adversarial
+robustness values to sample robust search primitives (line 14).
+Algorithm 1: Overall Framework of REP .
+Finally, the ﬁnal architecture is obtained by the proposed search
+strategy (line 15). For a better understanding of how REP works
+with differentiable NAS methods, an example is shown in Fig. 1
+where the DARTS [7] algorithm is chosen as the target NAS
+method to be plugged by REP .
+C. Sampling Strategy for Robust Search Primitives
+In order to sample the robust search primitives from the
+pre-acquired architectures A with adversarial robustness values
+R efﬁciently, we propose a novel sampling strategy focusing
+on the relationship between the adversarial robustness of the
+architectures and the search primitives in them. The pseudo-code
+of the proposed sampling strategy is shown in Algorithm 2.I n
+particular, given the set of architecturesA with their adversarial
+robustness R, through the robust search primitive sampling
+(lines 3-14), the robust search primitives are ﬁnally determined
+(line 15).
+In the robust search primitives sampling process, the total
+numberN of sampling iterations is ﬁrst initialized to the number
+of architectures in A (line 3). Then, two empty sets B1 and B2
+are initialized to store the sampled search primitives (line 4), and
+the counter of the iterations is set to one (line 5). Next, the sets of
+search primitives are obtained through a single traversal ofA and
+R (lines 6-14). Speciﬁcally, given two adjacent architecturesAi
+and Ai+1 with respective adversarial robustness Ri and Ri+1,
+if the adversarial robustness Ri < Ri+1, the search primitives
+in architectureAi+1 but not appearing inAi, which are denoted
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+2892 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+Fig. 1. An example of REP when DARTS is plugged by REP . The illustration contains two parts: the ﬂow of DARTS algorithm (upper part) and the process
+of REP (lower part). In the upper part, given the pre-determined nodes and operations, through two main steps, i.e., the search space initialization a nd the search
+process, the architecture with high natural accuracy but poor adversarial robustness is determined. To be more visible, the search primitives with l arger weights are
+denoted as thicker lines while the smaller weights are denoted as thinner lines. In the lower part, the proposed REP method ﬁrst takes effects of the sea rch process
+of DARTS, and the architecture with both high natural accuracy and adversarial robustness is searched through the two sequential parts highlighted i nb l u ea n d
+green.
+Algorithm 2: Sampling Robust Search Primitives.
+as Ai+1 −Ai, are added to B1 (line 8). Otherwise, the search
+primitives in Ai −Ai+1 are added to B2 (line 11). Once the
+two sets B1 and B2 are obtained, at the end, the set of robust
+search primitives B∗is taken from the intersection of both B1
+and B2 (line 15). For a clearer understanding of the proposed
+sampling strategy, we demonstrate an example of four neural
+architectures to show the process of robust search primitives
+sampling in Fig. 2.
+The sampling process is the core step of the proposed REP
+method and the design of such a sampling strategy is based on our
+observations. Speciﬁcally, our observations focus on setsA and
+R. For architectures in A, two architectures in adjacent epochs
+have small changes between their search primitives. Meanwhile,
+Fig. 2. An example of the proposed sampling strategy for robust search
+primitives. The illustration begins with two groups of adjacent architectures
+Am,Am+1 andAn,An+1, through the proposed sampling strategy, the robust
+search primitives from these architectures are sampled in the end. The sampling
+strategy consists of two parts: the acquisition of sets B1 (the upper part) and
+B2 (the lower part). In the ﬁrst part, taking the architectures Am and Am+1
+as an example, the adversarial robustness of them exists in the relationship
+Rm < Rm+1 and there are two different search primitives between these two
+architectures which are marked with a red dashed line. Following the sampling
+strategy, the search primitive between nodes 0 and 3 is added to B1.I nt h e
+second part, the acquisition ofB2 follows the same process. At the end, the robust
+search primitive in these architectures is selected by taking the intersection ofB1
+andB2.
+we ﬁnd that the adversarial robustness of architectures with
+adjacent indexes in R are usually different. In addition, we also
+observe that architectures in non-adjacent epochs are often quite
+different from each other.
+To support the above claims, we independently perform REP
+ﬁve times to sample robust search primitives during the search
+process of DARTS, and then visualize them in Fig. 3 for better
+demonstration. Speciﬁcally, in Fig. 3(a), the horizontal axis
+denotes the distribution regarding the number of different primi-
+tives of each adjacent-architecture, and the vertical axis refers to
+the corresponding number of adjacent-architectures. In Fig.3(b),
+the horizontal axis denotes the search epoch, the left vertical axis
+(for the purple line) denotes the number of different primitives
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+FENG et al.: REP: AN INTERPRETABLE ROBUSTNESS ENHANCED PLUGIN FOR DIFFERENTIABLE NEURAL ARCHITECTURE SEARCH 2893
+Fig. 3. Visualizations for different variables related to the sampling process
+of robust search primitives.
+of each adjacent-architecture, the right vertical axis (for the
+orange line) denotes the difference of adversarial robustness
+of each adjacent-architecture. In Fig. 3(c), the horizontal axis
+denotes the ID of runs, the vertical axis denotes the distri-
+bution regarding the number of different primitives of each
+non-adjacent-architecture.
+As shown in Fig. 3(a), there is the largest number of adjacent-
+architectures with only one different primitive. Meanwhile, there
+is also a large number of adjacent-architectures with zero or
+two different primitives. These observations demonstrate the
+adjacent-architectures are often similar. Furthermore, as shown
+by the orange line in Fig. 3(b), the difference of adversar-
+ial robustness shows relatively large changes among adjacent-
+architectures. Consequently, it is demonstrated that adjacent-
+architectures are similar but their adversarial robustness is not.
+Based on above observations, we analyze that, because the
+training settings for architectures are the same, the small changes
+of search primitives in adjacent architectures can be the reason
+for the change of adversarial robustness. Meanwhile, the small
+changes of search primitives are beneﬁcial to narrowing the can-
+didates when sampling robust search primitives, which can make
+the sampling strategy more effective. Therefore, the proposed
+sampling strategy spotlights on the adjacent architectures in A.
+In addition, we also explain the reason for not sampling ro-
+bust search primitives in non-adjacent-architectures. As shown
+in Fig. 3(c), in each run, the minimum number of different
+primitives in non-adjacent-architectures is constantly above ﬁve,
+concentrating between six and ten. Obviously, non-adjacent-
+architectures have much more different primitives comparing
+with those of adjacent ones, and this is harmful to narrow the
+candidates of robust search primitives. Therefore, we do not
+sample robust search primitives in non-adjacent-architectures.
+D. Probability Enhancement Search Strategy
+To search the architecture with high natural accuracy and
+adversarial robustness based on the robust search primitives
+sampled, we propose a probability enhancement search strategy.
+Following the conventions of differentiable NAS [7], [32],w e
+denote the architecture with a set of weights αand learn the
+weights in αto determine the resulting architecture.
+Speciﬁcally, based on the pre-deﬁned setsE andO detailed in
+our deﬁnitions in Section III-A, we can easily know that theαis
+a matrix with the dimension of |E| × |O|. Because the number
+of edges in search space S is |E|, and the number of candidate
+operations on each edge is |O|. Moreover, each position (m,n )
+in αdenotes the weight of an edge em ∈E afﬁliated with a
+certain operation on ∈O, i.e., the weight of a search primitive
+(em,on).
+Motivated by the above characteristics of α, we introduce a
+matrix αR with the same dimension as α:
+αm,n
+R =
+{
+1, if (em,on) is a robust search primitive,
+0, otherwise. (3)
+As shown in (3), the positions of robust search primitives in αR
+are set with one, while other positions are set with zero. Obvi-
+ously, when the distance betweenαandαR becomes smaller, the
+weight of robust search primitives in αwill be larger, and more
+robust search primitives will be contained in the architecture.
+Therefore, we introduce a distance metric ψ(α) in (4) to denote
+the distance between αandαR:
+ψ(α)= ∥α−αR∥2
+2. (4)
+With the deﬁned distance metricψ(α), we only need to minimize
+it in the search strategy and the ﬁnal architecture will have
+more robust search primitives. moreover, we also need to ensure
+the natural accuracy of the architecture. The search process is
+formulated as (5) and (6):
+min
+α
+Lval (ω∗(α),α)+ λψ(α), (5)
+s.t. ω∗(α)= arg min
+ω
+Ltrain (ω,α), (6)
+where Ltrain (·) and Lval (·) denote the loss on the training set
+and the validation set, λ is a tradeoff parameter which balances
+the validation loss of the architecture and the distance metric
+ψ(α) when optimizingα, and and ωdenotes the set of trainable
+parameters of the network. By solving the above optimization
+problem, the architecture parameter αis determined once the
+search process is ended. Finally, the resulting architecture is
+determined based on αaccording to (2).
+The addition of the distance metricψ(α) in (5) can beneﬁt two
+aspects. First, the natural accuracy of the derived architecture
+can be improved because ψ(α) can prevent the architecture
+parameter αfrom overﬁtting on the validation set. Speciﬁcally,
+as evidenced by the literature [33], purely minimizing the val-
+idation loss Lval (ω∗(α),α) on the validation set can lead to
+the drop of natural accuracy in the later stage of the search
+process. The empirical results in this literature have also shown
+that such drop is caused by the overﬁtting of αon the validation
+set. Consequently, the distance metric ψ(α) can play the role
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+2894 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+of regularization to prevent αfrom overﬁtting on the validation
+set. Therefore, the natural accuracy can be improved. Second, the
+adversarial robustness of the searched architecture is achieved
+at the same time when ψ(α) is introduced. This is because
+the inclusion of ψ(α) leads to more robust search primitives
+in the derived architectures, thus the adversarial robustness can
+be improved. The further experimental veriﬁcation of this point
+is conducted in Section V- D.
+Furthermore, it is possible that all operations for one node are
+all robust search primitives in an architecture. In this case, the
+proposed REP method selects the one which is most beneﬁcial to
+natural accuracy. Speciﬁcally, these robust search primitives are
+viewed of the same importance inαR (the corresponding values
+are all set to one) in the probability enhanced search process.
+Through the optimization shown in (5), given the probability of
+selecting each of these primitives is equally enhanced, the one
+which is most beneﬁcial for minimizing the validation loss will
+be determined. This is because there are only two objectives
+in this optimization, i.e., the validation loss and the distance
+metric ψ(α) corresponding to αR. In addition, there may be
+some other methods to handle the above case, such as giving
+some weights to those robust search primitives. These weights
+need to be determined by additional complex algorithms, and
+we will invest more effort to this point in future work.
+E. Discussion on Interpretability of REP
+To help the readers better understand the interpretability of
+REP , the corresponding discussions are presented in this section.
+The interpretability of REP can be divided into two aspects: the
+interpretability of the process and the results.
+First, the interpretability of the process is mainly brought by
+the proposed probability enhancement search strategy. In the
+search strategy, we focus on the distance metric ψ(α) in (4)
+which is added to the objective function (5) with a weight λ.
+Meanwhile,ψ(α) is minimized together with the validation loss
+Lval . With the minimizedψ(α), the weights of the robust search
+primitives in αwill be greater and the resulting architecture
+will have more robust search primitives. In this process, though
+the optimization is still black-box, we can plainly know that
+how the metric ψ(α) added to the objective function leads the
+search process. In other words, it explains that, after adding this
+metric, which search primitives can be selected by the algorithm
+and used to construct the ﬁnal architecture because of the ψ(α)
+added. This leads to the higher interpretability of the process
+than the existing robust NAS. For example, after searching the
+architecture based on the input loss landscape in AdvRush [9],
+we can only know the architecture searched has smooth input
+loss, but we cannot know how the input loss landscape leads the
+search process and which search primitives are selected by the
+algorithm due to the metric of input loss landscape added.
+Second, the interpretability of the results mainly comes from
+the robust search primitives sampled by the proposed sampling
+strategy. After the search process, we can clearly know why the
+architecture searched is robust with the robust search primitives
+sampled. Because one can clearly observe the robust search
+primitives contained by the architecture searched by REP , which
+make the architecture robust. Furthermore, to show the robust
+search primitives do lead to the robustness improvement and
+then demonstrate the interpretability of the results, we conduct
+ablation studies in Section V- D. In contrast, when the robust
+architectures are searched by black-box optimization process
+in AdvRush [9], we cannot know that why this kind of design
+can lead to smoother input loss landscape and better adversarial
+robustness, and we can only know the architecture is robust. This
+leads to the poor interpretability of the results of the existing
+robust NAS methods.
+F . Analysis for the Effectiveness of REP
+The effectiveness of REP can be attributed to the adversarial
+robustness evaluation in the sampling process for robust search
+primitives. Speciﬁcally, the adversarial robustness evaluation
+is performed based on a certain (or more) adversarial attack.
+According to the results of the adversarial attack, the robust
+search primitives are sampled from architectures which demon-
+strate superior adversarial robustness under this attack. Conse-
+quently, the adversarial robustness of the derived architecture,
+which is composed of these robust search primitives sampled,
+will be improved under this attack. Furthermore, owing to the
+transferability and generalizability of adversarial attacks [34],
+an architecture which performs robustly under one kind of
+attack often also performs robustly under other kinds of attacks.
+As a result, though the robust search primitives are sampled
+from robust architectures under the certain attack, they are still
+beneﬁcial to the adversarial robustness under other kinds of
+attacks. Therefore, the architectures derived by REP can achieve
+better results under different adversarial attacks. For example,
+the robust search primitives sampled based on FGSM or PGD
+attacks are still effective under the C&W attack, as evidence by
+the results shown in Table VII.
+IV . EXPERIMENTAL DESIGN
+In this section, the settings of the experiments are introduced
+in detail. To begin with, the benchmark datasets are presented
+in Section IV -A. After that, the peer competitors chosen are
+introduced in Section IV -B. Finally, the parameter settings of
+the experiments are detailed in Section IV -C.
+A. Benchmark Datasets
+To demonstrate the proposed REP method is efﬁcient for
+both euclidean data and non-euclidean data, the experiments
+are performed on popular benchmark datasets for both CNN and
+GNN. Following the conventions[12], [35], [36], the benchmark
+datasets CIFAR-10, CIFAR-100 [37], and ImageNet [38] are
+selected for CNN, and Cora, CiteSeer, and PubMed [39] are
+selected for GNN.
+B. Peer Competitors
+In order to show the superiority of the proposed REP method
+in terms of both natural accuracy and adversarial robustness, we
+choose the state-of-the-art models for the comparison. Speciﬁ-
+cally, following the convention of robust NAS community [9],
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+FENG et al.: REP: AN INTERPRETABLE ROBUSTNESS ENHANCED PLUGIN FOR DIFFERENTIABLE NEURAL ARCHITECTURE SEARCH 2895
+[10], the competitors selected by us fall into three categories:
+human-designed models, the models searched by representative
+differentiable NAS baselines and the models searched by state-
+of-the-art robust NAS methods.
+For CNN, we choose the well-known human-designed mod-
+els, i.e., ResNet [40] and DenseNet [41]. The differentiable NAS
+baselines are DARTS [7],P D A R T S[15], and PCDARTS [42],
+which are representative differentiable NAS methods. The ro-
+bust NAS methods are SDARTS-ADV [43], RobNet [44],
+RACL [10], and AdvRush [9], which can achieve the state-of-
+the-art performance on both natural accuracy and adversarial
+robustness.
+For GNN, we also compare REP with human-designed mod-
+els, the differentiable NAS baseline, and the robust graph NAS
+method. The human-designed models are GCN [45],G A T[46],
+and GraphSAGE [47], which are all well-known and commonly
+used GNN models. Speciﬁcally, all of these models are widely
+used for a variety of GNN-related tasks represented by the node
+classiﬁcation task. Besides, we choose the popular SANE [32]
+method as the differentiable NAS baseline. In addition, the
+state-of-the-art robust graph NAS method G-RNA [35] is also
+chosen as the peer competitor. In the experiments, we referred
+to the ofﬁcial implementation of G-RNA in AutoGL[48] library
+for comparisons.
+C. Parameter Settings
+In our experiments, most of the parameter settings are deter-
+mined according to the conventions in communities of differen-
+tiable NAS [7], [32] and robust NAS [9], [11], [49]. Speciﬁcally,
+the detailed settings for search and measurement and other
+implementation details are introduced as follows.
+Parameter Settings for Search: In the probability enhance-
+ment search process, the parameter λ which balances the natural
+accuracy of the architecture and the distance metric ψ(α) is set
+to 0.01, by following the conventions in [9], [11]. Furthermore,
+it was also shown by AdvRush that the setting of 0.01 is effective
+in achieving both natural accuracy and adversarial robustness.
+Moreover, SGD [50] is used to optimize the network with the
+learning rate of 0.025, the momentum of 0.9 and the weight
+decay of 3e−4. Adam [51] is used to optimize the architecture
+parameters with the learning rate of 3e−4 and the weight decay
+of 1e−3 . For CNN, the epoch is set to 50 and 10 for sampling
+and probability enhanced search, and the batch size is set to
+64in order to ﬁt in a single GPU. For GNN, the epoch of search
+process is set to 150 and 50 for the above two steps, respectively.
+Parameter Settings for Measurement: After the search pro-
+cess, we choose the architecture with the highest natural accu-
+racy on the validation set as the ﬁnal architecture as the competi-
+tors do. To evaluate the performance of models in the presence
+and absence of adversarial defensive measures, the adversarial
+training and standard training are performed to train the models.
+For the adversarial training, CNN is trained for 200 epochs
+and GNN is trained for 600 epochs. For the standard training,
+CNN and GNN are both trained for 600 epochs. Following the
+conventions [7], [9], [32], [52], 20 cells are stacked to form
+the CNN architectures on CIFAR-10 and CIFAR-100, and the
+number of initial channels is set to 36. In terms of ImageNet,
+the number of cells is set to 14, and the number of initial
+channels is set to 48. In addition, during the training of CNNs,
+the learning rate is decayed by the factor of 0.1 at the 100th
+and 150th epochs. During the training of GNNs, the learning
+rate is decayed by cosine annealing. Moreover, the batch size
+of the adversarial training and the standard training for CNNs
+is set to 64 and 96, respectively. By following the suggestion
+in [33], the cutout operation [53] is used to prevent overﬁtting in
+the training processes. In addition, following the most common
+training method of the peer competitors reported in their seminal
+papers, SGD is used to optimize the weights in the network with
+learning rate of 0.025, momentum of 0.9 and weight decay of
+3e−4.
+After training, the natural accuracy and adversarial robustness
+are chosen to measure the performance of the models. In particu-
+lar, the adversarial attacks for measurement are set with general
+settings of the peer competitors to be representative [9], [11],
+[24]. For CNN, FGSM is set with the total perturbation scale
+ϵ =8 /255. C&W is set with attack iteration 100, the parameter
+c =0 .5 and learning rate 0.01. PGD attack is set with total
+attack iterations of 20, total perturbation scale ϵ =8 /255 and
+s i n g l es t e ps i z eo fϵ =2 /255. AutoPGD attack is set with total
+attack iterations of 20, total perturbation scale ϵ =8 /255 with
+l∞ bound and cross-entropy loss. For GNN, the random attack,
+DICE, and node embedding attack are used with 5% perturbation
+rates in the original graph. In addition, the harmonic robustness
+score (HRS) [8] is also adopted for evaluation. This is because
+HRS is calculated based on natural accuracy and adversarial
+robustness and can evaluate models in the combination of both
+aspects.
+Other Implementation Details: The experimental codes were
+implemented on Python 3.7 and with the deep learning library
+PyTorch 1.6.0 [54]. For the implementation for GNN, we used
+the library named PyTorch Geometric [55]. When generating
+adversarial examples, we used the open-source adversarial at-
+tack toolboxes TorchAttacks[56] and DeepRobust [57] for CNN
+and GNN, respectively.
+V. E XPERIMENTAL RESULTS AND ANAL YSIS
+In this section, ﬁrst of all, the overall results are presented in
+Section V- A. After that, the experimental results of REP under
+different adversarial attack strengths are shown in Section V- B.
+Then, the analysis on the proposed sampling strategy for robust
+search primitives is conducted in SectionV- C. Finally, the results
+of extensive ablation studies are carried out in Section V- D.
+A. Overall Results
+To show the effectiveness of REP comprehensively, the set
+of architectures A are obtained on CIFAR-10 and Cora during
+50 and 150 search epochs of DARTS [7] and SANE [32] for
+CNN and GNN, respectively. Then, the robust search primitives
+are sampled from A by REP . Finally, the derived architecture
+(denoted as REP for simplicity) is determined through REP
+based on the robust search primitives sampled. Notably, the
+experimental results are composed of four parts. In the ﬁrst two
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+2896 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+TABLE I
+OVERALL RESULTS FOR CNN ON CIFAR-10, CIFAR-100, AND IMAGENET
+parts, following the conventions in [9], [10] and [11], all the
+models are trained with two methods: adversarial training and
+standard training. In the third and fourth part, to measure the
+transferability of the architectures, we keep all the CNN and
+GNN architectures the same as themselves on CIFAR-10 and
+Cora, and then they are adversarially trained on CIFAR-100,
+ImageNet, CiteSeer, and PubMed. Please note that the fast
+adversarial training technique [31] is adopted to reduce the
+computational cost for the adversarial training on ImageNet.
+Convolutional Neural Network: We report the comparison
+results in Table I, where the architecture of REP is searched on
+CIFAR-10. The robust search primitives are sampled by PGD
+attack. The best values are shown in bold.
+As can be seen in Table I, REP achieves the best natural
+accuracy and adversarial robustness under all four adversarial
+attacks in the case of adversarial training on CIFAR-10. In
+the case of standard training on CIFAR-10, REP achieves the
+natural accuracy which is higher than that of RACL, but lower
+than the other peer competitors. However, REP outperforms
+all the peer competitors in terms of the adversarial robustness.
+Meanwhile, REP also achieves the state-of-the-art performance
+on CIFAR-100 and large-scale classiﬁcation task, i.e., ImageNet.
+In addition, REP achieves the best HRS metric in all four cases,
+indicating that REP is still effective when considering robust
+metric beyond the performance under adversarial attacks.
+To further validate the consistency of REP , we also per-
+form experiments on both NAS-Bench-101 [58] and NA TS-
+Bench [59]. REP is also integrated into DARTS to search for
+architectures. For peer competitors, please note that we directly
+TABLE II
+OVERALL RESULTS FOR CNN ON NAS-BENCH-101 AND NATS-BENCH
+BENCHMARKS
+run the open source code of them on both NAS-Bench-101
+search space and the topology search space St of NA TS-Bench.
+The experimental results are shown in Table II. As can be seen,
+REP achieves the best performance on both NAS-Bench-101
+and NA TS-Bench. Meanwhile, REP achieves signiﬁcant im-
+provements against DARTS. Speciﬁcally, the performance drop
+of DARTS is caused by the domination of the parameter-free
+operation, i.e., the “skip connection” operation, in the derived
+architecture [33]. As a result, both natural accuracy and adversar-
+ial robustness drop signiﬁcantly because the derived architecture
+is ﬁlled with such parameter-free operation. In contrast, REP
+can alleviate such domination in the derived architecture. This
+is because REP introduces the distance metric ψ(α), which can
+increase the probability of selecting other kinds of operations
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+FENG et al.: REP: AN INTERPRETABLE ROBUSTNESS ENHANCED PLUGIN FOR DIFFERENTIABLE NEURAL ARCHITECTURE SEARCH 2897
+TABLE III
+OVERALL RESULTS FOR GNN ON CORA,C ITESEER, AND PUBMED
+against the parameter-free operation. Consequently, the archi-
+tecture derived by REP is not dominated by the parameter-free
+operation. This is also the reason that REP + DARTS performs
+much better than DARTS does.
+Graph Neural Network: The comparison results of GNN in
+four cases are reported in Table III. Because the time overhead
+of the training for GNN is much smaller than that of CNN, the
+average values of ﬁve times of training with standard deviation
+are reported. Moreover, we report the natural accuracy and
+adversarial robustness under random attack, DICE attack, and
+node embedding attack of the models.
+In terms of the adversarial and standard training on Cora,
+REP outperforms all the competitors chosen. Moreover, when
+transferring the models directly to CiteSeer, REP can still de-
+liver the state-of-the-art performance among the competitors,
+demonstrating the superior transferability. Meanwhile, REP still
+achieves the best performance on PubMed which is larger than
+Cora and CiteSeer. In addition, REP also achieves the highest
+HRS metric in all four cases, further demonstrating the effec-
+tiveness of REP on GNN.
+Search Cost Analysis: Because the search cost is an important
+factor indicating the efﬁciency of NAS, the search cost of REP
+and peer competitors is also contained in overall results. As
+shown in Table I, the search cost of REP is 0.7 GPU days
+for CNN, without introducing much additional search cost.
+Furthermore, we present the computational cost of each step
+of REP in Table IV. As can be seen, the cost of the original
+search is the same as that of DARTS (about 0.5 GPU days).
+The cost of the robust evaluation is 0.18 GPU days for CNN. In
+addition, the cost of the probability enhancement search process
+is 0.07 GPU days.
+Moreover, as shown in Table III, the search cost of REP is
+0.0015 GPU days for GNN. Although additional search time
+is introduced by REP , the search cost of REP is considered
+TABLE IV
+THE SEARCH COST OF EACH STEP OF REP FOR CNN AND GNN
+practical because the training and evaluation for GNN is much
+more efﬁcient than those of CNN. As shown in Table IV,t h e
+computational cost of the robust search primitives sampling
+is 0.0013 GPU days for GNN in which robustness evaluation
+accounts for 0.0005 GPU days. In summary, REP can effectively
+improve the natural accuracy and adversarial robustness without
+introducing much computational budget.
+B. Comparison Under Different Attack Strengths
+Ideally, the models are attacked by the predetermined at-
+tack strength of each type of adversarial attack as shown in
+Section V- A. However, the strength of adversarial attacks is
+actually uncertain in applications. In order to evaluate the adver-
+sarial robustness more comprehensively, we perform adversarial
+attacks with different attack strengths to attack both CNN and
+GNN models chosen.
+Speciﬁcally, we choose the popular PGD attack with different
+attack iterations to attack CNN models on CIFAR-10. The attack
+iteration is set from one to 50 in experiments. The results are
+presented in Fig. 4(a), where the horizontal axis indicates the
+attack iterations and the vertical axis represents the adversarial
+robustness. As shown in Fig. 4(a), when the attack iteration
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+2898 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+Fig. 4. Visualization results of models under different attack strengths.
+(a) CNNs on CIFAR-10. (b) GNNs on Cora.
+Fig. 5. The visualization of the average adversarial robustness under the PGD
+attack of the architectures sampled by REP .
+of PGD attack is increasing, the performance of the models
+is decreasing due to the stronger attack. For each model, REP
+achieves the best adversarial robustness among all peer competi-
+tors under different attack iterations.
+On the other hand, the DICE attack with different perturbation
+rates is performed to attack GNN models. In the experiment, the
+perturbation rate is set to 0%, 10%, 20%, 30%, 40%, and 50%.
+For each perturbation rate, we attack each model for 30 times
+and report the best, worst, and average performance, which are
+denoted as upper and lower boundaries of each color area, and
+the points on each line, respectively. The experimental results
+are shown in Fig. 4(b), where the horizontal axis indicates
+the perturbation rates and the vertical axis demonstrates the
+adversarial robustness. As can be seen, the mean performance of
+REP is the best among all the GNN models, showing that REP
+performs more robustly in face of the adversarial attack with the
+increasing attack strength.
+C. Analysis on Robust Search Primitives Sampling Strategy
+For an in-depth investigation for the effectiveness of robust
+search primitives sampled, we analyze the adversarial robustness
+of different architectures along with the robust search prim-
+itives sampled. In order to reﬂect the adversarial robustness
+of architectures with or without robust search primitives, the
+average adversarial robustness of both kinds of architectures are
+reported. The experimental results are shown in Fig.5, where the
+vertical axis denotes the average adversarial robustness under the
+PGD attack of the architectures, and the horizontal axis denotes
+different search primitives contained by architectures.
+As can be seen in Fig. 5(a) and (b), the architectures with
+robust search primitives often have relatively superior adver-
+sarial robustness, higher than the ones without robust search
+TABLE V
+THE EXPERIMENTAL RESULTS OF REP WITH DIFFERENT DIFFERENTIABLE
+NAS METHODS
+primitives. Meanwhile, giving that there are different combi-
+nations of search primitives in different architectures, we can
+come to the conclusion that the robust search primitives often
+have a positive effect on the adversarial robustness with different
+combinations of search primitives. Thus, the effectiveness of the
+sampled robust search primitives can be further justiﬁed.
+D. Ablation Study
+The ablation study contains six parts in total. In particular,
+the ﬁrst focuses on different NAS methods, to demonstrate the
+ﬂexibility of REP as a plugin method. The second is about the
+different adversarial attacks for sampling robust search prim-
+itives, to investigate the effect of different adversarial attacks
+for robustness evaluation. The third is regarding the architecture
+pool construction methods, to justify the validity of the proposed
+architecture pool construction method in REP . The fourth aims
+at sets B1 andB2, to further explore the individual contribution
+of the sampled search primitives inB1 andB2. The ﬁfth is about
+the distance metrics, to investigate the effectiveness of different
+distance metrics for regularization. The sixth places attention on
+different types of search primitives, to show the interpretability
+and the validity of the design of the probability enhancement
+search strategy of REP .
+Different NAS Methods with REP: We choose three represen-
+tative differentiable NAS methods: DARTS [7],P D A R T S[15],
+and PCDARTS [42] to be integrated by REP . During the search
+process of these NAS methods, the architecture of each search
+epoch is recorded and evaluated, and then the robust search
+primitives are sampled by REP from these architectures. Finally,
+the resulting architectures are identiﬁed by REP and evaluated
+to do the comparison.
+The experimental results of REP with three differentiable
+NAS methods are shown in TableV. In the column “Models”, the
+baselines (DARTS, PDARTS, and PCDARTS) and their variants
+after adding REP (REP + DARTS, REP + PDARTS, and REP +
+PCDARTS) are presented. As can be seen, the natural accuracy
+is improved with the introduction of REP on the basis of all
+the baselines chosen. In addition, the adversarial robustness is
+improved under all adversarial attacks after REP is added. In
+conclusion, REP demonstrates the promising performance for
+different differentiable NAS methods as a plugin method.
+Besides, we also perform REP on the single path one-shot
+(SPOS) NAS method [60]. In particular, we consider the choice
+blocks in the single path supernet of SPOS as search primitives,
+and REP is performed to sample robust search primitives in that
+supernet. The sampled robust search primitives are given larger
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+FENG et al.: REP: AN INTERPRETABLE ROBUSTNESS ENHANCED PLUGIN FOR DIFFERENTIABLE NEURAL ARCHITECTURE SEARCH 2899
+TABLE VI
+THE EXPERIMENTAL RESULTS OF REP WITH THE ONE-SHOT NAS METHOD
+TABLE VII
+THE EXPERIMENTAL RESULTS OF SAMPLING ROBUST SEARCH PRIMITIVES
+WITH DIFFERENT ADVERSARIAL ATTACKS
+probability to be chosen in the search phase of SPOS. The results
+are shown in TableVI. As can be seen, both natural accuracy and
+adversarial robustness are improved after REP is integrated into
+SPOS, demonstrating the effectiveness of REP for the one-shot
+NAS method.
+Different Adversarial Attacks for Sampling Robust Search
+Primitives: In this set of experiments, we perform REP in three
+cases. Speciﬁcally, the adversarial robustness is evaluated with:
+1) only FGSM attack; 2) only PGD attack; 3) both FGSM and
+PGD attacks. In the third case, the adversarial robustness is
+calculated by averaging the evaluation results of FGSM and
+PGD attacks. The baseline NAS algorithm chosen to be plugged
+by REP is DARTS and the experimental results are shown in
+Table VII.
+As can be seen in Table VII, the model “REP + PGD”
+achieves the best natural accuracy and adversarial robustness
+under all attacks except C&W. “REP + FGSM + PGD” achieves
+the second-best natural accuracy and adversarial robustness
+adversarial attacks. Meanwhile, “REP + FGSM” demonstrates
+the best adversarial robustness under C&W attack. According
+to above observations, we ﬁnd that only using the stronger
+adversarial attack (PGD) for robust evaluation in REP can
+lead to higher adversarial robustness on most attacks (PGD,
+APGD, and FGSM). On the contrary, only using the weaker
+adversarial attack (FGSM) leads to lower adversarial robustness.
+In addition, the above situations show the opposite robustness
+under the C&W attack. This phenomenon can be explained
+by the cross-over mixture problem [61]. Speciﬁcally, when the
+adversarial attack becomes stronger (from REP + FGSM to REP
++ PGD), the cross-over mixture problem will become more seri-
+ous. Meanwhile, the adversarial robustness under C&W attack
+is inﬂuenced by this problem relatively easily [61], comparing
+with that under FGSM, PGD, and APGD attacks. Consequently,
+the adversarial robustness under C&W attack diminishes.
+Ablation Study of the Architecture Pool Construction Method:
+In this part, we conduct comparisons between the proposed
+construction method and the random sampling method. Please
+note that the comparisons are performed in three conditions
+where DARTS, PDARTS, and PCDARTS are chosen to be
+Fig. 6. Comparisons between the random sampling method and the architec-
+ture pool construction method proposed in REP . The differentiable NAS methods
+in which REP would plug are (a) DARTS, (b) PDARTS, and (c) PCDARTS.
+TABLE VIII
+THE EXPERIMENTAL RESULTS OF THE ABLA TIONSTUDY ON THE SETS OF
+ROBUST SEARCH PRIMITIVES B1 AND B2
+plugged by REP . In the random sampling process, the search
+primitives are all randomly selected at ﬁrst from the search
+space to construct different architectures. In particular, there
+are 16 search primitives randomly selected to construct each
+architecture, and the total number of constructed architectures
+is kept the same as that recorded in the search process of DARTS,
+PDARTS or PCDARTS. Then, all the constructed architectures
+are adversarially trained to obtain their adversarial robustness.
+After that, the trained architectures are randomly sorted. Finally,
+the proposed sampling strategy of REP is adopted to sample
+robust search primitives in the sorted architectures. The com-
+parison results are visualized in Fig. 6. As can be seen, no
+matter which differentiable NAS method is plugged by REP ,
+the architecture pool construction method proposed in REP
+often outperforms the random sampling method in terms of all
+measurements.
+Ablation Study of B1 and B2: In this part, the ablation study
+forB1 andB2 is conducted. The experimental results are shown
+in Table VIII, where the results from four cases are reported: 1)
+searching with none of B1 andB2 (original DARTS); 2) search-
+ing with B2 individually; 3) searching with B1 individually; 4)
+searching with both B1 andB2 (REP).
+As can be observed from Table VIII, the natural accuracy
+values are all improved after introducingB1 orB2 individually or
+bothB1 andB2 in the search process. This is because the distance
+metric ψ(α) can always play the regularization role no matter
+which set of search primitives (B1, B2 or the intersection of B1
+and B2) are contained. Such regularization can prevent the ar-
+chitecture parameterαfrom overﬁtting on the validation set[33]
+and improve the natural accuracy of the searched architecture.
+In addition, the adversarial robustness under four adversarial
+attacks is also improved after introducing B1 orB2 individually
+or the intersection of B1 and B2. In particular, it reaches the
+best performance after searching with the intersection ofB1 and
+B2. Consequently, the validity of the probability enhancement
+search strategy is further justiﬁed.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+2900 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+TABLE IX
+THE EXPERIMENTAL RESULTS OF THE ABLA TIONSTUDY IN TERMS OF
+DIFFERENT DISTANCE METRICS FOR REGULARIZA TION
+TABLE X
+THE RESULTS OF THE ABLA TIONSTUDY FOR ROBUST SEARCH PRIMITIVES AND
+OTHER SEARCH PRIMITIVES
+Different Distance Metrics for Regularization:To explore the
+effectiveness of different distance metrics for regularization, we
+choose three kinds of distance metrics (i.e., euclidean distance,
+cosine distance, and KL divergence) to perform experiments.
+The experimental results are presented in Table IX.
+As can be seen from Table IX, no matter which distance
+metric is adopted to the regularization, the natural accuracy
+and adversarial robustness are both improved. Meanwhile, the
+results of the euclidean distance are better than those of cosine
+distance and KL divergence in terms of both natural accuracy and
+adversarial robustness. This is also the reason for choosing the
+euclidean distance for regularization in this work. In addition,
+the KL divergence is shown to be slightly more effective than
+the cosine distance in regularization.
+Robust Search Primitives & Other Search Primitives: We
+conduct ablation studies on robust search primitives and other
+search primitives in this part. Although CNN and GNN are used
+to handle different types of data (i.e., continuous image data and
+discrete graph data, respectively) and the robust strategy on im-
+age usually fails on graph-structured data [62], the architectures
+of both CNN and GNN can be represented in the same form, i.e.,
+DAGs. Meanwhile, the robust search primitives are edges along
+with operations. Giving that REP focuses on the architectures
+and search primitives. Therefore, REP can be generalized across
+CNN and GNN no matter what kind of data they are used to
+handle.
+Furthermore, we conduct empirical studies for the robust
+search primitives and other search primitives. For the CNN
+architectures derived by REP , we remove some search primitives
+in three cases so that the architecture remains: 1) Only other
+search primitives except robust ones; 2) Only robust search
+primitives; 3) Both robust and other search primitives. When
+removing a certain search primitive, we replace the operation of
+this search primitive with zero operation to achieve the deletion.
+All three architectures are trained with adversarial training and
+standard training with the same settings on CIFAR-10 and then
+evaluated.
+The experimental results are demonstrated in Table X.T ob e
+more speciﬁc, “AdvT” indicates whether to perform adversarial
+Fig. 7. The visualization of the CNN cells corresponding to the results in
+Table X. The cells in the upper part do not include robust search primitives
+sampled. The cells in the lower part includes the robust search primitives
+sampled. The robust search primitives are shown as red arrows.
+training or not, “Robust” and “Other” denote whether to reserve
+robust search primitives and other search primitives or not in the
+ﬁrst three columns of Table X.
+First, we answer the research question that “ which elements
+lead to the improvement of adversarial robustness”. As shown in
+TableX, comparing with the architecture which does not include
+any robust search primitives (the ﬁrst and fourth rows), both
+natural accuracy and adversarial robustness are improved after
+including robust search primitives (the third and sixth rows).
+In other words, the architecture with the sampled robust search
+primitives is considered more robust. Furthermore, we also visu-
+alize both architectures with their corresponding performance in
+Fig. 7. Speciﬁcally, the red arrows denote the robust search prim-
+itives sampled. When the architecture includes robust search
+primitives sampled, it will have higher natural accuracy and
+adversarial robustness. In summary, the sampled robust search
+primitives can lead to the improvement of adversarial robustness.
+Second, for the validity of the design of probability enhance-
+ment search strategy, when only reserving robust search primi-
+tives in the search process (the second row and the ﬁfth row), both
+natural accuracy and adversarial robustness of the architecture
+are inferior to those of the architecture in the third and sixth
+rows. Moreover, the architecture containing only robust search
+primitives even performs worse than the architectures (the ﬁrst
+row and the fourth row) in terms of most measurements. This
+is because robust search primitives sampled are only a small
+part of all primitives as shown in Fig. 7. When searching for
+the architectures based on a small number of search primitives,
+the number of operations and edges signiﬁcantly reduces in the
+searched architecture. Obviously, this will lead to the perfor-
+mance fall. Based on above analysis, the design of the proposed
+probability enhancement search strategy which searches archi-
+tectures with both robust and other search primitives is shown
+to be reasonable.
+VI. C ONCLUSION AND DISCUSSION
+The goal of this paper is to design a robust enhanced plugin
+method (REP), which can be ﬂexibly used for multiple differ-
+entiable NAS methods to enhance the adversarial robustness.
+This goal is achieved by developing the robust search primitives
+sampling and the probability enhancement search strategy. The
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+FENG et al.: REP: AN INTERPRETABLE ROBUSTNESS ENHANCED PLUGIN FOR DIFFERENTIABLE NEURAL ARCHITECTURE SEARCH 2901
+proposed REP method is shown to be effective to both euclidean
+data and non-euclidean data on popular benchmark datasets,
+along with decent ﬂexibility and interpretability. However, REP
+mainly focuses on differentiable NAS methods to search for
+cell-based architectures. In this case, only cells stacked to form
+a whole architecture can be searched, resulting in the generation
+of similar architectures. In future, we will place more efforts
+in improving REP for generating diverse architectures, in order
+to adapt REP to a wider range of real-world tasks. As for the
+potential negative social impact, the automation brought by
+REP may increase unemployment in the neural network design
+direction.
+REFERENCES
+[1] Y . LeCun, Y . Bengio, and G. Hinton, “Deep learning,” Nature, vol. 521,
+no. 7553, pp. 436–444, 2015.
+[2] T. Elsken, J. H. Metzen, and F. Hutter, “Neural architecture search: A
+survey,” J. Mach. Learn. Res. , vol. 20, no. 1, pp. 1997–2017, 2019.
+[3] B. Zoph and Q. Le, “Neural architecture search with reinforcement learn-
+ing,” inProc. Int. Conf. Learn. Representations, 2017. [Online]. Available:
+https://openreview.net/forum?id=r1Ue8Hcxg
+[4] Y . Gao et al., “HGNAS: Efﬁcient architecture search for heterogeneous
+graph neural networks,” IEEE Trans. Knowl. Data Eng. , vol. 35, no. 9,
+pp. 9448–9461, Sep. 2023.
+[5] Y . Gao et al., “GraphNAS : Distributed architecture search for graph neural
+networks,” IEEE Trans. Knowl. Data Eng., vol. 35, no. 7, pp. 6973–6987,
+Jul. 2023.
+[6] E. Real et al., “Large-scale evolution of image classiﬁers,” in Proc. Int.
+Conf. Mach. Learn., 2017, pp. 2902–2911.
+[7] H. Liu, K. Simonyan, and Y . Y ang, “DARTS: Differentiable architecture
+search,” in Proc. Int. Conf. Learn. Representations, 2019. [Online]. Avail-
+able: https://openreview.net/forum?id=S1eYHoC5FX
+[8] C. Devaguptapu, D. Agarwal, G. Mittal, P . Gopalani, and V . N. Balasubra-
+manian, “On adversarial robustness: A neural architecture search perspec-
+tive,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. , 2021, pp. 152–161.
+[9] J. Mok, B. Na, H. Choe, and S. Y oon, “AdvRush: Searching for adversar-
+ially robust neural architectures,” in Proc. IEEE/CVF Int. Conf. Comput.
+Vis., 2021, pp. 12322–12332.
+[10] M. Dong, Y . Li, Y . Wang, and C. Xu, “Adversarially robust neural archi-
+tectures,” 2020, arXiv: 2009.00902.
+[11] R. Hosseini, X. Y ang, and P . Xie, “DSRNA: Differentiable search of
+robust neural architectures,” inProc. IEEE/CVF Conf. Comput. Vis. Pattern
+Recognit., 2021, pp. 6196–6205.
+[12] Z. Cheng, Y . Li, M. Dong, X. Su, S. Y ou, and C. Xu, “Neural architecture
+search for wide spectrum adversarial robustness,” in Proc. AAAI Conf.
+Artif. Intell., 2023, pp. 442–451.
+[13] Z. Pan, L. Hu, W. Tang, J. Li, Y . He, and Z. Liu, “Privacy-preserving
+multi-granular federated neural architecture search–a general framework,”
+IEEE Trans. Knowl. Data Eng., vol. 35, no. 3, pp. 2975–2986, Mar. 2023.
+[14] C. Wang, B. Chen, G. Li, and H. Wang, “Automated graph neural network
+search under federated learning framework,” IEEE Trans. Knowl. Data
+Eng., vol. 35, no. 10, pp. 9959–9972, Oct. 2023.
+[15] X. Chen, L. Xie, J. Wu, and Q. Tian, “Progressive DARTS: Bridging the
+optimization gap for NAS in the wild,”Int. J. Comput. Vis., vol. 129, no. 3,
+pp. 638–655, 2021.
+[16] C. Y an et al., “ZeroNAS: Differentiable generative adversarial networks
+search for zero-shot learning,” IEEE Trans. Pattern Anal. Mach. Intell. ,
+vol. 44, no. 12, pp. 9733–9740, Dec. 2022.
+[17] Y .-C. Gu et al., “DOTS: Decoupling operation and topology in differen-
+tiable architecture search,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern
+Recognit., 2021, pp. 12311–12320.
+[18] Y . Y ang, S. Y ou, H. Li, F. Wang, C. Qian, and Z. Lin, “Towards improving
+the consistency, efﬁciency, and ﬂexibility of differentiable neural archi-
+tecture search,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit.,
+2021, pp. 6667–6676.
+[19] C. Szegedy et al., “Intriguing properties of neural networks,”
+2013, arXiv:1312.6199.
+[20] I. J. Goodfellow, J. Shlens, and C. Szegedy, “Explaining and harnessing
+adversarial examples,” in Proc. Int. Conf. Learn. Representations , 2015.
+[21] A. Madry, A. Makelov, L. Schmidt, D. Tsipras, and A. Vladu, “Towards
+deep learning models resistant to adversarial attacks,” in Proc. Int. Conf.
+Learn. Representations, 2018. [Online]. Available: https://openreview.net/
+forum?id=rJzIBfZAb
+[22] F. Croce and M. Hein, “Reliable evaluation of adversarial robustness with
+an ensemble of diverse parameter-free attacks,” in Proc. Int. Conf. Mach.
+Learn., 2020, pp. 2206–2216.
+[23] N. Carlini and D. Wagner, “Towards evaluating the robustness of neural
+networks,” in Proc. IEEE Symp. Secur . Privacy, 2017, pp. 39–57.
+[24] D. Zügner and S. Günnemann, “Adversarial attacks on graph neural
+networks via meta learning,” in Proc. Int. Conf. Learn. Representations ,
+2019. [Online]. Available: https://openreview.net/forum?id=Bylnx209YX
+[25] A. Bojchevski and S. Günnemann, “Adversarial attacks on node em-
+beddings via graph poisoning,” in Proc. Int. Conf. Mach. Learn. , 2019,
+pp. 695–704.
+[26] N. Carlini and D. Wagner, “Adversarial examples are not easily detected:
+Bypassing ten detection methods,” in Proc. ACM Workshop Artif. Intell.
+Secur ., 2017, pp. 3–14.
+[27] J. Cohen, E. Rosenfeld, and Z. Kolter, “Certiﬁed adversarial robustness
+via randomized smoothing,” in Proc. Int. Conf. Mach. Learn. , 2019,
+pp. 1310–1320.
+[28] M. Cisse, P . Bojanowski, E. Grave, Y . Dauphin, and N. Usunier, “Parseval
+networks: Improving robustness to adversarial examples,” in Proc. Int.
+Conf. Mach. Learn., 2017, pp. 854–863.
+[29] D. Jakubovitz and R. Giryes, “Improving DNN robustness to adversarial
+attacks using jacobian regularization,” in Proc. Eur . Conf. Comput. Vis.,
+2018, pp. 514–529.
+[30] F. Tramèr, A. Kurakin, N. Papernot, I. Goodfellow, D. Boneh, and P .
+McDaniel, “Ensemble adversarial training: Attacks and defenses,” in
+Proc. Int. Conf. Learn. Representations , 2018. [Online]. Available: https:
+//openreview.net/forum?id=rkZvSe-RZ
+[31] E. Wong, L. Rice, and J. Z. Kolter, “Fast is better than free: Revisiting
+adversarial training,” in Proc. Int. Conf. Learn. Representations , 2020.
+[Online]. Available: https://openreview.net/forum?id=BJx040EFvH
+[32] Z. Huan, Y . Quanming, and T. Weiwei, “Search to aggregate neighborhood
+for graph neural network,” in Proc. IEEE Int. Conf. Data Eng. , 2021,
+pp. 552–563.
+[33] A. Zela, T. Elsken, T. Saikia, Y . Marrakchi, T. Brox, and F. Hutter,
+“Understanding and robustifying differentiable architecture search,” in
+Proc. Int. Conf. Learn. Representations , 2020. [Online]. Available: https:
+//openreview.net/forum?id=H1gDNyrKDS
+[34] Z. Wang et al., “Towards transferable targeted adversarial exam-
+ples,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. , 2023,
+pp. 20534–20543.
+[35] B. Xie et al., “Adversarially robust neural architecture search for graph
+neural networks,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recog-
+nit., 2023, pp. 8143–8152.
+[36] B. Li, E. Pan, and Z. Kang, “PC-Conv: Unifying homophily and het-
+erophily with two-fold ﬁltering,” in Proc. AAAI Conf. Artif. Intell. , 2024,
+pp. 13437–13445.
+[37] A. Krizhevsky and G. Hinton, “Learning multiple layers of features from
+tiny images,” 2009. [Online]. Available: https://www.cs.utoronto.ca/kriz/
+learning-features-2009-TR.pdf
+[38] J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei, “ImageNet:
+A large-scale hierarchical image database,” in Proc. IEEE/CVF Conf.
+Comput. Vis. Pattern Recognit., 2009, pp. 248–255.
+[39] P . Sen, G. Namata, M. Bilgic, L. Getoor, B. Galligher, and T. Eliassi-
+Rad, “Collective classiﬁcation in network data,” AI Mag., vol. 29, no. 3,
+pp. 93–93, 2008.
+[40] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image
+recognition,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. ,
+2016, pp. 770–778.
+[41] G. Huang, Z. Liu, L. V an Der Maaten, and K. Q. Weinberger, “Densely
+connected convolutional networks,” in Proc. IEEE/CVF Conf. Comput.
+Vis. Pattern Recognit., 2017, pp. 4700–4708.
+[42] Y . Xu et al., “PC-DARTS: Partial channel connections for memory-
+efﬁcient architecture search,” in Proc. Int. Conf. Learn. Representations ,
+2020. [Online]. Available: https://openreview.net/forum?id=BJlS634tPr
+[43] X. Chen and C.-J. Hsieh, “Stabilizing differentiable architecture search
+via perturbation-based regularization,” in Proc. Int. Conf. Mach. Learn. ,
+2020, pp. 1554–1565.
+[44] M. Guo, Y . Y ang, R. Xu, Z. Liu, and D. Lin, “When NAS meets robustness:
+In search of robust architectures against adversarial attacks,” in Proc.
+IEEE/CVF Conf. Comput. Vis. Pattern Recognit., 2020, pp. 631–640.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 
+2902 IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, VOL. 37, NO. 5, MA Y 2025
+[45] M. Defferrard, X. Bresson, and P . V andergheynst, “Convolutional neural
+networks on graphs with fast localized spectral ﬁltering,” in Proc. Adv.
+Neural Inf. Process. Syst., 2016, pp. 3844–3852.
+[46] P . V eliˇckovi´c, G. Cucurull, A. Casanova, A. Romero, P . Liò, and Y . Bengio,
+“Graph attention networks,” in Proc. Int. Conf. Learn. Representations ,
+2018. [Online]. Available: https://openreview.net/forum?id=rJXMpikCZ
+[47] W. Hamilton, Z. Ying, and J. Leskovec, “Inductive representation learn-
+ing on large graphs,” in Proc. Adv. Neural Inf. Process. Syst. , 2017,
+pp. 1025–1035.
+[48] C. Guan et al., “AutoGL: A library for automated graph learning,” in Proc.
+Int. Conf. Learn. Representations Workshop , 2021. [Online]. Available:
+https://openreview.net/forum?id=0yHwpLeInDn
+[49] T. Pang, X. Y ang, Y . Dong, H. Su, and J. Zhu, “Bag of tricks for adversarial
+training,” in Proc. Int. Conf. Learn. Representations , 2021. [Online].
+Available: https://openreview.net/forum?id=Xb8xvrtB8Ce
+[50] L. Bottou, “Large-scale machine learning with stochastic gradient de-
+scent,” in Proc: 19th Int. Conf. Comput. Statist. Paris France, Springer,
+2010, pp. 177–186.
+[51] D. P . Kingma and J. Ba, “Adam: A method for stochastic optimization,”
+in Proc. Int. Conf. Learn. Representations , 2015.
+[52] L. Rice, E. Wong, and Z. Kolter, “Overﬁtting in adversarially robust deep
+learning,” in Proc. Int. Conf. Mach. Learn. , 2020, pp. 8093–8104.
+[53] T. DeVries and G. W. Taylor, “Improved regularization of convolutional
+neural networks with cutout,” 2017, arXiv: 1708.04552.
+[54] A. Paszke et al., “PyTorch: An imperative style, high-performance
+deep learning library,” in Proc. Adv. Neural Inf. Process. Syst. , 2019,
+pp. 8026–8037.
+[55] M. Fey and J. E. Lenssen, “Fast graph representation learning with pytorch
+geometric,” 2019, arXiv: 1903.02428.
+[56] H. Kim, “Torchattacks: A pytorch repository for adversarial attacks,”
+2020, arXiv: 2010.01950.
+[57] Y . Li, W. Jin, H. Xu, and J. Tang, “DeepRobust: A pytorch library for
+adversarial attacks and defenses,” 2020, arXiv: 2005.06149.
+[58] C. Ying, A. Klein, E. Christiansen, E. Real, K. Murphy, and F. Hutter,
+“NAS-Bench-101: Towards reproducible neural architecture search,” in
+Proc. Int. Conf. Mach. Learn. , 2019, pp. 7105–7114.
+[59] X. Dong, L. Liu, K. Musial, and B. Gabrys, “NA TS-Bench: Benchmarking
+NAS algorithms for architecture topology and size,” IEEE Trans. Pattern
+Anal. Mach. Intell., vol. 44, no. 7, pp. 3634–3646, Jul. 2022.
+[60] Z. Guo et al., “Single path one-shot neural architecture search with uniform
+sampling,” in Proc. Eur . Conf. Comput. Vis., Springer, 2020, pp. 544–560.
+[61] J. Zhang et al., “Attacks which do not kill training make adversarial learn-
+ing stronger,” in Proc. Int. Conf. Mach. Learn. , 2020, pp. 11278–11287.
+[62] L. Sun et al., “Adversarial attack and defense on graph data: A survey,”
+IEEE Trans. Knowl. Data Eng., vol. 35, no. 8, pp. 7693–7711, Aug. 2023.
+Yuqi Feng (Graduate Student Member, IEEE) re-
+ceived the BE degree in computer science and tech-
+nology from Sichuan University, Chengdu, China, in
+2022. He is currently working toward the PhD degree
+with the College of Computer Science, Sichuan Uni-
+versity, Chengdu, China. His current research inter-
+ests include neural architecture search and adversarial
+attacks.
+Yanan Sun(Senior Member, IEEE) received the PhD
+degree in computer science from Sichuan University,
+Chengdu, China, in 2017. He is currently a profes-
+sor with the College of Computer Science, Sichuan
+University, Chengdu, China. His research interests
+include evolutionary computation, neural networks,
+and their applications on neural architecture search.
+He lead a team winning the First place on the third
+unseen-data neural architecture search challenge in
+CVPR2023. Dr. Sun serves as an associate editor for
+IEEE Transactions on Evolutionary Computationand
+IEEE Transactions on Neural Networks and Learning Systems .
+Gary G. Y en (Fellow, IEEE) received the PhD de-
+gree in electrical and computer engineering from the
+University of Notre Dame, Notre Dame, IN, USA, in
+1992. In 1997, he was with the Structure Control Di-
+vision, Air Force Research Laboratory, Albuquerque,
+NM, USA. He is currently a regents professor with
+the School of Electrical and Computer Engineering,
+Oklahoma State University, Stillwater, OK, USA. His
+research interests include intelligent control, compu-
+tational intelligence, conditional health monitoring,
+and signal processing and their industrial/defense
+applications.
+Kay Chen Tan (Fellow, IEEE) received the BEng
+degree (First Class Hons.) and the PhD degree from
+the University of Glasgow, U.K., in 1994 and 1997,
+respectively. He is currently a chair professor of the
+Department of Computing, The Hong Kong Polytech-
+nic University. He was the editor-in-chief of IEEE
+Transactions on Evolutionary Computation,a n dc u r -
+rently serves as an Editorial Board member of 10+
+journals. He is currently the vice-president (Publica-
+tions) of IEEE Computational Intelligence Society ,
+an honorary professor with the University of Not-
+tingham, in U.K., and the chief co-editor of Springer Book Series on Machine
+Learning: Foundations, Methodologies, and Applications.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on April 22,2025 at 08:25:23 UTC from IEEE Xplore.  Restrictions apply. 

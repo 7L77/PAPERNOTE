@@ -1,0 +1,1201 @@
+
+--- PAGE 1 ---
+A Detailed proofs
+A.1 Proof of Theorem 2
+In this section, we present the proof for our main theorem (Theorem 2 in Section 3.4). We first
+introduce the following definitions and lemmas to better illustrate our proof.
+Lemma 1 (Lemma 3.1 in [ 1]). If m = Ω
+
+n2
+λ2
+0
+log
+ n
+δ
+
+, then with probability at least 1 − δ,
+∥H(0) − H∞∥2 ≤ λ0
+4 and 3
+4 λ0 ≤ λmin(H(0)) ≤ 5
+4 λ0.
+Definition 1. We denote the empirical indicator matrix as W(0) with entry [W(0)]ij such that
+[W(0)]ij := 1
+m
+mX
+r=1
+I{wT
+r (0)xi ≥ 0, wT
+r (0)xj ≥ 0}
+and indicator matrix as ¯W with entry [ ¯W]ij
+[ ¯W]ij := Ew∼N (0,I)[I{wT xi ≥ 0, wT xj ≥ 0}]
+The indicator matrix ¯W has the following property.
+Proposition 1. If xi ∦ xj, then [ ¯W]ij > 0.
+Proof. If Proposition 1 does not hold, then ∃i0, j0 ∈ [n] × [n], satisfying
+0 =[ ¯W]i0j0
+=Ew∼N (0,I)[I{wT xi0 ≥ 0, wT xj0 ≥ 0}]
+=Pw∼N (0,I)(wT xi0 ≥ 0, wT xj0 ≥ 0)
+Thus xi0 = −xj0, which contradicts the hypothesis xi0 ∦ xj0. ■
+In real-world datasets, the possibility of two different data being parallel is slight. Thus, proposition 1
+holds in general. We further introduce Weyl inequality as follows:
+Lemma 2 (Weyl inequality [2]). Let A, B ∈ Rn×n be Hermitian matrices, and let the eigenvalues of
+A, B, and A + B be {λi(A)}n
+i=1, {λi(B)}n
+i=1 and {λi(A + B)}n
+i=1, respectively. The eigenvalues
+of each matrix are arranged in ascending order . Then we have
+λi(A + B) ≤ λi+j(A) + λn−j(B), j = 0, 1, . . . , n− i (1)
+for each i = 1, . . . , n, with equality for some pair i, j if and only if there is a nonzero vector x such
+that Ax = λi+j(A)x, Bx = λn−j(B)x, and (A + B)x = λi(A + B)x. Also,
+λi−j+1(A) + λj(B) ≤ λi(A + B), j = 1, . . . , i (2)
+for each i = 1, . . . , n, with equality for some pair i, j if and only if there is a nonzero vector x such
+that Ax = λi−j+1(A)x, Bx = λj(B)x, and (A + B)x = λi(A + B)x. If A and B have no
+common eigenvector , then inequality (1) and (2) are strict inequality.
+Now, we provide the full proof of Theorem 2.
+Theorem 2. Suppose f is an NN with a single hidden layer and ReLU activation function. Assume
+X ∈ Rd×n, w(0) ∼ N(0, I), P (X) ≻ 0, p0 := λmin(P (X)), and hidden nodes m = Ω
+
+n6d2
+λ4
+0δ3
+
+,
+then the following formula holds with probability at least 1 − δ over the initialization
+∥f(W(t), a, X) − y∥2
+2 ≤ exp (−cp0t)∥f(W(0), a, X) − y∥2
+2
+where c is a constant depending on m and d.
+1
+--- PAGE 2 ---
+Proof. To simplify our proof, we assume µx = 0, σx = 1, and ∥x∥2 ≤ C for all x ∈ X. Recall that
+[H(0)]ij = xT
+i xj
+1
+m
+mX
+r=1
+I{wT
+r (0)xi ≥ 0, wT
+r (0)xj ≥ 0} = xT
+i xj[W(0)]ij
+Due to I{wT
+r (0)xi ≥ 0, wT
+r (0)xj ≥ 0} is an independent random variable between 0 and 1, then by
+Hoeffding’s inequality [3], the following inequality holds with probability1 − δ:
+[W(0)]ij ≥ [ ¯W]ij − 2
+p
+log (1/δ)√m
+Let µ0 = min(i,j)∈[n]×[n][ ¯W]ij, and choose m > 16 log (1/δ)
+µ2
+0
+, then we have
+[W(0)]ij ≥ µ0 − 2
+p
+log (1/δ)√m ≥ 2
+p
+log (1/δ)√m =: c(m)
+Define the matrix M with entry [M]ij as
+[M]ij := [H(0)]ij − c(m, d)[P (X)]ij
+where c(m, d) = c(m)(d − 1). We claim that if m is large enough, then M is positive definite. To
+clarify this statement, we consider the gap between H(0) and M:
+∥H(0) − M∥2 = ∥c(m, d)P (X)∥2 ≤ c(m, d)∥P (X)∥F ≤ c(m, d)n2C 2
+If we choose m > 64 log (1/δ)(d−1)2n4C4
+λ2
+0
+, we have
+∥H(0) − M∥2 ≤ λ0
+4
+Then the following formula holds by matrix perturbation theory (Corollary 6.3.8 in [2])
+0 < λ0
+2 ≤ λmin(H(0)) − λ0
+4 ≤ λmin(M)
+which indicates that M is positive definite. We next exert Lemma 2 onM and get
+0 < λ min(H(0) − c(m, d)P (X)) < λ min(H(0)) − λmin(c(m, d)P(X))
+That means
+0 < c(m, d)p0 ≤ λmin(H(0)) ≤ 5
+4 λ0 (3)
+Therefore, combined with Theorem 1, we have
+∥f(W(t), a, X) − y∥2
+2
+≤ exp (−λ0t)∥f(W(0), a, X) − y∥2
+2
+≤ exp (−c(m, d)p0t)∥f(W(0), a, X) − y∥2
+2
+where c(m, d) is a constant depending on m and d. This completes the proof of Theorem 2. ■
+2
+--- PAGE 3 ---
+A.2 Proof of Theorem 3
+Proof. By Corollary 3.10 and Remark 3.11 in [4], we have
+E[L(W )] ≤ O
+ 
+c ·
+r
+yT (H∞)−1y
+N
+!
++ O
+ r
+log(1/δ)
+N
+!
+According to the courant minimax principle[5], D.2 in [6], and inequality 3, we get
+yT (H∞)−1y ≤ yT y
+λmin(H∞) ≤ c · yT y
+p0
+.
+Thus, we have
+E[L(W )] ≤ O
+ 
+c ·
+r
+yT (H∞)−1y
+N
+!
++ O
+ r
+log(1/δ)
+N
+!
+≤ O
+
+c ·
+s
+yT y
+N p0
+
+ + O
+ r
+log(1/δ)
+N
+!
+■
+B Zero-cost proxies
+In this section, we provide the details of the baseline zero-cost proxies. Suppose L is the loss function
+and θ is the parameters of an initialized network. We denote◦ as the Hadamard product. The concrete
+formulations of the existing zero-cost proxies are as follows.
+• snip. Lee et al. [7] use the changes in loss caused by the parameter perturbations to measure
+the importance of the parameters in an initialized network, such that
+Ssnip(θ) =
+
+∂L
+∂θ ◦ θ
+
+• grasp. Wang et al. [8] replace the loss change in snip with the change of the gradient norm
+to establish the proxy, such that
+Sgrasp(θ) = −(H ∂L
+∂θ ) ◦ θ
+where H is the Hessian.
+• synflow. To avoid layer collapse, Tanaka et al.[9] utilize the product of all parameters in the
+network during the parameter perturbation to represent the loss, such that
+Ssynflow(θ) = ∂L
+∂θ ◦ θ
+• grad_norm. Abdelfattah et al. [10] adopt the l2 norm of the gradients in an initialized work
+as a proxy, such that
+Sgrad_norm =
+    
+∂L
+∂θ
+    
+2
+• jacov/NWOT. Mellor et al. [11] use the correlation of activations within a network as a
+proxy to evaluate the performance of the network, such that
+3
+--- PAGE 4 ---
+Sjacov = log |KH |, KH =
+
+
+NA − dH(c1, c1) · · · NA − dH(c1, cN)
+... ... ...
+NA − dH(cN , c1) · · · NA − dH(cN , cN)
+
+
+where NA is the number of rectified linear units, dH(ci, cj) represents the Hamming
+distance between two binary codes ci and cj.
+• NTK. Chen et al. [12] propose to use the condition number of NTK to measure the
+trainability of the networks, such that
+κN = λmax( ˆΘtrain)
+λmin( ˆΘtrain)
+where ˆΘtrain stands for NTK of the networks. In our paper, we calculate the Spearman
+correlation coefficient between 1/κN and the test accuracy of the networks.
+• zen. Lin et al. [13] propose Zen-Score, in which they design an efficient zero-cost proxy
+with Gaussian random inputs, such that
+Szen = log (Ex,ϵ∥f(x; θ) − f(x + αϵ; θ)∥F ) +
+X
+i
+log
+
+
+sX
+j
+σ2
+i,j/m
+
+
+where σi,j is the mini-batch standard deviation statistic of the j-th channel in BN.
+• NASI. Shu et al. [14] propose NASI to evaluate the networks by approximating the trace of
+the NTK, such that
+NASI = mγ−1
+      
+b−1 X
+x∈Xj
+∇θ0(A)Lx
+      
+2
+2
+where Xj is a mini-batch of data with size |Xj| = b.
+• KNAS. Xu et al. [15] propose to use gradient kernel to evaluate the networks, such that
+g = 1
+n2
+X
+i,j
+ 
+∂y L
+j (t)
+∂w(t)
+! ∂y L
+i (t)
+∂w(t)
+T
+where yL is the output of L-th layer.
+• GradSign. Zhang and Jia [16] propose GradSign, in which they analyze the sample-wise
+optimization landscape of the networks, such that
+GradSign =
+X
+k
+|
+X
+i
+sign([∇θl(fθ(xi), yi)|θ0]k)|
+• ZiCo. Li et al. [17] explore the effect of gradient properties on network performance.
+They use absolute mean and standard deviation values of gradients to evaluate network
+performance:
+ZiCo =
+DX
+l=1
+log
+ X
+ω∈θl
+E[|∂L(Xi, yi; θ)/∂ω|]p
+V ar(|∂L(Xi, yi; θ)/∂ω|)
+!
+, i ∈ [N]
+where N and D represent the number of batches and network layers, respectively. θl
+represents the parameters of the l-th layers.
+4
+--- PAGE 5 ---
+C Algorithm of MeCo-based NAS
+We slightly abuse the notation and denote MeCo as our proxy function for the network. We adopt
+the Zero-Cost-PT [18] to integrate MeCo to a zero-shot NAS. The algorithm of our MeCo-based
+NAS is summarized in Algorithm 1. We denote A0 as an untrained supernet, et represents the t-th
+edge, which stands for mixed operation in the search cells, and et,k is the k-th operation of t-th
+edge. We denote E, N , and O as the set of edges, nodes, and candidate operations in the search
+cells, respectively. For any node n ∈ N , we use E(n) as the set of its input edges, and ek
+n is the k-th
+element of E(n). Note that we can use other zero-cost proxies as described in section B to replace
+MeCo in Algorithm 1.
+Algorithm 1 MeCo-based NAS
+Require: A0: An untrained supernet; E: The set of edges in search cells; N : The set of nodes in
+search cells; O: The set of candidate operations; N: the number of candidate networks.
+Ensure: The best network Abest.
+1: // Stage 1: Architecture Proposal
+2: C = ∅;
+3: for i = 1; i ≤ N; i + + do
+4: for j = 1; j ≤ |E| ; j + + do
+5: Randomly choose an un-discretized edge et
+6: Choose the best edge from the supernet, s.t.
+et,best = arg min
+1≤k≤|O|
+MeCo(A0/et,k)
+7: Use operation et,best to substitute et
+8: end for
+9: A|E| consists of {et,best|1 ≤ t ≤ |E|}
+10: for j = 1; j < |N |, j + + do ▷ prune the edges of the obtained architecture A|E|
+11: Randomly select an unselected node n ∈ N
+12: for k = 1; k < |E(n)|; k + + do
+13: Calculate MeCo of the architecture A|E| /ek
+n
+14: end for
+15: Retain edges e1
+n, e2
+n with the 1st and 2nd best MeCo value, and remove the other edges
+16: end for
+17: Get the candidate networks Ai that consist of {et,best|1 ≤ t ≤ E} , and append it to the set C
+18: end for
+19: // Stage 2: Architecture Validation
+20: Get the best network:
+Abest = arg max
+1≤i≤N
+MeCo(Ai), s.t. A i ∈ C
+D Experimental configurations
+We use the same settings for the experiments as in [18]. We summarized the configurations of the
+searching phase and training phase on CIFAR-10 and CIFAR-100 in Table 1 and Table 2, respectively.
+For ZiCo, we use two mini-batch of data, which has a size of 64. For the other baseline proxies, we use
+one mini-batch of data. On the other hand, our MeCo only uses one random data x ∈ R1×3×32×32.
+E More experimental results of ρ
+E.1 MeCo on NASBench-201 and NASBench-301 with three extra datasets
+We evaluate MeCo and MeCoopt on NASBench-201 and NASBench-301 with Spherical-CIFAR-100,
+NinaPro, and SVHN, respectively. We only use one random data x ∈ R3×32×32 for MeCo and
+MeCoopt. The results are summarized in Table 3. Our MeCo achieves competitive results on most
+benchmarks and achieves the best results on NASBench-201-SVHN, where the Spearman correlation
+coefficient is ρ = 0.88.
+5
+--- PAGE 6 ---
+Table 1: The settings of Zero-Cost-PT with all proxies in DARTS-CNN for CIFAR-10
+Settings Searching phase Training phase
+Baselines MeCo (Ours) Baselines MeCo (Ours)
+batch size 64 1 96 96
+cutout True False True True
+cutout length 16 - 16 16
+learning rate 0.025 0.025 0.025 0.025
+learning rate min 0.001 0.001 - -
+momentum 0.9 0.9 0.9 0.9
+weight decay 3e-4 3e-4 3e-4 3e-4
+grad clip 5 5 5 5
+init channels 16 16 36 36
+layers 8 8 20 20
+drop path prob - - 0.2 0.2
+Table 2: The settings of Zero-Cost-PT with all proxies in DARTS-CNN for CIFAR-100
+Settings Searching phase Training phase
+Baselines MeCo (Ours) Baselines MeCo (Ours)
+batch size 64 1 96 96
+cutout True False True True
+cutout length 16 - 16 16
+learning rate 0.025 0.025 0.025 0.025
+learning rate min 0.001 0.001 - -
+momentum 0.9 0.9 0.9 0.9
+weight decay 3e-4 3e-4 3e-4 3e-4
+grad clip 5 5 5 5
+init channels 16 16 16 16
+layers 8 8 20 20
+drop path prob - - 0.2 0.2
+Table 3: Comparisons of ρ with baselines using NASBench-301 and NASBench-201 on three extra
+datasets
+Method NASBench-301 NASBench-201
+Sph-Cifar100 NinaPro SVHN Sph-Cifar100 NinaPro SVHN
+grasp 0.13 0.04 0.18 -0.01 -0.01 0.62
+fisher 0.00 -0.11 0.05 0.07 -0.38 0.71
+grad_norm -0.00 -0.20 0.42 -0.08 -0.23 0.77
+snip -0.01 -0.10 0.38 -0.09 -0.28 0.76
+synflow 0.05 -0.07 0.50 0.13 0.02 0.71
+l2_norm 0.12 -0.07 0.70 -0.00 0.02 0.67
+#params 0.07 -0.07 0.70 -0.14 -0.11 0.72
+zen 0.07 -0.09 0.68 0.23 0.15 0.18
+jacov 0.08 0.13 -0.36 -0.41 0.29 0.67
+nwot 0.05 0.02 0.64 -0.02 0.06 0.76
+MeCo (Ours) -0.05 -0.11 0.68 -0.23 0.02 0.88
+MeCoopt (Ours) 0.03 0.12 0.68 - - -
+6
+--- PAGE 7 ---
+0 20 40 60 80
+20
+40
+60
+80
+MeCo
+T est acc
+CIF AR-10 (0.89)
+0 20 40 60 80
+0
+20
+40
+60
+80
+MeCo
+T est acc
+CIF AR-100 (0.88)
+0 20 40
+0
+20
+40
+MeCo
+T est acc
+ImageNet16-120 (0.85)
+(a) Performance on NATS-Bench-TSS
+10 20 30
+85
+90
+MeCo
+T est acc
+CIF AR-10 (-0.80)
+0 10 20
+40
+50
+60
+70
+MeCo
+T est acc
+CIF AR-100 (-0.89)
+10 20 30
+20
+30
+40
+50
+MeCo
+T est acc
+ImageNet16-120 (-0.88)
+(b) Performance on NATS-Bench-SSS
+Figure 1: Relationship between our zero-cost proxies and test accuracy for NATS-Bench-TSS and
+NATS-Bench-SSS on three datasets.
+E.2 MeCo on NAS-Bench-101
+We present the Spearman correlation coefficient between all zero-cost proxies and the test accuracy
+of the networks in NAS-Bench-101. Our MeCo uses one data of CIFAR-10, i.e., x ∈ R1×3×32×32
+while the baselines adopt a batch of samples as input. The results are summarized in Table 4.
+Table 4: Spearman correlation coefficients ρ between zero-cost proxies and test accuracy on NAS-
+Bench-101
+Baselines
+Dataset MeCo grasp[8] fisher[19] grad_norm[10] snip[7] synflow[9] jacov[11] zen[13] ZiCo[17]
+CIFAR-10 0.44 -0.33 -0.27 -0.32 -0.25 0.36 -0.35 0.63 0.63
+MeCo achieves competitive results on NAS-Bench-101 with CIFAR-10, i.e., the Spearman correlation
+coefficient obtains 0.44, which is higher than the majority of the baselines. However,zen and ZiCo
+perform better than MeCo.
+E.3 MeCo on TransBench-101
+We further evaluate ourMeCo on diverse tasks. Specifically, we compareMeCo and the other proxies
+on Transbench-101-Micro and Transbench-101-Macro [20], respectively.
+TransBench-101-Micro. We evaluateMeCo and MeCoopt on TransBench-101-Micro with ten tasks.
+We calculate the Spearman correlation between our proxies and the accuracy of the networks. The
+results are summarized in Table 5. MeCo achieves the best performance on the three tasks, i.e., Class
+Objection, Spherical-Cifar100, and NinaPro, which are 0.58, 0.85, and 0.47, respectively. It can be
+seen that MeCoopt effectively improves the performance of MeCo. For example, MeCoopt improves
+MeCo from 0.62 to 0.77 on segmentation tasks.
+TransBench-101-Macro. We compare MeCo, MeCoopt and the baselines on TransBench-101-Macro
+with seven tasks. The results are summarized in Table 6. Our proxies achieve the best performance on
+Autoencoding, Jigsaw, and Surface Normal, which are 0.74, 0.48, and 0.80, respectively. Our proxies
+also achieve competitive results on the remaining tasks. Experimental results show that our proxies
+7
+--- PAGE 8 ---
+can be used for diverse tasks. It can be demonstrated that MeCo and MeCoopt become ineffective on
+a few tasks, such as Room Layout. We would like to note that the existing proxies do not achieve a
+high correlation on all tasks consistently.
+Table 5: Comparisons of ρ with baselines using Transbench-101-Micro on Ten Tasks
+Approach AutoencodingClass Scene JigsawSurfaceSegmantationRoom SphericalNinaPro SVHNObjection Classification Normal Layout -Cifar100
+grasp -0.12 -0.22 -0.43 -0.12 0.01 0.00 -0.29 -0.03 -0.20 -0.24fisher -0.58 0.44 -0.13 0.30 0.16 0.12 0.30 0.72 0.42 0.81grad_norm -0.32 0.39 -0.33 0.36 0.36 0.60 0.25 0.72 0.40 0.78snip -0.27 0.45 -0.14 0.41 0.49 0.68 0.32 0.76 0.42 0.83synflow 0.00 0.48 0.27 0.47 0.00 0.00 0.30 0.79 0.45 0.92l2_norm 0.04 0.32 0.28 0.35 0.50 0.48 0.18 0.53 0.36 0.52#params -0.01 0.45 0.32 0.44 0.62 0.68 0.30 0.79 0.36 0.76zen 0.14 0.54 0.27 0.51 0.71 0.67 0.38 0.67 0.42 0.74jacov 0.18 0.51 0.19 0.56 0.75 0.80 0.40 0.71 0.40 0.77nwot 0.03 0.39 0.89 0.42 0.57 0.53 0.25 0.64 0.38 0.63zico 0.35 - 0.71 0.52 0.68 - - - - -
+MeCo(Ours) 0.03 0.58 0.62 0.45 0.65 0.62 -0.25 0.85 0.47 0.88MeCoopt(Ours) 0.03 0.59 0.64 0.47 0.67 0.77 0.26 0.85 0.47 0.88
+Table 6: Comparisons of ρ with baselines using Transbench-101-Macro on Seven Tasks
+Approach Autoencoding Class Scene Jigsaw Surface SegmantationRoom
+Objection Classification Normal Layout
+grasp -0.02 -0.64 -0.43 -0.26 -0.05 -0.02 -0.26
+fisher -0.19 -0.30 -0.13 -0.26 0.15 0.03 -0.26
+grad_norm 0.31 -0.56 -0.33 -0.27 0.35 0.21 -0.27
+snip 0.20 -0.38 -0.14 -0.19 0.45 0.27 -0.19
+synflow 0.00 0.12 0.27 0.34 0.00 0.00 0.34
+l2_norm -0.20 0.08 0.28 0.15 0.30 0.18 0.15
+#params -0.18 0.16 0.32 0.15 0.30 0.06 0.15
+zen -0.01 0.10 0.27 0.24 0.38 0.27 0.24
+jacov 0.45 0.07 0.19 0.19 0.50 0.57 0.19
+nwot 0.67 0.83 0.89 0.48 0.78 0.80 0.76
+MeCo(Ours) 0.51 0.59 0.81 0.17 0.80 0.62 0.23
+MeCoopt(Ours) 0.74 0.73 0.76 0.48 0.76 0.63 0.33
+E.4 MeCo on AutoFormer and MobileNet OFA
+AutoFormer. Chen et al. [21] proposed a novel one-shot architecture search framework for
+transformer-based models. We load the trained supernets and regenerate the candidate subnets.
+We then re-evaluate the subnets to obtain the accuracy on ImageNet and compute MeCo. The
+correlation of MeCo and model accuracy on AutoFormer is 0.45.
+OFA. To solve the problem of efficient inference across devices and resource constraints, Cai et al.
+[22] proposed to train a once-for-all (OFA) network, which supports diverse architectural settings.
+We randomly sample 1,000 subnets from the OFA network and use the accuracy of the predictor
+predictions as the test accuracy. The Spearman correlation between MeCo and test accuracy is 0.86.
+F More experimental results of NAS with MeCo
+In this section, we provide more results and comparisons of our zero-shot NAS on NATS-Bench-TSS
+and DARTS-CNN. In the following descriptions, we denote multi-shot, one-shot, and zero-shot as
+MS, OS, and ZS, respectively.
+F.1 Results on NATS-Bench-TSS
+In the NATS-Bench-TSS search space, we evaluate all networks using zero-cost proxies and choose
+the Top-10 networks with the highest scores. Then we calculate the average test accuracy and
+standard deviation. The results are summarized in Table 7. As shown in the table, the networks
+searched by MeCo have the highest average precision on CIFAR-10, which is 0.08 higher than the
+best baseline proxy ZiCo. For CIFAR-100 and ImageNet16-120, MeCo achieves competitive results,
+8
+--- PAGE 9 ---
+e.g., 70.86% ±0.96% with CIFAR-100 and42.59% ±1.77% with ImageNet16-120. In all, the results
+demonstrate that our MeCo has a great advantage in evaluating network performance, considering
+MeCo only requires one data sample as input.
+We further combine MeCo with Zero-Cost-PT [18] and search for the best architecture three times
+with different seeds. The accuracy of the selected architectures as well as the comparisons with the
+baseline methods are presented in Table 8. It can be shown from the results that our MeCo-based
+NAS achieves competitive results with the SOTA baselines, e.g.,synflow, zen, and ZiCo. However,
+MeCo-based NAS invokes one data for a single forward pass, thus being more resource-saving.
+Table 7: The average test accuracy of Top-10 architectures obtained by various zero-cost proxies on
+NATS-Bench-TSS using CIAFR-10, CIAFR-100, and ImageNet16-120, respectively
+Baselines
+Dataset MeCo grasp[8] fisher[19] grad_norm[10] snip[7] synflow[9] jacov[11] NTK[12] zen[13] ZiCo[17]
+CIFAR-10 93.64 89.34 89 .27 89 .27 89 .27 93 .27 91 .23 92 .67 58 .99 93 .56±0.31 ±2.16 ±2.10 ±2.10 ±2.10 ±0.74 ±1.01 ±0.46 ±3.44 ±0.23
+CIFAR-100 70.86 60 .89 61 .06 60 .89 60 .89 71.12 68.50 69 .31 12 .73 70 .64±0.96 ±3.88 ±4.02 ±3.88 ±3.88 ±1.59 ±1.21 ±1.17 ±1.33 ±0.28
+ImageNet16-12042.59 22 .99 24 .10 23 .35 23 .35 42 .65 40 .59 39 .98 15 .10 42.74±1.77 ±11.01 ±11.36 ±11.44 ±11.44 ±3.59 ±1.86 ±1.73 ±0.51 ±1.78
+Table 8: The test accuracy of optimal architectures obtained by Zero-Cost-PT with various zero-cost
+proxies on NATS-Bench-TSS using CIAFR-10, CIFAR-100, and ImageNet16-120, respectively
+Baselines
+Dataset MeCo grasp[8] fisher[19] grad_norm[10] snip[7] synflow[9] jacov[11] NTK[12] zen[13] ZiCo[17]
+CIFAR-10 93.76 92.59 88 .39 91 .64 90 .11 93.76 91.92 92 .61 93.76 93 .76±0 ±1.12 ±2.55 ±0.68 ±2.85 ±0 ±2.40 ±0.65 ±0 ±0
+CIFAR-100 71.11 68.98 65 .77 65 .20 65 .29 71.11 69.67 68 .27 71.11 71 .11±0 ±2.69 ±0.93 ±0.56 ±0.96 ±0 ±2.39 ±2.34 ±0 ±0
+ImageNet16-12041.44 35.29 28 .91 35 .82 37 .38 41.44 40.35 41 .25 41.44 41 .44±0 ±8.03 ±5.18 ±3.99 ±4.41 ±0 ±6.56 ±2.37 ±0 ±0
+F.2 Results on DARTS-CNN
+For DARTS-CNN search space, we search the architectures by Zero-Cost-PT with different zero-cost
+proxies on CIFAR-100. Each searched network is trained five times, and the results are summarized
+in Table 9. There are two settings in our experiments on DARTS-CNN: networks initialized with 16
+channels and trained as in Table 2, and networks initialized with 36 channels and trained as in [23].
+It can be shown from Table 9 that MeCo achieves competitive results compared with MS, OS, and
+ZS baselines. More concretely, MeCo-based NAS obtains 19.33% test error with 0.08 GPU days,
+which outperforms all the ZS methods under the same settings. On the other hand, compared with the
+manual, MS, and OS methods, MeCo is also competitive. For example, MeCo-based NAS achieves
+83.14% accuracy, which is only 0.34% lower than the baseline method β-DARTS [24], but five times
+more efficient in computation.
+We further visualize the networks searched by Zero-Cost-PT with different proxies on DARTS-CNN.
+The results on CIFAR-10 and CIFAR-100 are presented in Figure 3 and Figure 4, respectively.
+F.3 Results on MobileNet V3
+We search the architectures on MobileNet space using Algorithm 1. We retrain the searched network
+using ImageNet-1K for 480 epochs with a batch size of 256 and input resolution 224 × 224. The
+results are summarized in Table 10. MeCo achieves 77.8% Top-1 accuracy, which is 0.7% higher
+than the SOTA baseline method ZiCo. Moreover, our method only takes 0.04 GPU days, which
+outperforms the SOTA methods.
+G Limitations and future works
+9
+--- PAGE 10 ---
+Table 9: Comparison of our method with SOTA NAS methods using DARTS-CNN and CIFAR-100.
+Approach Test Error Search Cost Params Method(%) (GPU Days) (MB)
+DenseNet-BC[25] 17.18 - 25.6 Manual
+NASNet-A[26] 16.82 2000 3.3 MS
+DARTS(1st)[27] 17.76 1.5 3.3 OS
+SNAS [28] 17.55 1.5 2.8 OS
+P-DARTS[24] 15.92 ± 0.18 0.4 3.7 OS
+R-DARTS[29] 18.01 ± 0.26 - - OS
+PC-DARTS[23] 16.9 0.1 3.6 OS
+β-DARTS[30] 16.52 ± 0.03 0.4 3.83 ± 0.08 OS
+Zero-Cost-PT†
+synflow [9] 19.82 ± 0.35 0.04 1.2 ZS
+Zero-Cost-PT†
+fisher[19] 21.14 ± 0.24 0.06 0.7 ZS
+Zero-Cost-PT†
+grasp [8] 22.65 ± 0.30 0.13 0.7 ZS
+Zero-Cost-PT†
+jacov[11] 22.90 ± 0.35 0.04 0.6 ZS
+Zero-Cost-PT†
+snip[7] 19.95 ± 0.28 0.04 0.8 ZS
+Zero-Cost-PT†
+NTK[12] 20.30 ± 0.33 0.19 0.9 ZS
+Zero-Cost-PTZiCo†[17] 19.54 ± 0.28 0.06 1.1 ZS
+Zero-Cost-PT†
+MeCo 19.33 ± 0.25 0.08 0.8 ZS
+Zero-Cost-PT‡
+MeCo 16.86 ± 0.30 0.08 3.7 ZS
+†: networks initialized with 16 channels and trained as settings in 2.
+‡: networks initialized with 36 channels and trained as settings in [23].
+Table 10: Comparison of our method with SOTA NAS methods using MobileNet and ImageNet-1K.
+Approach Top-1 Search Cost Params Method(%) ( GPU Days) ( M)
+MobileNet-V3(1.0) 75.2 288 5.3 MS
+PNAS 74.2 224 5.1 MS
+DARTS 73.3 4 4.7 OS
+PC-DARTS 75.8 3.8 - OS
+SPOS 74.7 8.3 - OS
+GreedyNAS 74.9 7.6 3.8 OS
+TE-NAS 75.5 0.17 5.4 ZS
+ZiCo 77.1 0.4 - ZS
+Zero-Cost-PT 76.4 0.04 8.0 ZS
+Zen-score 76.1 0.5 - ZS
+MeCo (Ours) 77.8 0.08 7.9 ZS
+10
+--- PAGE 11 ---
+020406080
+20
+40
+60
+80
+MeCo
+T est acc
+CIF AR-10 (0.89)
+020406080
+0
+20
+40
+60
+80
+MeCo
+T est acc
+CIF AR-100 (0.88)
+0 20 40
+0
+20
+40
+MeCo
+T est acc
+ImageNet16-120 (0.85)
+(a) Performance on NA TS-Bench-TSS
+10 20 30
+85
+90
+MeCo
+T est acc
+CIF AR-10 (-0.80)
+0 10 20
+40
+50
+60
+70
+MeCo
+T est acc
+CIF AR-100 (-0.89)
+10 20 30
+20
+30
+40
+50
+MeCo
+T est acc
+ImageNet16-120 (-0.88)
+(b) Performance on NA TS-Bench-SSS
+Figure 2: Relationship between our zero-cost proxies and test accuracy for NA TS-Bench-TSS and
+NA TS-Bench-SSS on three datasets.
+1 2 3 4 5
+0.83
+0.84
+0.85
+0.86
+0.87
+0.88
+0.89
+0.9
+# Samples
+⇢
+NA TS-Bench-TSS
+1 2 3 4 5
+0.9
+0.88
+0.86
+0.84
+0.82
+0.8
+0.78
+# Samples
+⇢
+NA TS-Bench-SSS
+CIFAR-10; CIFAR-100; ImageNet16-120
+Figure 3: Spearman correlation coefﬁcients ofMeCowith different #Samples on TSS and SSS,
+respectively.
+2 Ablation experiment6
+3 Conclusion7
+4 ResultsinRebuttal8
+Table 4: The test accuracy of Top-10 architectures obtained by various zero-cost proxies on NA TS-
+Bench-TSS using CIFAR-10
+Baselines
+DatasetMeCo grasp[?]ﬁsher[?]grad_norm[?]snip[?]synﬂow[?]jacov[?]NTK[?]zen[?]ZiCo[?]
+CIFAR-1093⊿6489⊿34 89⊿27 89 ⊿27 89 ⊿27 93⊿27 91 ⊿23 92⊿67 58⊿99 93⊿56±0.31±2⊿16 ±2⊿10 ±2⊿10 ±2⊿10±0⊿74 ±1⊿01 ±0⊿46 ±3⊿44±0⊿23
+2
+Figure 2: Spearman correlation coefficients of
+MeCo with different number of samples on NATS-
+Bench-TSS and NATS-Bench-SSS, respectively.
+Finally, we demonstrate the limitations of this
+work and the possible directions of our future
+work. In Section 5, We propose an optimization
+method to alleviate the channel-sensitive issue
+of MeCo. This weight-sampling approach can
+be further improved in future work. Moreover,
+we would like to point out that the evaluation of
+a zero-cost proxy is often tied to the availabil-
+ity of benchmarks. Hench though the proxies
+are “zero cost”, the evaluation of the proxies is
+strongly dependent on a benchmark, which in
+the first place is very expensive to create. Finally,
+although MeCo achieves the highest correlation
+with the test accuracy on multiple benchmarks,
+it shows near zero correlations on a few tasks
+(e.g., TransBench-101-Micro with Autoencod-
+ing). We will leave these issues as our future
+work.
+References
+[1] S. S. Du, X. Zhai, B. Poczos, and A. Singh, “Gradient descent provably optimizes over-
+parameterized neural networks,” in International Conference on Learning Representations ,
+2019.
+[2] R. A. Horn and C. R. Johnson, Matrix analysis. Cambridge university press, 2012.
+[3] W. Hoeffding, “Probability inequalities for sums of bounded random variables,”The collected
+works of Wassily Hoeffding, pp. 409–426, 1994.
+[4] Y . Cao and Q. Gu, “Generalization bounds of stochastic gradient descent for wide and deep
+neural networks,” Advances in neural information processing systems , vol. 32, 2019.
+[5] G. H. Golub and C. F. Van Loan, Matrix computations. JHU press, 2013.
+[6] Z. Zhu, F. Liu, G. Chrysos, and V . Cevher, “Generalization properties of nas under activation
+and skip connection search,” Advances in Neural Information Processing Systems , vol. 35, pp.
+23 551–23 565, 2022.
+[7] N. Lee, T. Ajanthan, and P. Torr, “Snip: Single-shot network pruning based on connection
+sensitivity,” inInternational Conference on Learning Representations , 2019.
+[8] C. Wang, G. Zhang, and R. Grosse, “Picking winning tickets before training by preserving
+gradient flow,” inInternational Conference on Learning Representations , 2020.
+[9] H. Tanaka, D. Kunin, D. L. Yamins, and S. Ganguli, “Pruning neural networks without any data
+by iteratively conserving synaptic flow,”Advances in Neural Information Processing Systems ,
+vol. 33, pp. 6377–6389, 2020.
+[10] M. S. Abdelfattah, A. Mehrotra, Ł. Dudziak, and N. D. Lane, “Zero-cost proxies for lightweight
+nas,” in International Conference on Learning Representations , 2021.
+[11] J. Mellor, J. Turner, A. Storkey, and E. J. Crowley, “Neural architecture search without training,”
+in International Conference on Machine Learning . PMLR, 2021, pp. 7588–7598.
+[12] W. Chen, X. Gong, and Z. Wang, “Neural architecture search on imagenet in four gpu hours: A
+theoretically inspired perspective,” inInternational Conference on Learning Representations
+(ICLR), 2021.
+[13] M. Lin, P. Wang, Z. Sun, H. Chen, X. Sun, Q. Qian, H. Li, and R. Jin, “Zen-nas: A zero-shot
+nas for high-performance image recognition,” in Proceedings of the IEEE/CVF International
+Conference on Computer Vision, 2021, pp. 347–356.
+11
+--- PAGE 12 ---
+[14] Y . Shu, S. Cai, Z. Dai, B. C. Ooi, and B. K. H. Low, “NASI: Label- and data-agnostic neural
+architecture search at initialization,” in International Conference on Learning Representations ,
+2022. [Online]. Available: https://openreview.net/forum?id=v-v1cpNNK_v
+[15] J. Xu, L. Zhao, J. Lin, R. Gao, X. Sun, and H. Yang, “Knas: green neural architecture search,”
+in International Conference on Machine Learning . PMLR, 2021, pp. 11 613–11 625.
+[16] Z. Zhang and Z. Jia, “Gradsign: Model performance inference with theoretical insights,”
+in International Conference on Learning Representations , 2022. [Online]. Available:
+https://openreview.net/forum?id=HObMhrCeAAF
+[17] G. Li, Y . Yang, K. Bhardwaj, and R. Marculescu, “Zico: Zero-shot NAS via inverse coefficient of
+variation on gradients,” in The Eleventh International Conference on Learning Representations ,
+2023.
+[18] L. Xiang, Ł. Dudziak, M. S. Abdelfattah, T. Chau, N. D. Lane, and H. Wen, “Zero-cost proxies
+meet differentiable architecture search,”arXiv preprint arXiv:2106.06799, 2021.
+[19] J. Turner, E. J. Crowley, M. O’Boyle, A. Storkey, and G. Gray, “Blockswap: Fisher-guided block
+substitution for network compression on a budget,” inInternational Conference on Learning
+Representations, 2020.
+[20] Y . Duan, X. Chen, H. Xu, Z. Chen, X. Liang, T. Zhang, and Z. Li, “Transnas-bench-101:
+Improving transferability and generalizability of cross-task neural architecture search,” in
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2021,
+pp. 5251–5260.
+[21] M. Chen, H. Peng, J. Fu, and H. Ling, “Autoformer: Searching transformers for visual recogni-
+tion,” in Proceedings of the IEEE/CVF international conference on computer vision , 2021, pp.
+12 270–12 280.
+[22] H. Cai, C. Gan, T. Wang, Z. Zhang, and S. Han, “Once-for-all: Train one network and specialize
+it for efficient deployment,” inInternational Conference on Learning Representations , 2020.
+[Online]. Available: https://openreview.net/forum?id=HylxE1HKwS
+[23] Y . Xu, L. Xie, X. Zhang, X. Chen, G.-J. Qi, Q. Tian, and H. Xiong, “Pc-darts: Partial channel
+connections for memory-efficient architecture search,” inInternational Conference on Learning
+Representations, 2020.
+[24] X. Chen, L. Xie, J. Wu, and Q. Tian, “Progressive differentiable architecture search: Bridging
+the depth gap between search and evaluation,” inProceedings of the IEEE/CVF international
+conference on computer vision, 2019, pp. 1294–1303.
+[25] G. Huang, Z. Liu, L. Van Der Maaten, and K. Q. Weinberger, “Densely connected convolutional
+networks,” in Proceedings of the IEEE conference on computer vision and pattern recognition ,
+2017, pp. 4700–4708.
+[26] B. Zoph, V . Vasudevan, J. Shlens, and Q. V . Le, “Learning transferable architectures for scalable
+image recognition,” in Proceedings of the IEEE conference on computer vision and pattern
+recognition, 2018, pp. 8697–8710.
+[27] H. Liu, K. Simonyan, and Y . Yang, “DARTS: Differentiable architecture search,” inInternational
+Conference on Learning Representations, 2019.
+[28] S. Xie, H. Zheng, C. Liu, and L. Lin, “SNAS: stochastic neural architecture search,” inInterna-
+tional Conference on Learning Representations , 2019.
+[29] A. Zela, T. Elsken, T. Saikia, Y . Marrakchi, T. Brox, and F. Hutter, “Understanding and robustify-
+ing differentiable architecture search,” inInternational Conference on Learning Representations,
+2020.
+[30] P. Ye, B. Li, Y . Li, T. Chen, J. Fan, and W. Ouyang, “β-darts: Beta-decay regularization for
+differentiable architecture search,” in 2022 IEEE/CVF Conference on Computer Vision and
+Pattern Recognition (CVPR). IEEE, 2022, pp. 10 864–10 873.
+12
+--- PAGE 13 ---
+c_{k-2}
+0
+sep_conv_5x5 2
+sep_conv_5x5
+3
+sep_conv_5x5
+c_{k-1} sep_conv_5x5 1
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+c_{k}
+Normal Cell
+c_{k-2}
+0
+sep_conv_5x5
+1sep_conv_5x5
+2
+sep_conv_5x5 3
+sep_conv_5x5
+c_{k-1}
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5 c_{k}
+Reduction Cell
+(a) synflow
+c_{k-2}
+0
+avg_pool_3x3
+1
+avg_pool_3x3
+2avg_pool_3x3
+3sep_conv_5x5
+c_{k-1}
+avg_pool_3x3
+dil_conv_3x3
+skip_connect
+c_{k}
+dil_conv_3x3
+Normal Cell
+c_{k-2}
+0sep_conv_3x3
+1max_pool_3x3
+2sep_conv_3x3
+3sep_conv_5x5
+c_{k-1} sep_conv_5x5 max_pool_3x3
+sep_conv_3x3
+c_{k}dil_conv_5x5 Reduction Cell
+(b) fisher
+c_{k-2} 0sep_conv_3x3
+1
+dil_conv_5x5
+c_{k-1}
+avg_pool_3x3
+sep_conv_5x5 2
+dil_conv_3x3
+3
+sep_conv_3x3
+c_{k}
+sep_conv_3x3
+sep_conv_5x5
+Normal Cell
+c_{k-2}
+0sep_conv_5x5
+1
+avg_pool_3x3
+2sep_conv_3x3 3
+dil_conv_3x3
+c_{k-1}
+sep_conv_5x5
+sep_conv_5x5
+skip_connect
+c_{k}
+sep_conv_3x3
+Reduction Cell
+(c) snip
+c_{k-2}
+0
+avg_pool_3x3 1skip_connect
+c_{k-1} avg_pool_3x3
+sep_conv_5x5
+2dil_conv_3x3 sep_conv_3x3
+3sep_conv_5x5 c_{k}
+sep_conv_3x3
+Normal Cell
+c_{k-2}
+0
+sep_conv_3x3
+1
+avg_pool_3x3
+2
+sep_conv_5x5
+c_{k-1}
+skip_connect
+skip_connect
+skip_connect
+3
+max_pool_3x3
+c_{k}
+sep_conv_3x3
+Reduction Cell
+(d) grasp
+c_{k-2}
+0max_pool_3x3 1dil_conv_3x3 2
+dil_conv_3x3 3
+sep_conv_5x5
+c_{k-1} dil_conv_3x3 sep_conv_3x3 c_{k}sep_conv_3x3
+dil_conv_3x3
+Normal Cell
+c_{k-2}
+0
+sep_conv_3x3
+1
+max_pool_3x3
+c_{k-1}
+max_pool_3x3
+avg_pool_3x3
+2sep_conv_3x3
+3dil_conv_3x3
+c_{k}sep_conv_5x5
+sep_conv_3x3 Reduction Cell
+(e) jacov
+c_{k-2} 0dil_conv_5x5
+1sep_conv_3x3
+2
+sep_conv_3x3
+3
+dil_conv_5x5
+c_{k-1}
+dil_conv_3x3
+sep_conv_5x5
+sep_conv_5x5
+dil_conv_5x5
+c_{k}
+Normal Cell
+c_{k-2}
+0
+sep_conv_3x3 3
+sep_conv_5x5
+c_{k-1} sep_conv_3x3
+1
+sep_conv_5x5
+dil_conv_3x3
+sep_conv_5x5
+2dil_conv_5x5
+c_{k}
+sep_conv_5x5 Reduction Cell
+(f) NTK
+c_{k-2}
+0
+sep_conv_5x5 2
+sep_conv_5x5
+3
+sep_conv_5x5
+c_{k-1} sep_conv_3x3 1
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+c_{k}
+Normal Cell
+c_{k-2}
+0
+sep_conv_3x3
+1sep_conv_5x5
+2
+sep_conv_5x5 3
+skip_connect
+c_{k-1}
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5 c_{k}
+Reduction Cell
+(g) ZiCo
+13
+--- PAGE 14 ---
+c_{k-2}
+0
+dil_conv_5x5
+1
+sep_conv_5x5
+2
+dil_conv_5x5
+c_{k-1} sep_conv_5x5
+skip_connect
+sep_conv_3x3
+3sep_conv_3x3 c_{k}
+sep_conv_5x5
+Normal Cell
+c_{k-2}
+0
+dil_conv_5x5
+1
+sep_conv_5x5
+2dil_conv_5x5c_{k-1}
+sep_conv_5x5
+sep_conv_5x5
+dil_conv_5x5 3
+dil_conv_5x5
+c_{k}
+sep_conv_3x3 Reduction Cell
+(h) MeCo
+Figure 3: Cells found by Zero-Cost-PT with all zero-cost proxies on the DARTS-CNN search space
+using CIFAR-10
+c_{k-2}
+0
+sep_conv_5x5 2
+sep_conv_5x5
+3
+sep_conv_5x5
+c_{k-1} sep_conv_5x5 1
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+c_{k}
+Normal Cell
+c_{k-2}
+0
+sep_conv_5x5
+1sep_conv_5x5
+2
+sep_conv_5x5 3
+sep_conv_5x5
+c_{k-1}
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5
+sep_conv_5x5 c_{k}
+Reduction Cell
+(a) synflow
+c_{k-2}
+0
+sep_conv_3x3
+1
+sep_conv_5x5
+3
+dil_conv_5x5
+c_{k-1}
+max_pool_3x3
+max_pool_3x3 2
+dil_conv_3x3
+skip_connect
+c_{k}
+skip_connect
+Normal Cell
+c_{k-2}
+0sep_conv_5x5
+2
+sep_conv_5x5
+c_{k-1}
+sep_conv_3x3
+1sep_conv_3x3
+sep_conv_3x3 3max_pool_3x3
+dil_conv_3x3
+c_{k}
+sep_conv_3x3 Reduction Cell
+(b) fisher
+c_{k-2} 0sep_conv_5x5
+2skip_connect
+3dil_conv_3x3
+c_{k-1} skip_connect 1
+sep_conv_3x3
+sep_conv_5x5
+sep_conv_3x3
+c_{k}
+max_pool_3x3
+Normal Cel
+c_{k-2}
+0
+dil_conv_3x3
+1
+sep_conv_3x3
+2
+skip_connect
+c_{k-1}
+sep_conv_5x5
+3dil_conv_5x5
+skip_connect
+skip_connect
+sep_conv_5x5
+c_{k} Reduction Cell
+(c) snip
+c_{k-2}
+0
+max_pool_3x3 1
+avg_pool_3x3
+3
+avg_pool_3x3
+c_{k-1} avg_pool_3x3
+sep_conv_3x3
+2
+sep_conv_5x5 c_{k}
+sep_conv_3x3 sep_conv_3x3
+Normal Cell
+c_{k-2}
+0
+max_pool_3x3
+1
+dil_conv_3x3
+2
+skip_connect
+c_{k-1}
+sep_conv_3x3
+dil_conv_3x3
+3dil_conv_3x3
+dil_conv_3x3
+sep_conv_3x3 c_{k} Reduction Cell
+(d) grasp
+c_{k-2}
+0max_pool_3x3
+1dil_conv_3x3
+2
+avg_pool_3x3
+c_{k-1}
+avg_pool_3x3
+dil_conv_5x5
+3
+dil_conv_5x5
+c_{k}avg_pool_3x3 dil_conv_5x5
+Normal Cell
+c_{k-2} 0
+skip_connect 1
+avg_pool_3x3
+2sep_conv_5x5
+3
+dil_conv_3x3
+c_{k-1}
+sep_conv_5x5
+sep_conv_3x3
+dil_conv_5x5
+skip_connect
+c_{k} Reduction Cell
+(e) jacov
+14
+--- PAGE 15 ---
+c_{k-2}
+0
+dil_conv_5x5 1
+dil_conv_5x5
+2
+dil_conv_3x3 3
+sep_conv_3x3
+c_{k-1}
+dil_conv_5x5
+sep_conv_5x5
+c_{k}dil_conv_5x5
+sep_conv_5x5
+Normal Cell
+c_{k-2}
+0
+sep_conv_5x5 1
+sep_conv_3x3
+3
+dil_conv_5x5
+c_{k-1} sep_conv_5x5
+sep_conv_5x5
+2
+sep_conv_3x3
+sep_conv_5x5
+sep_conv_3x3
+c_{k} Reduction Cell
+(f) NTK
+c_{k-2}
+0sep_conv_5x5
+1sep_conv_3x3
+2
+sep_conv_5x5 3
+sep_conv_3x3
+c_{k-1}
+sep_conv_5x5
+sep_conv_3x3
+sep_conv_5x5
+c_{k}
+sep_conv_3x3
+Normal Cell
+c_{k-2} 0sep_conv_5x5
+1sep_conv_5x5
+2
+sep_conv_5x5
+3
+sep_conv_3x3
+c_{k-1}
+sep_conv_3x3
+dil_conv_5x5
+sep_conv_3x3
+sep_conv_3x3
+c_{k} Reduction Cell
+(g) ZiCo
+c_{k-2} 0dil_conv_3x3
+1sep_conv_5x5
+3dil_conv_5x5
+c_{k-1}
+sep_conv_3x3
+dil_conv_5x5
+2sep_conv_5x5
+sep_conv_3x3
+c_{k}
+sep_conv_3x3
+Normal Cell
+c_{k-2}
+0
+avg_pool_3x3
+1sep_conv_5x5
+2
+sep_conv_3x3
+3dil_conv_3x3
+c_{k-1}
+sep_conv_3x3
+sep_conv_3x3
+dil_conv_5x5
+c_{k}sep_conv_3x3 Reduction Cell
+(h) MeCo
+Figure 4: Cells found by Zero-Cost-PT with all zero-cost proxies on the DARTS-CNN search space
+using CIFAR-100
+15
