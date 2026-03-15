@@ -8,7 +8,7 @@ year: 2023
 venue: NeurIPS
 tags: [nas-method, nas, training-free, zero-cost-proxy]
 created: 2026-03-14
-updated: 2026-03-14
+updated: 2026-03-15
 ---
 
 # MeCo
@@ -53,9 +53,10 @@ updated: 2026-03-14
 - Source: main paper Eq. (12).
 
 ### Stage 3: Optional MeCoopt correction
-- Add weighted maximum-eigenvalue term:
-  `S_MeCoopt = S_MeCo + sum_l xi_l * lambda_max(P(F_l(X)))`.
-- Source: main paper derivation around Eq. (16).
+- Sample a fixed number `n` of channels per layer, build sampled correlation matrix `P'_i`.
+- Compute:
+  `MeCoopt = sum_i (c(i)/n) * lambda_min(P'_i)`.
+- Source: main paper Eq. (13), Sec. 5.1.
 
 ### Stage 4: NAS integration
 - Use MeCo in architecture proposal and candidate validation loop.
@@ -76,7 +77,7 @@ Output: Best architecture Abest
    Abest = argmax_i MeCo(Ai)
    Source: Supplementary App. C Algorithm 1 (Stage 2)
 3. (Optional) Use MeCoopt instead of MeCo.
-   Source: Main paper Eq. (16), Inference from source
+   Source: Main paper Eq. (13), Inference from source
 ```
 
 ## Training Pipeline
@@ -99,7 +100,7 @@ Sources:
 - Time complexity: Dominated by per-layer correlation + eigendecomposition (`lambda_min`), plus search loop over candidates.
 - Space complexity: Stores feature tensors/correlation matrices for selected layers.
 - Runtime characteristics: One random-sample forward pass per proxy evaluation in reported setup.
-- Scaling notes: Candidate count and number of scored layers directly affect total search overhead.
+- Scaling notes: Candidate count and scored layer count dominate total overhead; MeCoopt controls matrix size by fixed `n`.
 
 ## Implementation Notes
 - Random input creation appears in code (`torch.randn(size=(1,3,64,64))`).
@@ -112,13 +113,17 @@ Sources:
 ## Comparison to Related Methods
 - Compared with SNIP/Grasp/SynFlow/Jacov: MeCo emphasizes correlation-spectrum signal and very low sample cost.
 - Main advantage: Strong search/rank behavior with minimal proxy compute.
-- Main tradeoff: Sensitivity to numerical/statistical quality of correlation estimates.
+- Main tradeoff: Sensitive to channel-count variation; MeCoopt is proposed specifically for this.
 
 ## Evidence and Traceability
 - Key paper definition: Def. 3 / Eq. (12) (main paper).
-- Key extension: Eq. (16) (main paper).
+- Key optimization: Eq. (13), Sec. 5.1 (main paper).
 - Key algorithm: App. C Algorithm 1 (supplementary).
-- Key empirical tables: Supplementary Tables 3/4/9/10 (as reported in the supplementary PDF).
+- Key empirical tables:
+  - Main Table 1 (NATS-Bench-TSS/SSS)
+  - Main Table 2 (NAS-Bench-301)
+  - Main Table 3 (random-data dependency)
+  - Main Table 4 (DARTS-CNN search)
 - Key code paths:
   - `correlation/foresight/pruners/measures/meco.py`
   - `nasbench201/networks_proposal.py`

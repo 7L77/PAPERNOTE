@@ -8,7 +8,8 @@ tags: [nas, training-free-nas, zero-cost-proxy, correlation]
 zotero_collection: ""
 image_source: online
 arxiv_html: https://openreview.net/forum?id=KFm2lZiI7n
-local_pdf: D:/PRO/essays/papers/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation Supplementary Material.pdf
+local_pdf: D:/PRO/essays/papers/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation.pdf
+local_pdf_supplementary: D:/PRO/essays/papers/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation Supplementary Material.pdf
 local_code: D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation
 created: 2026-03-14
 ---
@@ -24,17 +25,18 @@ created: 2026-03-14
 | Supplementary PDF | https://proceedings.neurips.cc/paper_files/paper/2023/file/95a50c26d63cf9f3dcf67784f40eb6fd-Supplemental-Conference.pdf |
 | OpenReview | https://openreview.net/forum?id=KFm2lZiI7n |
 | Code | https://github.com/HamsterMimi/MeCo |
-| Local PDF | `D:/PRO/essays/papers/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation Supplementary Material.pdf` |
+| Local PDF (main) | `D:/PRO/essays/papers/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation.pdf` |
+| Local PDF (supp) | `D:/PRO/essays/papers/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation Supplementary Material.pdf` |
 | Local code | `D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation` |
 
 ## One-line Summary
-> MeCo uses the minimum eigenvalue of layer-wise feature-map correlation matrices as a training-free proxy, enabling one-sample/one-forward NAS ranking and strong zero-shot search results.
+> MeCo uses the minimum eigenvalue of layer-wise feature-map Pearson correlation matrices as a training-free proxy, requiring only one random sample and one forward pass.
 
 ## Core Contributions
-1. Defines a new zero-cost proxy from [[Minimum Eigenvalue of Correlation]] of feature-map correlations across network layers (main paper, Def. 3 / Eq. 12).
-2. Provides a theory link between correlation-based quantity and network trainability kernel behavior (main paper, Theorem 1; supplementary gives full proofs for later theorems).
-3. Introduces MeCoopt by adding a weighted maximum-eigenvalue term to improve ranking stability in broader tasks (main paper, Eq. 16 in the reported derivation).
-4. Integrates proxy into Zero-Cost-PT style search and reports good correlation/search performance under tiny proxy compute budgets (supplementary, App. C/F).
+1. Proposes MeCo based on [[Minimum Eigenvalue of Correlation]] over intermediate feature maps (Def. 3, Eq. 12).
+2. Gives theory linking Pearson-correlation spectral quantity to convergence/generalization in over-parameterized settings (Theorem 2/3, proofs in supplementary).
+3. Proposes MeCoopt to reduce channel-sensitivity by fixed channel sampling and weighted aggregation (Eq. 13).
+4. Shows strong ranking/search performance on NATS-Bench, NAS-Bench-301, and DARTS-style search integration.
 
 ## Problem Context
 ### Target problem
@@ -48,22 +50,23 @@ created: 2026-03-14
 
 ## Method Details
 ### Proxy definition (MeCo)
-For each selected layer feature map `F_l(X)`, build a correlation matrix `P(F_l(X))`, then score by minimum eigenvalue:
+For each layer feature map `f^i(X; θ)`, construct Pearson correlation matrix and sum layer-wise minimum eigenvalues:
 
 $$
-S_{MeCo} = \sum_{l=1}^{L} \lambda_{min}(P(F_l(X)))
+MeCo := \sum_{i=1}^{D} \lambda_{min}(P(f^i(X; \theta)))
 $$
 
-- Source: main paper Definition 3, Eq. (12).
+- Source: main paper Def. 3, Eq. (12).
 
 ### MeCoopt extension
-Adds weighted maximum-eigenvalue correction:
+Main-text MeCoopt (Section 5.1) is:
 
 $$
-S_{MeCoopt} = S_{MeCo} + \sum_{l=1}^{L}\xi_l \lambda_{max}(P(F_l(X)))
+MeCoopt := \sum_{i=1}^{D} \frac{c(i)}{n}\cdot \lambda_{min}(P^{\cap}_i)
 $$
 
-- Source: main paper derivation around Eq. (16).
+- where `c(i)` is channel count of layer `i`, `n` is fixed sampled channel number, and `P^{\cap}_i` is correlation matrix from sampled channels.
+- Source: main paper Eq. (13), Sec. 5.1.
 
 ### Search algorithm integration
 Supplementary Algorithm 1 uses two stages:
@@ -73,10 +76,11 @@ Supplementary Algorithm 1 uses two stages:
 - Source: supplementary App. C, Algorithm 1.
 
 ## Key Experimental Evidence
-1. Reported Spearman rank correlation on NATS-Bench-TSS reaches around `0.89/0.88/0.85` (CIFAR-10/CIFAR-100/ImageNet16-120), with one-sample proxy computation.
-2. On NAS-Bench-101 (supplementary Table 4), MeCo correlation is reported as `0.44` and outperforms several baselines there.
-3. On DARTS-CNN search (supplementary Table 9), MeCo-based Zero-Cost-PT reports competitive test error with low GPU-day search cost.
-4. On MobileNet space (supplementary Table 10), MeCo reports `77.8` Top-1 in the shown setup.
+1. NATS-Bench-TSS (main Table 1): `0.894±0.003 / 0.883±0.005 / 0.845±0.004` on CIFAR-10/100/ImageNet16-120.
+2. NATS-Bench-SSS (main Table 1): strong negative correlation appears for MeCo (`-0.79/-0.87/-0.86`), motivating MeCoopt.
+3. NAS-Bench-301 (main Table 2): MeCo/MeCoopt are top (`0.70±0.01 / 0.71±0.01`).
+4. DARTS-CNN CIFAR-10 search (main Table 4): MeCo-based Zero-Cost-PT reports `2.69±0.05` test error with `0.08` GPU days.
+5. Data dependence test (main Table 3): with random data, MeCo remains high-correlation compared with NTK baseline.
 
 ## Paper-Code Alignment
 1. `correlation/foresight/pruners/measures/meco.py` computes random-input forward features, correlation matrices, eigenvalues, then sums layer minima.
@@ -91,9 +95,9 @@ Supplementary Algorithm 1 uses two stages:
 3. Easy integration into existing zero-cost pipelines.
 
 ### Limitations
-1. Correlation quality can vary by task/space; not universally dominant.
-2. Eigenvalue estimation on tiny samples can be numerically sensitive.
-3. Theoretical guarantees are under assumptions; real architectures may only approximately satisfy them.
+1. Channel-count variation can flip correlation sign in some spaces (explicitly discussed in Sec. 4.2/5.1).
+2. Eigenvalue estimation can be numerically unstable with tiny sampled channels.
+3. Theoretical guarantees rely on over-parameterized assumptions and approximations from CNN to FC form.
 
 ## Related Concepts
 - [[Training-free NAS]]

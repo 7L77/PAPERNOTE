@@ -1,0 +1,37 @@
+[
+  {
+    "title": "Self-EvolveRec: Self-Evolving Recommender Systems with LLM-based Directional Feedback",
+    "authors": "Kim, Sein, Park, Sangwu, Kang, Hongseok, Kim, Wonjoong, Seo, Jimin, In, Yeonjun, Yoon, Kanghoon, Park, Chanyoung",
+    "affiliations": "",
+    "abstract": "Traditional methods for automating recommender system design, such as Neural Architecture Search (NAS), are often constrained by a fixed search space defined by human priors, limiting innovation to pre-defined operators. While recent LLM-driven code evolution frameworks shift fixed search space target to open-ended program spaces, they primarily rely on scalar metrics (e.g., NDCG, Hit Ratio) that fail to provide qualitative insights into model failures or directional guidance for improvement. To address this, we propose Self-EvolveRec, a novel framework that establishes a directional feedback loop by integrating a User Simulator for qualitative critiques and a Model Diagnosis Tool for quantitative internal verification. Furthermore, we introduce a Diagnosis Tool - Model Co-Evolution strategy to ensure that evaluation criteria dynamically adapt as the recommendation architecture evolves. Extensive experiments demonstrate that Self-EvolveRec significantly outperforms state-of-the-art NAS and LLM-driven code evolution baselines in both recommendation performance and user satisfaction. Our code is available at https://github.com/Sein-Kim/self_evolverec.",
+    "url": "https://arxiv.org/abs/2602.12612",
+    "pdf": "https://arxiv.org/pdf/2602.12612",
+    "date": "2026-02-13",
+    "score": 2,
+    "category": "",
+    "source": "hf-daily",
+    "hf_upvotes": 3,
+    "arxiv_id": "2602.12612",
+    "figure_url": "",
+    "comments": "",
+    "journal_ref": "",
+    "preferred_venue_match": "",
+    "venue": "",
+    "section_headers": [],
+    "captions": [],
+    "has_real_world": false,
+    "method_names": [],
+    "method_summary": "",
+    "target_categories": [
+      "LLM_ArchitectureSearch"
+    ],
+    "target_keyword_hits": [
+      "LLM",
+      "NAS",
+      "Neural Architecture",
+      "Neural Architecture Search",
+      "search space"
+    ],
+    "target_relevance": 130
+  }
+]
