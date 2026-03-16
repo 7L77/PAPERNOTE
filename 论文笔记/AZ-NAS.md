@@ -172,3 +172,152 @@ s_{AZ}(i)=\sum_{M\in\{E,P,T,C\}}\log \frac{\mathrm{Rank}(s_M(i))}{m}
 - [[Kendall's Tau]]
 - [[Hutchinson Estimator]]
 - [[Spectral Norm]]
+
+
+## 代码分析
+
+#### 特征提取
+```
+layer_features = model.extract_cell_features(input_)
+
+def extract_cell_features(self, inputs):
+	cell_features = []
+	feature = self.stem(inputs)
+	if feature.requires_grad:
+		feature.retain_grad()
+	cell_features.append(feature)
+	for i, cell in enumerate(self.cells):
+		feature = cell(feature)
+		if feature.requires_grad:
+			feature.retain_grad()
+		cell_features.append(feature)
+	return cell_features
+	
+- layer_features[i] 就是 fi​（第 i 个 cell/block 的输出特征）
+```
+
+#### 表达性：
+
+输入[16,3,32,32]
+转化[BHW,C]=[16384,3]
+对每一列减去全体样本均值得到X`
+协方差矩阵sigma = ${X^`}^T {X^`} / N$
+通道维度上的协方差（更准确说是二阶矩/协方差，因为它用了 1/N 而不是无偏估计的 1/(N-1)
+特征值s ， clamp转化负数为0，denom求和，p=s/denom
+香农熵 = $-p(log(p+\theta))$
+
+#### 进步性
+就是表达性[i]-表达性[i-1]
+
+```
+    expressivity_scores = []
+    for i in range(len(layer_features)):
+        feat = layer_features[i].detach().clone()
+        b,c,h,w = feat.size()
+        feat = feat.permute(0,2,3,1).contiguous().view(b*h*w,c)
+        m = feat.mean(dim=0, keepdim=True)
+        feat = feat - m
+        sigma = torch.mm(feat.transpose(1,0),feat) / (feat.size(0))
+        s = torch.linalg.eigvalsh(sigma) # faster version for computing eignevalues, can be adopted since sigma is symmetric
+        prob_s = s / s.sum()
+        score = (-prob_s)*torch.log(prob_s+1e-8)
+        score = score.sum().item()
+        expressivity_scores.append(score)
+    expressivity_scores = np.array(expressivity_scores)
+    progressivity = np.min(expressivity_scores[1:] - expressivity_scores[:-1])
+    expressivity = np.sum(expressivity_scores)
+```
+
+#### 可训练性
+
+1. 从一次前向里拿到逐层特征 `f_0, f_1, ..., f_L`。
+2. 对每个相邻层对 `(f_{l-1}, f_l)`（从后往前遍历）：
+	1. 采样一个与 `f_l` 同形状的 **Rademacher 梯度** `g_l`（每个元素是 ±1）。
+   3. 用自动求导算  
+      \[
+      g_{l-1}=\frac{\partial f_l}{\partial f_{l-1}}^\top g_l
+      \]
+   4. 把 `g_l, g_{l-1}` 展平到二维：  
+      - CNN: `[B,H,W,C] -> [BHW, C]`  
+      - ViT: `[B,N,C] -> [BN, C]`
+   5. 构造 Jacobian 近似矩阵  
+      \[
+      A_l \approx \frac{g_{l-1}^\top g_l}{N}
+      \]
+      这里 \(N=BHW\)（或 \(BN\)）。
+   6. 对 \(A_l\) 做 SVD，取最大奇异值 \(s_{\max}\)。
+   7. 层分数：
+      \[
+      t_l=-s_{\max}-\frac{1}{s_{\max}+10^{-6}}+2
+      \]
+      （当 \(s_{\max}\approx 1\) 时分数最高，偏离 1 就降分）
+8. 全局可训练性分数：
+   \[
+   s_T=\frac{1}{L-1}\sum_l t_l
+   \]
+```
+    scores = []
+    for i in reversed(range(1, len(layer_features))):
+        f_out = layer_features[i]
+        f_in = layer_features[i-1]
+        if f_out.grad is not None:
+            f_out.grad.zero_()
+        if f_in.grad is not None:
+            f_in.grad.zero_()
+        g_out = torch.ones_like(f_out) * 0.5
+        g_out = (torch.bernoulli(g_out) - 0.5) * 2
+
+
+        g_in = torch.autograd.grad(outputs=f_out, inputs=f_in, grad_outputs=g_out, retain_graph=False)[0]
+        if g_out.size()==g_in.size() and torch.all(g_in == g_out):
+            scores.append(-np.inf)
+        else:
+            if g_out.size(2) != g_in.size(2) or g_out.size(3) != g_in.size(3):
+                bo,co,ho,wo = g_out.size()
+                bi,ci,hi,wi = g_in.size()
+                stride = int(hi/ho)
+                pixel_unshuffle = nn.PixelUnshuffle(stride)
+                g_in = pixel_unshuffle(g_in)
+            bo,co,ho,wo = g_out.size()
+            bi,ci,hi,wi = g_in.size()
+            
+            ### straight-forward way
+            # g_out = g_out.permute(0,2,3,1).contiguous().view(bo*ho*wo,1,co)
+            # g_in = g_in.permute(0,2,3,1).contiguous().view(bi*hi*wi,ci,1)
+            # mat = torch.bmm(g_in,g_out).mean(dim=0)
+            
+            ### efficient way # print(torch.allclose(mat, mat2, atol=1e-6))
+            g_out = g_out.permute(0,2,3,1).contiguous().view(bo*ho*wo,co)
+            g_in = g_in.permute(0,2,3,1).contiguous().view(bi*hi*wi,ci)
+            mat = torch.mm(g_in.transpose(1,0),g_out) / (bo*ho*wo)
+
+            ### make it faster
+            if mat.size(0) < mat.size(1):
+                mat = mat.transpose(0,1)
+            ###
+            s = torch.linalg.svdvals(mat)
+            scores.append(-s.max().item() - 1/(s.max().item()+1e-6)+2)
+    trainability = np.mean(scores)
+```
+
+
+代码里的实现细节你也可以顺带标注：
+- CNN 分支若空间尺寸不一致，会先做 `PixelUnshuffle` 对齐。
+- 某些实现里若出现“近似恒等传播”会直接强惩罚（如记 `-inf`）。  
+
+现有做法更像是“结构 proxy + size proxy”的拼接
+	“拼接”通常是：先用结构分数衡量拓扑好坏，再加一个规模项补容量信息。
+
+结构proxy
+	 评估“这个网络拓扑设计本身是否有效”的指标
+	 关注连接方式、算子组合、信息流/梯度流是否顺畅，而不是单纯大不大。
+	 NASWOT/NWOT、SynFlow、Jacov、Zen、GradSign、
+	 以及 AZ-NAS 里基于层特征与梯度的 expressivity/progressivity/trainability 信号
+
+size_proxy
+	它能反映“模型有多大”，但不能单独回答“结构是否聪明”。
+	本质是规模量：#Params、FLOPs/MACs、深度、宽度、通道数、时延等。
+
+快速区分方法：
+- 两个模型参数量几乎一样，但精度差很多：这是 结构 proxy 在起作用。
+- 同一结构把通道数放大后性能提高：这是 size proxy 在起作用。

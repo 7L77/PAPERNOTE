@@ -4,17 +4,49 @@
     "type": "split",
     "children": [
       {
-        "id": "273b85e16d2aaca0",
+        "id": "29c7dc70749269f3",
         "type": "tabs",
         "children": [
           {
-            "id": "2a2a168cfc85b093",
+            "id": "3fcdc34bc59a384e",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "IDEA.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "新标签页"
+              "title": "IDEA"
+            }
+          },
+          {
+            "id": "8feb3dad0f02ee1a",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "论文笔记/AZ-NAS.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "AZ-NAS"
+            }
+          },
+          {
+            "id": "44281883e8329061",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "论文笔记/VKDNW.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "VKDNW"
             }
           }
         ]
@@ -165,25 +197,34 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "2a2a168cfc85b093",
+  "active": "3fcdc34bc59a384e",
   "lastOpenFiles": [
+    "论文笔记/VKDNW.md",
     "IDEA.md",
+    "论文笔记/AZ-NAS.md",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/ImageNet.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/__init__.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/head_utils.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/genotypes.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/CifarNet.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/construct_utils.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/base_cells.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/models/shape_searchs/__init__.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/models/shape_searchs/SoftSelect.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/models/shape_searchs/SearchImagenetResNet.py",
+    "code_depots/VKDNW-master/VKDNW-master/NB201/README.md",
+    "code_depots/VKDNW-master/VKDNW-master/ImageNet_MBV2/README.md",
+    "code_depots/VKDNW-master/VKDNW-master/table2.png",
+    "code_depots/VKDNW-master/VKDNW-master/table1.png",
+    "code_depots/VKDNW-master/VKDNW-master/positions.png",
+    "code_depots/VKDNW-master/VKDNW-master/README.md",
+    "code_depots/AZ-NAS Assembling Zero-Cost Proxies for Network Architecture Search/README.md",
     "DailyPapers/2025-01-01_to_2025-03-31-论文推荐.md",
-    "DailyPapers/2025-01-01_to_2025-03-31-enriched.json",
-    "DailyPapers/2025-01-01_to_2025-03-31-top30.json",
     "DailyPapers/2026-01-01_to_2026-03-15-论文推荐.md",
-    "DailyPapers/2026-01-01_to_2026-03-15-enriched.json",
-    "DailyPapers/2026-01-01_to_2026-03-15-top30.json",
     "DailyPapers/2026-01-01_to_2026-03-01-targeted-NAS-robust-LLM-arch-search.md",
-    "DailyPapers/2026-01-01_to_2026-03-01-targeted-NAS-robust-LLM-arch-search.json",
     "DailyPapers/2026-01-01_to_2026-03-01-论文推荐.md",
-    "DailyPapers/2026-01-01_to_2026-03-01-enriched.json",
-    "DailyPapers/2026-01-01_to_2026-03-01-top30.json",
-    "DailyPapers/user-config.json",
     "DailyPapers/title_abs.md",
     "论文笔记/NAS方法/MeCo_ch.md",
-    "papers/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation.pdf",
-    "papers/7200_MeCo_Zero_Shot_NAS_with_O_Supplementary Material.pdf",
     "DailyPapers/2026-03-01_to_2026-03-15-论文推荐.md",
     "DailyPapers/2025-09-01_to_2025-12-31-论文推荐.md",
     "论文笔记/_概念/Neural Architecture Dilation_ch.md",
@@ -196,22 +237,12 @@
     "论文笔记/AdvRush.md",
     "论文笔记/_概念/Architecture Density_ch.md",
     "论文笔记/_概念/Architecture Density.md",
-    "论文笔记/_概念/Flow of Solution Procedure Matrix_ch.md",
-    "论文笔记/_概念/Flow of Solution Procedure Matrix.md",
-    "论文笔记/NAS方法/RobNet_ch.md",
-    "论文笔记/NAS方法/RobNet.md",
-    "论文笔记/RobNet.md",
     "code_depots/When NAS Meets Robustness In Search of Robust Architectures against Adversarial Attacks/assets/robnets.png",
-    "code_depots/When NAS Meets Robustness In Search of Robust Architectures against Adversarial Attacks/README.md",
-    "论文笔记/_概念/Jacobian Norm Bound_ch.md",
     "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/SparAMX/Videos/stock.gif",
     "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/SparAMX/Videos/sparamx.gif",
     "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/EFTNAS/figures/eftnas_pipeline.png",
     "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/models/supernets/cifar10/resnet50/search_progression.png",
     "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/examples/third_party_search/dynast_bootstrapnas_resnet50_cifar10_example.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/examples/yolox-nano/search_progression.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/examples/imgs/search_progression.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/examples/imgs/architecture.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/architecture.png"
+    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/examples/yolox-nano/search_progression.png"
   ]
 }
