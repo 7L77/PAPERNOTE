@@ -1,0 +1,47 @@
+Published as a conference paper at ICLR 2023
+REPRODUCIBILITY
+In order to ensure reproducibility, we build our dataset on architectures from a common NAS-
+Benchmark, which is described in the main paper in subsection 3.1. In addition, all hyperparameters
+for reproducing the robustness results are given in subsection 3.2. Lastly, a complete description of
+the dataset itself is provided in the appendix, Appendix A.
+REFERENCES
+Maksym Andriushchenko, Francesco Croce, Nicolas Flammarion, and Matthias Hein. Square attack:
+a query-efficient black-box adversarial attack via random search. In European Conference on
+Computer Vision, pp. 484–501. Springer, 2020.
+Gabriel Bender, Pieter-Jan Kindermans, Barret Zoph, Vijay Vasudevan, and Quoc V . Le. Understand-
+ing and simplifying one-shot architecture search. In ICML, 2018.
+James Bergstra and Yoshua Bengio. Random search for hyper-parameter optimization. Journal of
+Machine Learning Research, 13(10):281–305, 2012.
+Han Cai, Ligeng Zhu, and Song Han. Proxylessnas: Direct neural architecture search on target task
+and hardware. In ICLR, 2019.
+Nicholas Carlini, Anish Athalye, Nicolas Papernot, Wieland Brendel, Jonas Rauber, Dimitris Tsipras,
+Ian J. Goodfellow, Aleksander Madry, and Alexey Kurakin. On evaluating adversarial robustness.
+CoRR, abs/1902.06705, 2019. URL http://arxiv.org/abs/1902.06705.
+Avraam Chatzimichailidis, Janis Keuper, Franz-Josef Pfreundt, and Nicolas R. Gauger. Gradvis:
+Visualization and second order analysis of optimization surfaces during the training of deep neural
+networks. In Workshop on Machine Learning in High Performance Computing Environments,
+MLHPC@SC, 2019.
+Patryk Chrabaszcz, Ilya Loshchilov, and Frank Hutter. A downsampled variant of imagenet as an
+alternative to the CIFAR datasets. CoRR, abs/1707.08819, 2017.
+Francesco Croce and Matthias Hein. Reliable evaluation of adversarial robustness with an ensemble
+of diverse parameter-free attacks. In International conference on machine learning, pp. 2206–2216.
+PMLR, 2020.
+Francesco Croce, Maksym Andriushchenko, Vikash Sehwag, Edoardo Debenedetti, Nicolas Flam-
+marion, Mung Chiang, Prateek Mittal, and Matthias Hein. Robustbench: a standardized adversarial
+robustness benchmark. In Joaquin Vanschoren and Sai-Kit Yeung (eds.),NeurIPS Datasets and
+Benchmarks, 2021.
+Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. ImageNet: A large-scale
+hierarchical image database. In CVPR, 2009.
+Chaitanya Devaguptapu, Devansh Agarwal, Gaurav Mittal, Pulkit Gopalani, and Vineeth N. Bala-
+subramanian. On adversarial robustness: A neural architecture search perspective. In ICCVW,
+2021.
+Samuel F. Dodge and Lina J. Karam. A study and comparison of human and deep learning recognition
+performance under visual distortions. CoRR, abs/1705.02498, 2017. URL http://arxiv.
+org/abs/1705.02498.
+Minjing Dong, Yanxi Li, Yunhe Wang, and Chang Xu. Adversarially robust neural architectures.
+CoRR, abs/2009.00902, 2020a.
+Xuanyi Dong and Yi Yang. Searching for a robust neural architecture in four GPU hours. In CVPR,
+2019.
+Xuanyi Dong and Yi Yang. Nas-bench-201: Extending the scope of reproducible neural architecture
+search. In ICLR, 2020.
+10

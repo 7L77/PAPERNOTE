@@ -1,0 +1,118 @@
+Published as a conference paper at ICLR 2023
+clean, e=0
+fgsm, e=0.1
+fgsm, e=0.5
+fgsm, e=1
+fgsm, e=2
+fgsm, e=3
+fgsm, e=4
+fgsm, e=5
+fgsm, e=6
+fgsm, e=7
+fgsm, e=8
+fgsm, e=255
+pgd, e=0.1
+pgd, e=0.5
+pgd, e=1
+pgd, e=2
+pgd, e=3
+pgd, e=4
+pgd, e=8
+aa_apgd-ce, e=0.1
+aa_apgd-ce, e=0.5
+aa_apgd-ce, e=1
+aa_apgd-ce, e=2
+aa_apgd-ce, e=3
+aa_apgd-ce, e=4
+aa_apgd-ce, e=8
+aa_square, e=0.1
+aa_square, e=0.5
+aa_square, e=1
+aa_square, e=2
+aa_square, e=3
+aa_square, e=4
+aa_square, e=8
+hessian_test, pretrained
+hessian_test, random
+hessian_train, pretrained
+hessian_train, random
+jacobian_test, pretrained
+jacobian_test, random
+jacobian_train, pretrained
+jacobian_train, random
+ 1.0
+0.5
+0.0
+0.5
+1.0
+clean, s=3
+brightness, s=3
+contrast, s=3
+defocus_blur, s=3
+elastic_transform, s=3
+fog, s=3
+frost, s=3
+gaussian_noise, s=3
+glass_blur, s=3
+impulse_noise, s=3
+jpeg_compression, s=3
+motion_blur, s=3
+pixelate, s=3
+shot_noise, s=3
+snow, s=3
+zoom_blur, s=3
+hessian_test, pretrained
+hessian_test, random
+hessian_train, pretrained
+hessian_train, random
+jacobian_test, pretrained
+jacobian_test, random
+jacobian_train, pretrained
+jacobian_train, random
+1.0
+0.5
+0.0
+0.5
+1.0
+Figure 6: Kendall rank correlation coefficient between Jacobian- and Hessian-based robustness
+measurements computed on all unique NAS-Bench-201 architectures to corresponding rankings given
+by (top) different adversarial attacks and (bottom) different common corruptions. Measurements and
+accuracies are computed on CIFAR-10 / CIFAR-10-C. Measurements are computed on randomly
+initialized and pretrained networks contained in NAS-Bench-201. Jacobian-based and Hessian-based
+measurements correlate well for smaller ϵ values, but not for larger ϵ values.
+smoothness of the loss landscape of a neural network. In this section, we evaluate these training-free
+gradient-based measurements with our dataset.
+Background: Jacobian To improve the robustness of neural architectures, (Hoffman et al., 2019)
+introduced an efficient Jacobian regularization method with the goal to minimize the network’s output
+change in case of perturbed input data, by minimizing the Frobenius norm of the network’s Jacobian
+matrix, J . The Frobenius norm is defined as ∥J(x)∥F =
+qP
+ϕ,c |Jϕ,c(x)|. Let fθ : RD → RC be a
+neural network with weights denoted by θ and let x ∈ RD be the input data and z ∈ RC be the output
+score. Let ˜x = x + ε be a perturbed input, with ε ∈ RD being a perturbation vector. The output of
+the neural network shifts then to fθ,c(x + ε) − fθ,c(x). The input-output Jacobian matrix can be used
+as a measurement for the networks stability against input perturbations (Hoffman et al., 2019):
+fθ,c(x + ε) − fθ,c(x) ≈
+DX
+d=1
+εd · ∂fθ,c;d
+∂xd
+(x) =
+DX
+d=1
+Jθ,c;d(x) · εd, (4)
+according to Taylor-expansion. From Equation 4, we can directly see that the larger the Jacobian
+components, the larger is the output change and thus the more unstable is the neural network against
+perturbed input data. In order to increase the stability of the network, (Hoffman et al., 2019)
+proposes to decrease the Jacobian components by minimizing the square of the Frobenius norm of
+the Jacobian. Following (Hosseini et al., 2021), we use the efficient algorithm presented in (Hoffman
+et al., 2019) to compute the Frobenius norm based on random projection for each neural network in
+the NAS-Bench-201 (Dong & Yang, 2020) benchmark.
+Benchmarking Results: Jacobian The smaller the Frobenius norm of the Jacobian of a network, the
+more robust the network is supposed to be. Our dataset allows for a direct evaluation of this statement
+on all 6 466 unique architectures. We use 10 mini-batches of size 256 of the training as well as test
+dataset for both randomly initialized and pretrained networks and compute the mean Frobenius norm.
+The results in terms of ranking correlation to adversarial robustness is shown in Figure 6 (top), and in
+terms of ranking correlation to robustness towards common corruptions in Figure 6(bottom). We can
+observe that the Jacobian-based measurement correlates well with rankings after attacks by FGSM
+7

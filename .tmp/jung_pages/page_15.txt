@@ -1,0 +1,53 @@
+Published as a conference paper at ICLR 2023
+Algorithm 1: Robustness Dataset Gathering
+Input: (i) Architecture space A (NAS-Bench-201).
+Input: (ii) Test datasets D (CIFAR-10, CIFAR-100, ImageNet16-120).
+Input: (iii) Set of attacks and/or corruptions C.
+Input: (iv) Robustness Dataset R.
+1 for a ∈ A do
+▷ Load pretrained weights for a.
+2 a.load_weights(d)
+3 for d ∈ D do
+4 for c(·, ·) ∈ C do
+▷ Corrupt dataset d.
+5 dc ← c(a, d)
+▷ Evaluate architecture a with dc.
+6 Accuracy, Confidence, ConfusionMatrix ← eval(a, dc)
+▷ Extend robustness dataset with evaluations.
+7 R[d][c]["accuracy"][a] ← Accuracy
+8 R[d][c]["confidence"][a] ← Confidence
+9 R[d][c]["cm"][a] ← ConfusionMatrix
+10 end
+11 end
+12 end
+NAS-Bench-201
+Robustness 
+Dataset
+Evaluation
+Dataset 
+Corruption
+Accuracy 
+Confidence 
+Confusion Matrix
+Corrupted Data
+Architecture 
+(trained)
+Load 
+Parameters
+Architecture 
+(untrained)
+CIFAR-10
+CIFAR-100
+ImageNet16-120
+Common 
+Corruptions
+Adversarial
+Attacks
+Data
+Attack
+Figure 9: Diagram showing the gathering process for our robustness dataset. (i) An non-isomorphic
+architecture contained in NAS-Bench-201 is created and its parameters are loaded from a provided
+checkpoint, dependent on the dataset evaluated. (ii) Given the evaluation dataset, an attack or
+corruption, and the trained network, the evaluation dataset is corrupted and (iii) the resulting corrupted
+data is used to evaluate the network. (iv) The evaluation results are stored in our robustness dataset.
+15

@@ -4,49 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "29c7dc70749269f3",
+        "id": "954dbe94d8c25862",
         "type": "tabs",
         "children": [
           {
-            "id": "3fcdc34bc59a384e",
+            "id": "30df3e7ac7123e69",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "IDEA.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "IDEA"
-            }
-          },
-          {
-            "id": "8feb3dad0f02ee1a",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "论文笔记/AZ-NAS.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "AZ-NAS"
-            }
-          },
-          {
-            "id": "44281883e8329061",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "论文笔记/VKDNW.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "VKDNW"
+              "title": "新标签页"
             }
           }
         ]
@@ -197,52 +165,53 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "3fcdc34bc59a384e",
+  "active": "706965593cce3a96",
   "lastOpenFiles": [
-    "论文笔记/VKDNW.md",
-    "IDEA.md",
-    "论文笔记/AZ-NAS.md",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/ImageNet.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/__init__.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/head_utils.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/genotypes.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/CifarNet.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/construct_utils.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/nas_infer_model/DXYs/base_cells.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/models/shape_searchs/__init__.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/models/shape_searchs/SoftSelect.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/xautodl/models/shape_searchs/SearchImagenetResNet.py",
-    "code_depots/VKDNW-master/VKDNW-master/NB201/README.md",
-    "code_depots/VKDNW-master/VKDNW-master/ImageNet_MBV2/README.md",
-    "code_depots/VKDNW-master/VKDNW-master/table2.png",
-    "code_depots/VKDNW-master/VKDNW-master/table1.png",
-    "code_depots/VKDNW-master/VKDNW-master/positions.png",
-    "code_depots/VKDNW-master/VKDNW-master/README.md",
-    "code_depots/AZ-NAS Assembling Zero-Cost Proxies for Network Architecture Search/README.md",
-    "DailyPapers/2025-01-01_to_2025-03-31-论文推荐.md",
-    "DailyPapers/2026-01-01_to_2026-03-15-论文推荐.md",
-    "DailyPapers/2026-01-01_to_2026-03-01-targeted-NAS-robust-LLM-arch-search.md",
-    "DailyPapers/2026-01-01_to_2026-03-01-论文推荐.md",
-    "DailyPapers/title_abs.md",
-    "论文笔记/NAS方法/MeCo_ch.md",
-    "DailyPapers/2026-03-01_to_2026-03-15-论文推荐.md",
-    "DailyPapers/2025-09-01_to_2025-12-31-论文推荐.md",
-    "论文笔记/_概念/Neural Architecture Dilation_ch.md",
-    "论文笔记/_概念/Neural Architecture Dilation.md",
-    "论文笔记/NAS方法/NADAR_ch.md",
-    "论文笔记/NAS方法/NADAR.md",
-    "论文笔记/NADAR.md",
-    "论文笔记/NAS方法/AdvRush_ch.md",
-    "论文笔记/NAS方法/AdvRush.md",
-    "论文笔记/AdvRush.md",
-    "论文笔记/_概念/Architecture Density_ch.md",
-    "论文笔记/_概念/Architecture Density.md",
-    "code_depots/When NAS Meets Robustness In Search of Robust Architectures against Adversarial Attacks/assets/robnets.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/SparAMX/Videos/stock.gif",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/SparAMX/Videos/sparamx.gif",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/EFTNAS/figures/eftnas_pipeline.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/models/supernets/cifar10/resnet50/search_progression.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/examples/third_party_search/dynast_bootstrapnas_resnet50_cifar10_example.png",
-    "code_depots/LLaMA-NAS Efficient Neural Architecture Search for Large Language Models/BootstrapNAS/examples/yolox-nano/search_progression.png"
+    "论文笔记/_概念/GELU_ch.md",
+    "论文笔记/_概念/GELU.md",
+    "论文笔记/_概念/SiLU (Sigmoid Linear Unit)_ch.md",
+    "论文笔记/_概念/SiLU (Sigmoid Linear Unit).md",
+    "论文笔记/_概念/Squeeze-and-Excitation Block_ch.md",
+    "论文笔记/_概念/Squeeze-and-Excitation Block.md",
+    "论文笔记/_概念/Patchify Stem_ch.md",
+    "论文笔记/_概念/Patchify Stem.md",
+    "论文笔记/_概念/Convolutional Stem_ch.md",
+    "论文笔记/_概念/Convolutional Stem.md",
+    "论文笔记/_概念/Width-Depth Ratio_ch.md",
+    "论文笔记/_概念/Robust Search Objective_ch.md",
+    "论文笔记/_概念/Width-Depth Ratio.md",
+    "论文笔记/_概念/Robust Search Objective.md",
+    "论文笔记/_概念/Isomorphic Architectures_ch.md",
+    "论文笔记/NAS方法/Robust Principles_ch.md",
+    "论文笔记/_概念/Wide Spectrum Adversarial Robustness_ch.md",
+    "论文笔记/_概念/FBNetV2_ch.md",
+    "论文笔记/_概念/Isomorphic Architectures.md",
+    "论文笔记/_概念/FBNetV2.md",
+    "论文笔记/_概念/Wide Spectrum Adversarial Robustness.md",
+    "论文笔记/_概念/Adversarial Training_ch.md",
+    "论文笔记/_概念/Hessian Spectrum_ch.md",
+    "论文笔记/_概念/KL Divergence_ch.md",
+    "论文笔记/_概念/Validation Loss Estimator_ch.md",
+    "论文笔记/_概念/Hessian Spectrum.md",
+    "papers/On the Interplay of Convolutional Padding and Adversarial Robustness.pdf",
+    "papers/ParZC Parametric Zero-Cost Proxies for Efficient NAS.pdf",
+    "papers/Neural architecture design and robustness a dataset.pdf",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/accuracy.cpython-37.pyc",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/warmup_lr.cpython-36.pyc",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/warmup_lr.cpython-37.pyc",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/weight_decay.cpython-37.pyc",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/weight_decay.cpython-36.pyc",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/dist_init.cpython-36.pyc",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/torch_dist_sum.cpython-36.pyc",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/ewss.PNG",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/demo2.PNG",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/ane.PNG",
+    "code_depots/Robust neural architecture search by cross-layer knowledge distillation/imageNetDA/figures/experiments_resnet/w_1st_ReLU_w_last_BN.png",
+    "code_depots/Robust neural architecture search by cross-layer knowledge distillation/imageNetDA/figures/experiments_resnet/w_1st_ReLU_wo_last_BN_preactivate_after_downsampling.png",
+    "code_depots/Robust neural architecture search by cross-layer knowledge distillation/imageNetDA/figures/experiments_resnet/w_1st_ReLU_wo_last_BN.png",
+    "code_depots/Robust neural architecture search by cross-layer knowledge distillation/imageNetDA/figures/experiments_resnet/wo_1st_ReLU_w_last_BN_Random_Erasing.png",
+    "code_depots/Robust neural architecture search by cross-layer knowledge distillation/imageNetDA/figures/experiments_resnet/wo_1st_ReLU_w_last_BN_preactivate_after_downsampling.png",
+    "code_depots/Robust neural architecture search by cross-layer knowledge distillation/imageNetDA/figures/experiments_resnet/wo_1st_ReLU_w_last_BN_Mixup.png",
+    "code_depots/Robust neural architecture search by cross-layer knowledge distillation/imageNetDA/figures/experiments_resnet/wo_1st_ReLU_w_last_BN_Cutout.png"
   ]
 }

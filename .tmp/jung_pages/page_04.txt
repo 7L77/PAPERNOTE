@@ -1,0 +1,125 @@
+Published as a conference paper at ICLR 2023
+0 0.1 0.5 1 2 3 4 5 6 7 8 255
+epsilon
+0.0
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 FGSM accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 PGD accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 AA_APGD-CE accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 AA_SQUARE accuracies
+Figure 2: Accuracy boxplots over all 6 466 unique architectures in NAS-Bench-201 for different
+adversarial attacks (FGSM (Goodfellow et al., 2015), PGD (Kurakin et al., 2017), APGD (Croce &
+Hein, 2020), Square (Andriushchenko et al., 2020)) and perturbation magnitude values ϵ, evaluated
+on CIFAR-10. Red line corresponds to guessing. The large spread indicates towards architectural
+influence on robust performance.
+clean, e=0
+fgsm, e=0.1
+fgsm, e=0.5
+fgsm, e=1
+fgsm, e=2
+fgsm, e=3
+fgsm, e=4
+fgsm, e=5
+fgsm, e=6
+fgsm, e=7
+fgsm, e=8
+fgsm, e=255
+pgd, e=0.1
+pgd, e=0.5
+pgd, e=1
+pgd, e=2
+pgd, e=3
+pgd, e=4
+pgd, e=8
+aa_apgd-ce, e=0.1
+aa_apgd-ce, e=0.5
+aa_apgd-ce, e=1
+aa_apgd-ce, e=2
+aa_apgd-ce, e=3
+aa_apgd-ce, e=4
+aa_apgd-ce, e=8
+aa_square, e=0.1
+aa_square, e=0.5
+aa_square, e=1
+aa_square, e=2
+aa_square, e=3
+aa_square, e=4
+aa_square, e=8
+clean, e=0
+fgsm, e=0.1
+fgsm, e=0.5
+fgsm, e=1
+fgsm, e=2
+fgsm, e=3
+fgsm, e=4
+fgsm, e=5
+fgsm, e=6
+fgsm, e=7
+fgsm, e=8
+fgsm, e=255
+pgd, e=0.1
+pgd, e=0.5
+pgd, e=1
+pgd, e=2
+pgd, e=3
+pgd, e=4
+pgd, e=8
+aa_apgd-ce, e=0.1
+aa_apgd-ce, e=0.5
+aa_apgd-ce, e=1
+aa_apgd-ce, e=2
+aa_apgd-ce, e=3
+aa_apgd-ce, e=4
+aa_apgd-ce, e=8
+aa_square, e=0.1
+aa_square, e=0.5
+aa_square, e=1
+aa_square, e=2
+aa_square, e=3
+aa_square, e=4
+aa_square, e=8
+ 1.00
+0.75
+0.50
+0.25
+0.00
+0.25
+0.50
+0.75
+1.00
+Figure 3: Kendall rank correlation coefficient between clean accuracies and robust accuracies on
+different attacks and magnitude valuesϵ on CIFAR-10 for all unique architectures inNAS-Bench-201.
+There seem to be architectural distinctions for susceptibility to different attacks.
+(Chrabaszcz et al., 2017). For our evaluations, we consider all unique architectures in the search
+space and test splits of the corresponding datasets. Hence, we evaluate 3 · 6 466 = 19 398pretrained
+networks in total. In the following, we describe which evaluations we collect.
+3.2 R OBUSTNESS TO ADVERSARIAL ATTACKS
+We start by collecting evaluations on different adversarial attacks, namely FGSM, PGD, APGD, and
+Square Attack. Following, we describe each attack and the collection of their results in more detail.
+FGSM FGSM (Goodfellow et al., 2015) finds adversarial examples via
+˜x = x + ϵsign(∆xJ(θ, x, y)), (1)
+4

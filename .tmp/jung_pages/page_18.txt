@@ -1,0 +1,30 @@
+Published as a conference paper at ICLR 2023
+A.5 C ONFIDENCE
+We collect the mean confidence after softmax for each network over the whole (attacked) test
+dataset evaluated. We used 3 schemes to collect confidences (see Figure 13). First, confidences
+for each class are given by true labels (called label). In case of cifar10, this results in a
+10 × 10 confidence matrix, for cifar100 a 100 × 100 confidence matrix, and ImageNet16-120
+a 120 × 120 confidence matrix. Second, confidences for each class are given by the class predicted
+by the network (called argmax). This again results in matrices of sizes as mentioned. Third,
+confidences for correctly classified images as well as confidences for incorrectly classified images
+(called prediction). For all image datasets, this results in a vector with 2 dimensions. Each result
+is saved as a list (or list of list), see Figure 12.
+Figure 14 shows a progression of label confidence values for class label 0 on cifar10 from
+clean to fgsm with increasing values of ϵ. Figure 15 shows how prediction confidences of
+correctly and incorrectly classified images correlate with increasing values of ϵ when attacked with
+fgsm.
+{
+" c i f a r 1 0 " : {
+" c l e a n " : {
+" c o n f i d e n c e " : {
+" 0 " : {
+" l a b e l " : [ [ . . . ] ] ,
+" argmax " : [ [ . . . ] ] ,
+" p r e d i c t i o n " : [ . . . ]
+}
+}
+}
+}
+Figure 12: Excerpt of clean_confidence.json for cifar10. Numbers are not shown to
+improve readability.
+18

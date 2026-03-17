@@ -1,0 +1,43 @@
+Published as a conference paper at ICLR 2023
+the cell, hence, their number ranges in [0, 54]. Since these are multipliers for the parameter count of
+the whole network, we coin these cell kernel parameters. Overall, we can see that the cell kernel
+parameter count matters in terms of robustness, hence, that networks with large parameter counts are
+more robust in general. We can also see that the number of cell kernel parameters are more essential
+for robustness against common corruptions, where the correlation between clean and corruption
+accuracy is more linear. Also in terms of adversarial robustness, there seems to be a large magnitude
+of possible improvements that can be gained by optimizing architecture design.
+Limited Cell Parameter Count To further investigate the magnitude of possible improvements via
+architectural design optimization, we look into the scenario of limited cell parameter count.
+0 10 20 30 40 50
+Cell Kernel Parameters
+0.10
+0.15
+0.20
+0.25
+0.30
+0.35
+0.40
+0.45Mean Adversarial Accuracy
+Figure 28: Mean robust accuracy over all attacks as described in subsection 3.2 on CIFAR-10 by
+kernel parameters ∈ [0, 54] for all unique architectures in NAS-Bench-201. Orange scatter points
+depict all architectures with kernel parameter count18, hence, architectures with exactly2 times 3 × 3
+convolutions. Although having exactly the same parameter count, the mean adversarial robustness of
+these networks ranges in [0.21, 0.40].
+In Figure 28, we depict all unique architectures in NAS-Bench-201 by their mean adversarial
+robustness and cell kernel parameter count. Networks with parameter count 18 (408 instances in
+total) are highlighted in orange. As we can see, there is a large range of mean adversarial accuracies
+[0.21, 0.4] for the parameter count 18 showing the potential of doubling the robustness of a network
+with the same parameter count by carefully crafting its topology. In Figure 29 we show the top-
+20 performing architectures (color-coded, one operation for each edge) in the mentioned scenario
+of a parameter count of 18, according to ( top) mean adversarial and ( bottom) mean corruption
+accuracy. It is interesting to see that in both cases, there are (almost) no convolutions on edges 2 and
+4, and additionally no dropping or skipping of edge 1. In the case of edge 4, it seems that a single
+convolution layer connecting input and output of the cell increases sensitivity of the network. Hence,
+most of the top-20 robust architectures stack convolutions (via edge 1, followed by either edge 3
+or 5), from which we hypothesize that stacking convolutions operations might improve robustness
+when designing architectures. At the same time, skipping input to output via edge 4 seems not to
+affect robustness negatively, as long as the input feature map is combined with stacked convolutions.
+Important to note here is that this is a first observation, which can be made by using our provided
+dataset. This observation functions as a motivation for how this dataset can be used to analyze
+robustness in combination with architecture design.
+31

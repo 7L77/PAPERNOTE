@@ -1,0 +1,56 @@
+Published as a conference paper at ICLR 2023
+et al., 2021). However, there was no attempt so far to evaluate a full search space on robustness,
+but rather architectures in the wild. This paper is a first step towards closing this gap. We are
+the first to introduce a robustness dataset based on evaluating a complete NAS search space, such
+as to allow benchmarking neural architecture search approaches for the robustness of the found
+architectures. This will facilitate better streamlined research on neural architecture design choices
+and their robustness. We evaluate all 6 466 unique pretrained architectures from the NAS-Bench-201
+benchmark (Dong & Yang, 2020) on common adversarial attacks (Goodfellow et al., 2015; Kurakin
+et al., 2017; Croce & Hein, 2020) and corruption types (Hendrycks & Dietterich, 2019). We thereby
+follow the argumentation in NAS research that employing one common training scheme for the
+entire search space will allow for comparability between architectures. Having the combination of
+pretrained models and the evaluation results in our dataset at hand, we further provide the evaluation
+of common training-free robustness measurements, such as the Frobenius norm of the Jacobian matrix
+(Hoffman et al., 2019) and the largest eigenvalue of the Hessian matrix (Zhao et al., 2020), on the full
+architecture search space and use these measurements as a method to find the supposedly most robust
+architecture. To prove the promise of our dataset to promote research in neural architecture search for
+robust models we perform several common NAS algorithms on the clean as well as on the robust
+accuracy of different image classification tasks. Additionally, we conduct a first analysis of how
+certain architectural design choices affect robustness with the potential of doubling the robustness of
+networks with the same number of parameters. This is only possible, since we evaluate the whole
+search space of NAS-Bench-201 (Dong & Yang, 2020), enabling us to investigate the effect of small
+architectural changes. To our knowledge we are the first paper to introduce a robustness dataset
+covering a full (widely used) search space allowing to track the outcome of fine-grained architectural
+changes. In summary we make the following contributions:
+• We present the first robustness dataset evaluating a complete NAS architectural search space.
+• We present different use cases for this dataset; from training-free measurements for robust-
+ness to neural architecture search.
+• Lastly, our dataset shows that a model’s robustness against corruptions and adversarial at-
+tacks is highly sensitive towards the architectural design, and carefully crafting architectures
+can substantially improve their robustness.
+2 R ELATED WORK
+Common Corruptions While neural architectures achieve results in image classification that super-
+sede human performance (He et al., 2015), common corruptions such as Gaussian noise or blur can
+cause this performance to degrade substantially (Dodge & Karam, 2017). For this reason, Hendrycks
+& Dietterich (2019) propose a benchmark that enables researchers to evaluate their network design
+on several common corruption types.
+Adversarial Attacks Szegedy et al. (2014) showed that image classification networks can be fooled
+by crafting image perturbations, so called adversarial attacks, that maximize the networks’ prediction
+towards a class different to the image label. Surprisingly, these perturbations can be small enough
+such that they are not visible to the human eye. One of the first adversarial attacks, called fast
+gradient sign method (FGSM) (Goodfellow et al., 2015), tries to flip the label of an image in a single
+perturbation step of limited size. This is achieved by maximizing the loss of the network and requires
+access to its gradients. Later gradient-based methods, like projected gradient descent (PGD) (Kurakin
+et al., 2017), iteratively perturb the image in multiple gradient steps. To evaluate robustness in a
+structured manner, Croce & Hein (2020) propose an ensemble of different attacks, including an
+adaptive version of PGD (APGD) (Croce & Hein, 2020) and a blackbox attack called Square Attack
+(Andriushchenko et al., 2020) that has no access to network gradients. Croce et al. (2021) conclude
+the next step in robustness research by providing an adversarial robustness benchmark, RobustBench,
+tracking state-of-the-art models in adversarial robustness.
+NAS Neural Architecture Search (NAS) is an optimization problem with the objective to find an
+optimal combination of operations in a predefined, constrained search space. Early NAS approaches
+differ by their search strategy within the constraint search space. Common NAS strategies are
+evolutionary methods (Real et al., 2017; 2019), reinforcement learning (RL) (Zoph & Le, 2017; Li
+et al., 2018), random search (Bergstra & Bengio, 2012; Li & Talwalkar, 2019), local search (White
+et al., 2021b), and Bayesian optimization (BO) (Kandasamy et al., 2018; Ru et al., 2021; White et al.,
+2

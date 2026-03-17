@@ -1,0 +1,55 @@
+Published as a conference paper at ICLR 2023
+and smaller ϵ values for other attacks. However, this is not true anymore when ϵ increases, especially
+in the case of APGD.
+Background: Hessian Zhao et al. (2020) investigate the loss landscape of a regular neural network
+and robust neural network against adversarial attacks. Let L(fθ(x)) denote the standard classification
+loss of a neural network fθ for clean input data x ∈ RD and L(fθ(x + ε)) be the adversarial loss with
+perturbed input data x + ε, ε ∈ RD. Zhao et al. (2020) provide theoretical justification that the latter
+adversarial loss is highly correlated with the largest eigenvalue of the input Hessian matrix H(x) of
+the clean input data x, denoted by λmax. Therefore the eigenspectrum of the Hessian matrix of the
+regular network can be used for quantifying the robustness: large Hessian spectrum implies a sharp
+minimum resulting in a more vulnerable neural network against adversarial attacks. Whereas in the
+case of a neural network with small Hessian spectrum, implying a flat minimum, more perturbation
+on the input is needed to leave the minimum. We make use of (Chatzimichailidis et al., 2019) to
+compute the largest eigenvalue λmax for each neural network in the NAS-Bench-201 (Dong & Yang,
+2020) benchmark.
+Benchmarking Results: Hessian For this measurement, we calculate the largest eigenvalues of
+all unique architectures using the Hessian approximation in (Chatzimichailidis et al., 2019). We
+use 10 mini-batches of size 256 of the training as well as test dataset for both randomly initialized
+and pretrained networks and compute the mean largest eigenvalue. These results are also shown in
+Figure 6. We can observe that the Hessian-based measurement behaves similarly to the Jacobian-based
+measurement.
+Table 1: Neural Architecture Search on the clean test accuracy and the FGSM ( ϵ = 1) robust test
+accuracy for different state of the art methods on CIFAR-10 in the NAS-Bench-201 (Dong & Yang,
+2020) search space (mean over 100 runs). Results are the mean accuracies of the best architectures
+found on different adversarial attacks and the mean accuracy over all corruptions and severity levels
+in CIFAR-10-C.
+Test Accuracy ( ϵ = 1 .0)
+Method Clean FGSM PDG APGD Squares Clean
+CIFAR-10 CF-10-C
+Optimum 94 .68 69 .24 58 .85 54 .02 73 .61 58 .55
+Clean
+BANANAS (White et al., 2021a) 94 .21 64 .25 41 .10 18 .62 68 .69 55 .52
+Local Search (White et al., 2021b) 94 .65 63 .95 41 .17 18 .74 69 .59 56 .90
+Random Search (Li & Talwalkar, 2019) 94 .22 63 .38 40 .09 17 .84 68 .40 55 .60
+Regularized Evolution (Real et al., 2019) 94 .53 63 .30 40 .23 18 .11 68 .92 56 .21
+FGSM
+BANANAS (White et al., 2021a) 93 .52 66 .35 45 .59 20 .72 68 .01 54 .88
+Local Search (White et al., 2021b) 93 .86 69 .10 48 .27 23 .18 69 .47 56 .57
+Random Search (Li & Talwalkar, 2019) 93 .57 67 .25 46 .15 20 .93 68 .44 55 .10
+Regularized Evolution (Real et al., 2019) 93 .77 68 .82 47 .99 22 .59 69 .20 56 .11
+4.2 NAS ON ROBUSTNESS
+In this section, we perform different state-of-the-art NAS algorithms on the clean accuracy and the
+FGSM (ϵ = 1) robust accuracy in the NAS-Bench-201 (Dong & Yang, 2020) search space, and
+evaluate the best found architectures on all provided introduced adversarial attacks. We apply random
+search (Li & Talwalkar, 2019), local search (White et al., 2021b), regularized evolution (Real et al.,
+2019) and BANANAS (White et al., 2021a) with a maximal query amount of300. The results are
+shown in Table 1. Although clean accuracy is reduced, the overall robustness to all adversarial attacks
+improves when the search is performed on FGSM ( ϵ = 1.0) accuracy. Local Search achieves the
+best performance, which indicates that localized changes to an architecture design seem to be able to
+improve network robustness.
+4.3 A NALYZING THE EFFECT OF ARCHITECTURE DESIGN ON ROBUSTNESS
+In Figure 7, we show the top-20 performing architectures (color-coded, one operation for each edge)
+with exactly 2 times 3 × 3 convolutions and no 1 × 1 convolutions (hence, the same parameter
+count), according to the mean adversarial accuracy over all attacks as described in subsection 3.2 on
+8

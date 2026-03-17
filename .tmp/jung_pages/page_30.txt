@@ -1,0 +1,85 @@
+Published as a conference paper at ICLR 2023
+B A NALYSIS
+In this section, we first depict the best architectures in NAS-Bench-201 (Dong & Yang, 2020) in
+subsection B.1, then show the effect of parameter count on robustness and the magnitude of potential
+gains in robustness in a limited parameter count setting in subsection B.2, and lastly show the effect
+of single changes to the best performing architecture according to clean accuracy in subsection B.3.
+B.1 B EST ARCHITECTURES
+Figure 26 visualizes the best architectures in the NAS-Bench-201 (Dong & Yang, 2020) search
+space in terms of clean accuracy, mean adversarial accuracy, and mean common corruption accuracy
+on CIFAR-10 and their respective edit distances. The edit distance is defined by the number of
+changes, either node or edge, to change the graph to the target graph. In the case of NAS-Bench-201
+architectures, an edit distance of 1 means that exactly one operation differs between two architectures.
+So in order to modify the best performing architecture in terms of clean accuracy (#13714) into the
+best performing architecture according to mean corruption accuracy (#3456), we need to exchange
+two (out of six) operations: (i) exchange operation 2 from 3 × 3 convolution to zero and (ii) exchange
+operation 5 from 1 × 1 convolution to 3 × 3 convolution.
+in
+1
+2 out3x3
+1x13x3
+3x3
+# 13714
+in
+1
+2 out3x3
+1x1
+3x3
+3x3
+# 6118
+in
+1
+2 out
+3x3
+3x3
+# 3456
+3x3 3x3 3x3 3x3
+ distance = 2 
+ distance = 2  distance = 3 
+Figure 26: Best architectures in NAS-Bench-201 according to (left) clean accuracy, (middle) mean
+adversarial accuracy (over all attacks and ϵ values as described in subsection 3.2), and (right) mean
+common corruption accuracy (over all corruptions and severities) onCIFAR-10. See Figure 1 for cell
+connectivity and operations.
+0.5 0.6 0.7 0.8 0.9
+Clean
+0.15
+0.20
+0.25
+0.30
+0.35
+0.40
+0.45Mean Adversarial Robustness
+0
+10
+20
+30
+40
+50
+parameters
+0.5 0.6 0.7 0.8 0.9
+Clean
+0.20
+0.25
+0.30
+0.35
+0.40
+0.45
+0.50
+0.55
+0.60Mean Corruption Robustness
+0
+10
+20
+30
+40
+50
+parameters
+Figure 27: ( left) Mean adversarial robustness accuracies and (right) mean corruption robustness
+accuracies vs. clean accuracies on CIFAR-10 for all unique architectures in NAS-Bench-201. Scatter
+points are colored based on the number of kernel parameters of a single cell ( 1 for each 1 × 1
+convolution, 9 for each 3 × 3 convolution).
+B.2 C ELL KERNEL PARAMETER COUNT
+Figure 27 displays the mean adversarial robustness accuracies (left) and the mean corruption ro-
+bustness accuracies (right) against the clean accuracy, color-coded by the number of cell kernel
+parameters. We count 1 for each 1 × 1 convolution and 9 for each 3 × 3 convolution contained in
+30

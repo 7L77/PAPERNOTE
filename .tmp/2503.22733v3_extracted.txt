@@ -1,0 +1,1741 @@
+
+
+===== PAGE 1 =====
+1
+RBFleX-NAS: Training-Free Neural Architecture
+Search Using Radial Basis Function Kernel and
+Hyperparameter Detection
+Tomomasa Yamasaki, Student Member, IEEE , Zhehui Wang , Tao Luo, Member, IEEE ,
+Niangjun Chen, and Bo Wang, Senior Member, IEEE
+Abstract— Neural Architecture Search (NAS) is an automated
+technique to design optimal neural network architectures for a
+specific workload. Conventionally, evaluating candidate networks
+in NAS involves extensive training, which requires significant
+time and computational resources. To address this, training-
+free NAS has been proposed to expedite network evaluation
+with minimal search time. However, state-of-the-art training-free
+NAS algorithms struggle to precisely distinguish well-performing
+networks from poorly-performing networks, resulting in inaccu-
+rate performance predictions and consequently sub-optimal top-1
+network accuracy. Moreover, they are less effective in activation
+function exploration. To tackle the challenges, this paper proposes
+RBFleX-NAS, a novel training-free NAS framework that accounts
+for both activation outputs and input features of the last layer
+with a Radial Basis Function (RBF) kernel. We also present
+a detection algorithm to identify optimal hyperparameters using
+the obtained activation outputs and input feature maps. We verify
+the efficacy of RBFleX-NAS over a variety of NAS benchmarks.
+RBFleX-NAS significantly outperforms state-of-the-art training-
+free NAS methods in terms of top-1 accuracy, achieving this with
+short search time in NAS-Bench-201 and NAS-Bench-SSS. In
+addition, it demonstrates higher Kendall correlation compared
+to layer-based training-free NAS algorithms. Furthermore, we
+propose NAFBee, a new activation design space that extends the
+activation type to encompass various commonly used functions.
+In this extended design space, RBFleX-NAS demonstrates its
+superiority by accurately identifying the best-performing net-
+work during activation function search, providing a significant
+advantage over other NAS algorithms.
+Index Terms—Training-free, neural architecture search, Radial
+Basis Function, activation
+I. I NTRODUCTION
+O
+VER the past decade, Deep Neural Networks (DNNs)
+are intensively utilized in numerous Artificial Intelli-
+gence (AI) applications across a multitude of domains in
+computer vision [1], natural language processing [2], social
+network analysis [3], recommendation systems [4], etc. How-
+ever, deploying DNNs to achieve high accuracy for a specific
+task can incur substantial time and effort when manually de-
+signing the network and identifying the optimal architectures
+and hyperparameters. Neural Architecture Search (NAS) has
+been proposed to address this challenge. Conventional NAS
+automates the process of architecture search by generating
+candidate networks and validating their accuracy with training
+[5]–[12]. However, this approach is computationally expensive
+as network training can take a vast amount of time, particularly
+when network architectures become deep and complex. For in-
+stance, a NAS algorithm leveraging reinforcement learning can
+take 28 days with 800 GPUs to identify a well-performed DNN
+topology [5]. To speed up NAS and reduce computational
+cost, researchers have proposed various techniques. LightNAS
+[13] estimates candidate network potential based on the total
+training losses for several epochs, which can reduce the
+training cost. Another efficient approach is leveraging neural
+predictors with simple regression models rather than training
+actual networks. The models can adopt random forest [14],
+auto-encoder [15], or decision tree [16] method to forecast
+the network performance. However, the regression models
+in the neural predictors still require training to ensure good
+performance.
+To mitigate the issue, gradient-based zero-cost proxies for
+NAS have been proposed to evaluate networks in their initial
+state without the need for full training. This method evaluates
+networks by analyzing the knowledge obtained from forward
+or backward propagation. One basic proxy is grad norm [17],
+which aggregates the Euclidean norm of the gradients from a
+single minibatch of training data. Snip proxy [18] evaluates
+networks using a saliency metric computed at initialization
+based on a single minibatch of data, approximating the change
+in loss (e.g., cross-entropy loss) when a specific parameter is
+removed. Unlike snip, synflow proxy [19] simply calculates its
+loss as the product of all network parameters without using
+minibatch data and cross-entropy loss. ZiCo [20] estimates
+training convergence speed and generalization capacity based
+on the mean value and standard deviation of the gradients.
+EProxy [21] leverages a few-shot self-supervised regression to
+evaluate networks. Nonetheless, these gradient-based proxies
+are only effective for a restricted set of design spaces. In
+contrast, layer-based approaches do not require labels or loss
+values to predict the trained accuracy of a network, thus
+completely eliminating the training cost. For example, TE-
+NAS [22] analyzes the spectrum of the neural tangent kernel
+and the number of linear regions in the input space to score a
+network. NASWOT [23] provides a scoring system based on
+the difference in ReLU output among minibatches to predict
+the final trained accuracy, while DAS [24] further decouples
+the NASWOT scoring framework into distinguishing atomic
+and activation atomic metrics.
+We propose RBFleX-NAS, a novel training-free NAS algo-
+rithm that further improves the scoring performance and ex-
+tends the network design space to various activation functions.
+Our algorithm scores an individual network by examining the
+similarity of the activation outputs and the similarity of the
+arXiv:2503.22733v3  [cs.LG]  3 Jun 2025
+
+===== PAGE 2 =====
+2
+NASWOT
+RBFleX-NAS(a)
+(b)
+Fig. 1. The score vs. accuracy from (a) NASWOT and (b) proposed RBFleX-
+NAS when testing with NAS-Bench-201 over ImageNet. NASWOT cannot
+distinguish the network performance on the basis of their scores when the
+ground-truth accuracy on the ImageNet dataset falls below 25%. Note that
+the lighter the color, the lower the accuracy.
+input feature maps of the last layer across different input
+images. This is because the last layer can play a key role
+in projecting the extracted features into lower dimensions by
+acting as a classifier [25]. Specifically, we exploit the Radial
+Basis Function (RBF) kernel to derive the similarity among
+images in a minibatch and predict the final trained accuracy
+of the network. Simultaneously, we develop a Hyperparameter
+Detection Algorithm (HDA), which searches for appropriate
+hyperparameters to assist the RBF kernels. We have validated
+that RBFleX-NAS achieves significantly higher Kendall cor-
+relation between scores and final trained accuracies of net-
+works across widely used NAS benchmarks, including NAS-
+Bench-201 [26], NATS-Bench-SSS [27], NDS [28] as well as
+TransNAS-Bench-101 [29]. Our source code is available at
+https://github.com/Edge-AI-Acceleration-Lab/RBFleX-NAS.git
+Our contributions are summarized as follows.
+• We propose RBFleX-NAS, a zero-cost NAS algorithm
+that leverages the similarity of activation outputs and
+the similarity of the input feature maps of the last layer
+among input images. RBFleX-NAS is more precise in dis-
+tinguishing network performance with scores, achieving
+higher top-1 accuracy in search.
+• We propose NAFBee, a new design space for benchmark-
+ing purposes with VGG-19 and BERT, further extending
+the activation type from ReLU to various commonly
+used functions. RBFlex-NAS successfully identifies the
+best-performing network with activation function search,
+which the current NAS algorithms fail to do.
+• We achieve significantly superior accuracy correlation in
+network scoring compared to state-of-the-art layer-based
+training-free NAS across various NAS benchmarks.
+II. P RIOR ARTS
+A variety of techniques have been developed for network
+architecture search, such as reinforcement learning [5], [7],
+evolutionary algorithm [30], gradient algorithm [31], Deep Q
+1
+LeakyReLU
+(91.79%)
+2
+GELU
+(90.64%)
+3
+CELU
+(90.16%)
+4
+ELU
+(90.13%)
+5
+SELU
+(89.53%)
+Top-N Architecture
+1st
+2nd
+3rd
+4th
+5thRanking by Score
+NASWOT
+ZiCo
+TE-NAS
+Snip
+grad norm
+EProxy
+Synflow
+RBFleX-NAS
+Fig. 2. Illustration of activation function exploration on VGG-11 with CIFAR-
+10 dataset. The Y-axis represents the accuracy ranking based on the score,
+which is evaluated by various training-free NAS methods using networks
+designed with five distinct non-ReLU activation functions.
+Network (DQN) [32], etc. However, they all have to train the
+candidate networks for performance evaluation, rendering a
+large amount of computation time and GPU power.
+Recently, layer-based NAS algorithms without training have
+been proposed to address the problem. The algorithms are
+completely training-free and thus do not need labels or loss
+information. For instance, NASWOT [23] and DAS [24] score
+candidate networks and correlate the scores to their final
+trained accuracy rather than train them directly. NASWOT
+evaluates the networks based on the difference in ReLU
+output among the images in a minibatch. Specifically, ReLU
+partitions the input feature maps into either an activated region
+when the input is positive or an inactivated region otherwise.
+NASWOT treats these regions as binary features and scores
+a network accordingly. When a network exhibits a substantial
+difference in ReLU output among the input images, NASWOT
+recognizes it as a well-performed architecture as it indicates
+that the network can respond well to the features of different
+images. DAS further decouples the score equation in NAS-
+WOT into a distinguishing atomic and an activation atomic.
+The distinguishing atomic capture the network’s capability
+to differentiate among different inputs, while the activation
+atomic takes the number of activation functions to simplify the
+comparison among networks. Compared to NASWOT, DAS
+runs faster with higher reliability for certain network design
+spaces.
+However, NASWOT and DAS impose two limitations in
+scoring and design space. In the scoring phase, NASWOT and
+DAS merely check the ReLU output and the number of ReLU
+layers. However, the ReLU-related information is insufficient
+to predict the final accuracy of a network [25]. For instance,
+NASWOT can not distinguish the network performance based
+on their scores when the ground-truth accuracy of the Ima-
+geNet dataset falls below 25% (Fig. 1(a)). In particular, the two
+networks with an accuracy of 0.8% obtain even higher scores
+compared to the remaining candidates, manifesting inaccurate
+performance predictions by NASWOT. This is because the
+last layer (e.g., a Fully Connected layer with softmax) also
+plays a key role in projecting the extracted features into
+lower dimensions by acting as a classifier [25]. Moreover,
+Fig. 2 reveals that NASWOT exhibits a poor correlation
+between score and network accuracy across different activation
+
+===== PAGE 3 =====
+3
+91.66%
+AirplaneBird
+26.57%
+CIFAR-10LabelHeatmap of the Input for the Final Layer
+AirplaneBird
+Network Accuracy (%)
+Fig. 3. Input heatmap of the last layer from a network with higher accuracy
+(91%) and a network with lower accuracy (26%) over CIFAR-10.
+functions. Similarly, other state-of-the-art training-free NAS
+algorithms, including TE-NAS, grad norm, Synflow, Snip,
+ZiCo, and EProxy perform poorly in differentiating network
+accuracy attributed to different activation functions.
+Hereby, we propose RBFleX-NAS, a novel algorithm that
+leverages RBF kernels with hyperparameter detection to fore-
+cast the final trained accuracy of the candidate networks
+by taking the last layer into account. Moreover, it enables
+activation function exploration in the design space, offering
+more flexibility for DNN design.
+III. M ETHOD
+This section presents a detailed description of RBFleX-NAS
+for the network search. We begin by discussing our kernel-
+based approach and explaining how to measure the similarity.
+Next, we introduce HDA to obtain the fine-tuned hyperpa-
+rameters for the RBF kernel. Subsequently, we elaborate on
+network initialization and the effect of minibatch size on
+determining a score. Finally, we discuss the impact of images
+in different batches.
+A. Analyzing Networks using RBF Kernel
+A critical factor contributing to the performance of RBFleX-
+NAS is its ability to analyze the full information of the
+feature maps in the network layers by RBF kernels with
+proposed HDA, as opposed to relying on the binary rep-
+resentations utilized by state-of-the-art layer-based methods
+such as NASWOT and TE-NAS. RBFleX-NAS enables a
+more detailed evaluation of the activation function outputs
+while simultaneously considering the inputs to the final layer,
+which are critical for determining the network’s performance.
+The heatmap in Fig. 3 illustrates that networks with higher
+accuracy can generate more distinct input representations for
+the final layer compared to networks with lower accuracy.
+RBFleX-NAS effectively captures the critical distinctions,
+enabling it to more accurately evaluate and rank network
+performance.
+NASWOT [23] reveals that a well-performed network ar-
+chitecture tends to have a lower similarity in terms of ReLU
+outputs among different input images. However, it is worth
+noting that a network can still exhibit low accuracy though its
+ReLU output shows low similarity. This is because the network
+performance is indicated not only by the activation layers but
+also by the last layer [25].
+In this section, we score a network architecture by ac-
+counting for both the similarity among the activation outputs
+Network
+Outputs of the activation layers
+Feature mapsof the last layer
+…Input image
+Flattenedoutputs 
+𝒙!:∈ℝ#×%!
+Flattenedfeature maps
+𝒚!:∈ℝ#×%"
+1𝑁! …1𝑁!
+FMFM
+Fig. 4. Vector processing on RBFleX-NAS, where NA is the number of
+activation functions.
+and the similarity among the inputs of the last layer. Fig.
+4 depicts the process of obtaining the output vector of the
+activation layer, xi: ∈ R1×LK and the input feature map
+vector of the last layer, yi: ∈ R1×LQ, where LK and LQ
+denote the length of these vectors, respectively. We flatten the
+activation output and input feature map vector for each input
+image. Specifically, we convert each three-dimensional output
+(i.e., width×height×channels) from an activation function into
+a one-dimensional vector and concatenate them horizontally
+to obtain the output vector. Similarly, we generate the input
+feature map vector by transforming the input feature maps into
+one dimension.
+Fig. 5 shows the scoring process in our proposed RBFleX-
+NAS. Firstly, the framework generates N output vectors
+and N input feature map vectors based on the N input
+images in a minibatch. RBFleX-NAS then concatenates them
+vertically as an output matrix, X ∈ RN ×LK and an input
+feature map matrix, Y ∈ RN ×LQ, respectively. To better
+measure the similarity among different images, we normalize
+the two matrices with a range of 0 ∼ 1. There are three
+common matrix normalization techniques, namely element-
+wise normalization, row-wise normalization, and column-wise
+normalization, respectively. However, we observe the element-
+wise normalization and the row-wise normalization reduce the
+data correlation among rows in X or Y. Therefore, we adopt
+the column-wise normalization and illustrate the method with
+Equation (1).
+˜αij =
+( αij −min(α:j )
+max(α:j )−min(α:j ) if max(α:j) ̸= min(α:j)
+αij otherwise
+(1)
+where ˜αij is the value after normalization, αij is an element
+in X or Y and α:j denotes the j-th column vector of X or
+Y.
+After obtaining the normalized matrices ˜X and ˜Y, we calcu-
+late the similarity matrices of the activation outputK ∈ RN×N
+and the input feature maps Q ∈ RN×N by leveraging RBF
+kernel.
+The RBF kernel is a non-linear function whose elements are
+representations of distance from the center, which is widely
+utilized in Support Vector Machine [33] [34], RBF networks
+[35], multi-task Gaussian process [36], etc as it can perform
+
+===== PAGE 4 =====
+4
+SimilarityMatrix 
+SimilarityMatrix 
+𝑲∈ℝ!×!
+𝑸∈ℝ!×!
+𝑠𝑐𝑜𝑟𝑒=𝑙𝑜𝑔𝑲⨂𝑸
+Feature map Matrix
+OutputMatrix
+𝒀∈ℝ!×#!
+𝑿∈ℝ!×#"
+Normalized Matrix 
+Normalized Matrix
+𝒀0∈ℝ!×#!RBF KernelΩ$%=𝑞(𝒚$:,𝒚%:)
+Flattenedoutputs 
+𝒙$:∈ℝ'×#"
+Flattenedfeature maps
+𝒚$:∈ℝ'×#!
+𝑿0∈ℝ!×#"RBF KernelΣ$%=𝑘(𝒙$:,𝒙%:)
+𝒚':𝒚(:𝒚!:… 𝑦;$%
+𝑥;$% Calculatescore
+normalization
+normalization
+Hyperparameter Detection Algorithm𝛾)𝛾*Hyperparameters for RBF kernel functions
+Column-wise
+Column-wise𝒙':𝒙(:𝒙!:…
+Feature Map CollectionNormalization ProcessScore Calculation
+Fig. 5. The score computation process in RBFleX-NAS.
+better in extracting complex features than many other kernels
+[37]. However, the RBF kernel is highly sensitive to the choice
+of hyperparameters. To address this issue, we develop an HDA
+which will be elaborated in Section III-B. Thanks to the HDA,
+we can obtain fine-tuned hyperparameters (i.e., γk and γq) to
+generate a precise similarity matrix. Specifically, each term in
+the similarity matrices (i.e., Σij and Ωij) is calculated with
+the RBF kernel as Equations (2) and (3) describe.
+Σij = exp(−γk∥˜xi: − ˜xj:∥2) (2)
+Ωij = exp(−γq∥˜yi: − ˜yj:∥2) (3)
+Therefore, the similarity matrix of the activation outputs,
+denoted by K ∈ RN×N, and the similarity matrix of the
+last input feature maps, denoted by Q ∈ RN×N, can be
+represented as follows.
+K =
+
+
+Σ11 · · · Σ1N
+... ... ...
+ΣN 1 · · · ΣN N
+
+ (4)
+Q =
+
+
+Ω11 · · · Ω1N
+... ... ...
+ΩN 1 · · · ΩN N
+
+ (5)
+A small value of Σij or Ωij reveals that the similarity is low
+between the i-th vector and the j-th vector in ˜X and ˜Y,
+respectively. Furthermore, a potentially good network tends
+to possess low similarity in both K and Q among various
+input images. As the matrices K and Q denote different
+similarities from the perspective of distinct layers, we exploit
+the Kronecker product ⊗ to integrate the two matrices into
+one Figure-of-Merit for our scoring process. Specifically, we
+score a given network with the Kronecker product as Equation
+(6) shows. A higher score indicates a network with a higher
+accuracy.
+score = log |K ⊗ Q| (6)
+Matrix
+𝒗!:𝑽∈ℝ#×%
+G!&
+Compute G!&
+𝛾=min	(𝐆)Goodhyperparameter
+𝑽∈ℝ#×%
+𝑽∈ℝ#×%…𝑀networks𝑽=𝑿	or	𝒀
+𝑚!=𝐸𝒗!:𝑠!'=𝑉𝑎𝑟𝒗!:
+𝒗&:𝑚&=𝐸𝒗&:𝑠&'=𝑉𝑎𝑟𝒗&:
+Fig. 6. Illustration of the proposed hyperparameter detecting algorithm in
+RBFleX-NAS.
+Here we can further simplify Equation (6) to
+score = N ∗ (log |K| + log |Q|) (7)
+Consequently, the computational complexity of the score cal-
+culation becomes O(N 2.373) according to the method in [38].
+B. Hyperparameter Detecting Algorithm (HDA)
+The efficacy of the RBF kernel is largely subject to the
+value of hyperparameters such as γk, γq in Equations (2) and
+(3). Therefore, fine-tuning hyperparameters is crucial for the
+performance of the proposed algorithm. A large number of
+applications employ costly methods such as grid search [39]
+to find the optimal hyperparameters. To minimize the cost,
+[40] leverages the method proposed in [41] to set appropriate
+hyperparameters when deploying the RBF kernel in Support
+Vector Machine. The approach derives a projection vector on
+the basis of Fisher Linear Discriminant (FLD), which can
+generate an optimal regression line to separate the observed
+data samples into two non-overlapped classes. As our work
+aims to evaluate the similarity among N input images, we
+develop an HDA inspired by FLD. Fig. 6 illustrates the
+algorithm. First, we select M candidate networks and obtain
+the output matrix X and the input feature map matrix Y for
+
+===== PAGE 5 =====
+5
+each network using N input images. Next, for any two vectors
+vi: and vj: in X or Y, we define the mean value of the two
+vectors as
+mi = 1
+L
+LX
+z=1
+viz (8)
+mj = 1
+L
+LX
+z=1
+vjz (9)
+where L denotes the length of the vectors, viz and vjz
+represent the z-th value in the selected vectors vi: and vj:,
+respectively. We then define the squared error of the mean
+value of two vectors Dij as
+Dij = (mi − mj)2 (10)
+However, evaluating the squared error between vectors solely
+by their mean values is not able to accurately assess their
+degree of overlap. As Fig.7 shows, the similarity between the
+vectors vi: and vj: from two entirely distinct input images is
+usually small and associated with much smaller variances (i.e.,
+si and sj) than the squared error Dij. If one of the variances
+(e.g., s′
+i) is close to or larger than Dij, the similarity will
+increase. Therefore, we take the variance of the data samples in
+the two vectors into account. The variances of the two vectors
+are defined as
+s2
+i = 1
+L
+LX
+z=1
+(viz − mi)2 (11)
+s2
+j = 1
+L
+LX
+z=1
+(vjz − mj)2 (12)
+We define Gij as a candidate hyperparameter for the RBF
+kernel, which is described as
+Gij = Dij
+2(s2
+i + s2
+j) if Dij ̸= 0 (13)
+Specifically, the candidate hyperparameter matrices Gk and
+Gq are defined by Equation (13), where the former is the
+hyperparameter matrix for the similarity of activation outputs
+and the latter is the matrix for the input feature maps of the
+last layer.
+Fig.8 illustrates the RBF kernel function with different hy-
+perparameter values, where the grey zone indicates the range
+of Euclidean distance ∥vi: −vj:∥. A very large hyperparameter
+can make RBF kernel in Equation (2) and (3) insensitive to
+the difference in ∥vi: − vj:∥, where v is x or y. Thus the
+hyperparameters, γk and γq, should not be either too large
+or too small and an optimal hyperparameter is favorable to
+distinguish the similarity from various input images (i.e., with
+sufficient score variance). In particular, the following equation
+γ = log(1/ϵ)
+maxi,j ∥vi: − vj:∥2 (14)
+guarantees that exp(−γ∥vi: − vj:∥2) = ϵ when ∥vi: − vj:∥2
+becomes the largest and exp(−γ∥vi: − vj:∥2) = ϵ1/r when
+∥vi: − vj:∥2 becomes the smallest, where r = maxi,j |vi:−vj:∥2
+mini,j |vi:−vj:∥2
+and we can choose an ϵ such that [ϵ, ϵ1/r] is as wide as
+Feature Space
+𝑚𝑖
+𝑚𝑗
+×
+×
+×
+×
+×
+×
+△
+△
+△
+△
+△
+△
+Feature Space
+𝑚𝑖′
+𝑚𝑗
+×
+×
+×
+×
+×
+×
+△
+△
+△
+△
+△
+△
+×
+△: data points
+𝐷𝑖𝑗
+𝐷𝑖′𝑗
+𝑠𝑖
+2 𝑠𝑖′
+2
+𝐷𝑖𝑗=𝐷𝑖′𝑗
+𝑠𝑖
+2<𝑠𝑖′
+2
+Distinct input images
+Lower similarity Higher similarity
+Fig. 7. Illustration of distinct input images that exhibit low similarity with
+small variance. Dij and Di′j are the squared error of the mean value between
+mi and mj as well as between m′
+i and mj, respectively. si and s′
+i are the
+variances of data points, respectively.
+RBF Kernel for Different Hyperparameter Values1.00.80.60.40.20.0020004000  6000800010000𝒗!:−𝒗#:$
+Too small 𝛾(𝛾=0.00001)
+RBF Kernel for Different Hyperparameter Values1.00.80.60.40.20.0020004000  6000800010000
+Widerange
+exp	(−𝛾𝒗!:−𝒗#:$)
+𝒗!:−𝒗#:$
+Narrowrange
+Optimal 𝛾(𝛾=0.001)Too large 𝛾(𝛾=1.0)exp	(−0.001𝒗!:−𝒗#:$)
+exp	(−𝒗!:−𝒗#:$)
+exp	(−0.00001𝒗!:−𝒗#:$)
+Fig. 8. RBF kernel for different hyperparameter values. The grey square
+indicates the range of Euclidean distance.
+possible. Therefore, in RBFleX-NAS, the fine-tuned hyper-
+parameter γk and γq are obtained by the entry-wise minimal
+value in respective Gk and Gq as follows, where γk > 0,
+γq > 0 and mini,j G(i, j) denotes the minimum entry in the
+matrix G.
+γk = min
+i,j
+Gk(i, j) where Dk
+ij ̸= 0 (15)
+γq = min
+i,j
+Gq(i, j) where Dq
+ij ̸= 0 (16)
+IV. E XPERIMENTAL RESULT
+We perform experiments to evaluate the efficacy of the
+proposed RBFleX-NAS in this section. Firstly, we investigate
+the effect of network initialization, minibatch size, and image
+batch on our score. Next, we compare the RBF kernel method
+with other similarity assessment methods. Thirdly, we eval-
+uate the hyperparameter detecting algorithm. Subsequently,
+we compare RBFleX-NAS with gradient-based training-free
+NAS (i.e., grad norm [17], snip [18], synflow [19], ZiCo
+[20], and EProxy [21]) and layer-based training-free NAS
+(i.e., NASWOT [23], TE-NAS [22], and DAS [24]) in terms
+of the correlation between the score and the network ac-
+curacy. Afterwards, we discuss the top-1 searched network
+in design spaces. Finally, we verify that RBFleX-NAS can
+
+===== PAGE 6 =====
+6
+0 10 20 30 40 50
+Untrained network
+(a)
+1.000
+0.995
+0.990
+Normalized Score
+Initialization
+0 10 20 30 40 50
+Untrained network
+(b)
+-1.000
+-0.950
+-0.900
+-0.850Normalized Score
+Mini-batch
+0 10 20 30 40 50
+Untrained network
+(c)
+-1.000
+-0.950
+-0.900
+-0.850Normalized Score
+Batch Images
+Fig. 9. Normalized network scores on NATS-Bench-SSS with respect to (a)
+network initialization, (b) minibatch size, and (c) different image batches. 50
+networks are randomly sampled from NATS-Bench-SSS and ranked with its
+accuracy. The first untrained network exhibits the lowest accuracy, while the
+50th network achieves the highest accuracy. The normalized score is obtained
+by dividing each network’s score by the minimum score derived from the first
+untrained network. As the RBFleX score is inherently negative, the normalized
+score starts at -1.0. A more negative normalized score corresponds to a better-
+performed network.
+score networks with various types of activation functions,
+leading to extended design space with activation function
+exploration. All computations in RBFleX-NAS are performed
+using 64-bit floating point precision to avoid the diminishing
+of similarity information when the associated hyperparameter
+value becomes too small. We utilize NAS-Bench-201 [26],
+NATS-Bench [27], and Network Design Space (NDS) [28]
+for the experiments on image classification workloads, and
+TransNAS-Bench-101 [29] for object classification and se-
+mantic segmentation. Specifically, NAS-Bench-201 consists of
+15,625 networks pre-trained on CIFAR-10, CIFAR-100, and
+ImageNet. NATS-Bench integrates NATS-Bench-SSS for net-
+work size benchmarking and NATS-Bench-TSS for network
+topology exploration. NDS provides a variety of NAS search
+spaces, such as ResNet, Amoeba, DARTS, ENAS, PNAS, and
+NASNet. TransNAS-Bench-101 provides 3,256 networks in
+macro-level search space with different depths, down-sampling
+layers, and enlarged-channel layers. It also incorporates 4,096
+networks in micro-level (i.e., cell-level) search space with
+different operations adapting the feature map from node to
+node. These networks are pre-trained with the Taskonomy
+dataset [42]. For the experiment on activation function design
+space, we create the Neural Network Activation Function
+Benchmark (NAFBee) based on VGG-19 over CIFAR-10
+dataset and BERT over SST-2 dataset. NAFBee is available
+at https://github.com/Edge-AI-Acceleration-Lab/NAFBee.git
+A. Impact of Network Initialization on RBFleX-NAS
+RBFleX-NAS initializes the weights of a network before
+scoring it. The network initialization can play a significant
+role in its final accuracy [43], [44]. To investigate the effect
+of the initialization on the network performance, we randomly
+select 50 networks from a variety of network design space
+benchmarks, which are NATS-Bench-SSS [27], NAS-Bench-
+201 [26], NDS(Amoeba) [28], NDS(DARTS), NDS(ENAS),
+and NDS(PNAS), respectively. We initialize their weights
+with random values and then score all selected networks 10
+times with the ImageNet dataset. We investigate the effect
+of the network initialization via the score with min-max
+normalization on each trial.
+Fig. 9(a) reveals the result from NATS-Bench-SSS. The
+accuracy of the untrained networks is exhibited in increasing
+order. Specifically, the first untrained network shows the lowest
+accuracy, while the 50th network achieves the highest accu-
+racy. Apparently, RBFleX-NAS can consistently distinguish
+the networks in NATS-Bench-SSS with a negligible standard
+deviation of the score (i.e., standard deviation ranges from
+±4.1 × 10−4 to ±8.2 × 10−4). We also validate the network
+initialization in other design spaces and have observed a
+small standard deviation of 5.2 × 10−3 for NAS-Bench-201,
+1.6 × 10−2 for NDS(Amoeba), 2.8 × 10−3 for NDS(DARTS),
+1.3 ×10−2 for NDS(ENAS), and 3.4 ×10−3 for NDS(PNAS),
+respectively. Therefore, our scoring approach is effective re-
+gardless of the initial weight values.
+B. Impact of Minibatch Size on RBFleX-NAS
+In the network scoring phase, RBFleX-NAS processes all
+the images in the same minibatch concurrently. We investigate
+the effect of the minibatch size by randomly selecting 50
+networks from our design space benchmarks while ensuring
+distinct accuracy values. Subsequently, we score each network
+with a variety of batch sizes over the ImageNet dataset and
+normalize the scores to visualize the impact.
+Fig. 9(b) shows the normalized score for minibatch size
+using NATS-bench-SSS. A larger normalized score indicates
+a better-performed network. RBFleX-NAS can successfully
+identify good architectures with a mean normalized score
+above -0.85 against different minibatch sizes. Tested with
+NAS-Bench-201 and NDS, RBFleX-NAS can evaluate the net-
+works with very small standard deviations, which are less than
+2.7 × 10−2 in NAS-Bench-201, 8.1 × 10−3 in NDS(Amoeba),
+4.4 ×10−3 in NDS(DARTS), 6.3 ×10−3 in NDS(ENAS), and
+4.9 × 10−3 in NDS(PNAS). The tiny standard deviation indi-
+cates that RBFleX-NAS can consistently differentiate networks
+with distinct levels of accuracy in a design space, regardless
+of the minibatch size N.
+C. Impact of Image Batch on RBFleX-NAS
+RBFleX-NAS randomly selects N images from a dataset to
+score a network. We thus analyze the effect of the image batch
+by selecting 50 networks from each benchmark (i.e., NATS-
+Bench-SSS, NAS-Bench-201, and NDS). RBFleX-NAS scores
+a network with 10 different batches on the ImageNet dataset.
+
+===== PAGE 7 =====
+7
+Pearson Kendall0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6Correlation
+SSIM
+PSNR
+Linear Kernel
+Ours (RBF kernel & HDA)
+Fig. 10. Pearson and Kendall Correlation of various similarity assessment
+methods. HDA detects the hyperparameter for RBF kernel.
+We group 16 random images as a minibatch and score each
+network with 10 minibatches. We then investigate the effect
+of image batch with the same score normalization technique
+on each trial.
+Fig. 9(c) illustrates the result of NATS-Bench-SSS with
+various image batches. The standard deviation of the score
+ranges from ±4.6×10−3 to ±2.9×10−2, which is significantly
+smaller than the score variance. Besides, RBFleX-NAS can
+also evaluate the networks from NAS-Bench-201 and NDS
+with small standard deviations, which are less than 2.8 ×10−2
+for NAS-Bench-201, 1.4×10−3 for NDS(Amoeba), 1.1×10−3
+for NDS(DARTS), 1.9×10−3 for NDS(ENAS), and 1.8×10−3
+for NDS(PNAS), respectively. Therefore, RBFleX-NAS can
+effectively evaluate network architectures regardless of the
+image batch.
+D. Comparative Analysis of Similarity Assessment Methods
+RBFleX-NAS utilizes RBF kernels to assess the similarities
+among feature maps from a network. This experiment com-
+pares RBF kernel with other similarity assessment methods,
+such as linear kernel [45], the Peak Signal-to-Noise Ratio
+(PSNR) [46], and the Structural Similarity Index Measure
+(SSIM) [47]. We randomly sample 1000 untrained networks
+from NATS-Bench-SSS and score those networks based on
+the four methods. Pearson and Kendall correlation coefficients
+are widely adopted to indicate the strength of the relationship
+between two variables [48] [23]. We thus compare these
+similarity assessment methods by using mean Pearson and
+Kendall correlation coefficients over 10 sets of 1000 sampled
+networks. Our HDA derives the hyperparameters for RBF
+kernels. We score networks by CIFAR-10 dataset with a
+minibatch size of 16 and a number of networks for HDA of
+10 (i.e., N = 16, M = 10).
+Fig. 10 reveals the RBF kernel method exhibits the highest
+mean Pearson correlation of 0.59 while the linear kernel
+method, PSNR, and SSIM yielded lower mean Pearson corre-
+lations of 0.48, 0.40 and 0.46, respectively. In terms of Kendall
+correlation, the RBF kernel method again achieves the highest
+mean Kendall correlation of 0.41. The linear kernel method,
+PSNR, and SSIM exhibit lower correlations of 0.40, 0.22, and
+0.27, respectively. We confirm that the RBF kernel with HDA
+can effectively evaluate the similarity among feature maps.
+E. Evaluation of HDA
+To evaluate HDA, we randomly sample 1000 untrained
+networks from NATS-Bench-SSS and calculate the score of
+each network with the fine-tuned hyperparameters obtained
+from the algorithm. We repeat this process 10 times over
+the CIFAR-10 dataset. To evaluate the performance of our
+HDA, we deploy Pearson correlation coefficient and Kendall
+correlation coefficient. Moreover, we compare our HDA with
+other two hyperparameter-detecting methods. Specifically, the
+first comparison method selects the maximal value in the
+candidate hyperparameter matrix Gk and Gq, respectively
+while the second method randomly set values between 10−1
+and 10−20. We consistently configure the minibatch size N as
+16, and the number of candidate networks M as 10.
+Fig. 11 depicts the results of our HDA through a box-
+and-whisker plot, with mean Pearson and Kendall correlation
+values of 0.56 and 0.39, respectively. If selecting the maximal
+values in Gk and Gq for the hyperparameters as the first
+method, the mean correlations decrease to 0.43 and 0.26,
+respectively. Alternatively, if randomly setting the hyperpa-
+rameters as the second method, the corresponding correlation
+values drop to 0.46 and 0.27, respectively. We conduct a
+T − T est to assess the statistical difference between HDA
+and the maximum value as T − T est is a statistical test
+widely adopted to compare the mean of two groups [49] [50].
+P −value calculated on T −T est indicates the mean difference
+for two groups is statistically significant if P − value is lower
+than 0.05. The results show a P − value of 2.1 ×10−5 for the
+Pearson correlation and 1.7×10−10 for the Kendall correlation.
+Similarly, when comparing HDA with the random selection,
+the T −T est yields a P −value of 5.0×10−4 for the Pearson
+correlation and 6.6 × 10−7 for the Kendall correlation. As the
+P − value is smaller than 0.05, we confirm that the proposed
+HDA is statistically significant to select better hyperparameters
+γk and γq for the RBF kernel.
+HDA/Min(G) Max(G) Random0.350.400.450.500.550.600.65Correlation 25%~75% Range within 1.5IQR Median Line MeanPearson
+HDA/Min(G) Max(G) Random0.200.250.300.350.400.45CorrelationKendallKendall
+25%~75%Range within 1.5IQRMedian Line
+Fig. 11. Pearson and Kendall correlations with hyperparameter detection
+algorithm (HDA) and random hyperparameters. The minibatch size is 16.
+F . Evaluation of correlations between score and accuracy
+In this experiment for image classification tasks, we com-
+pare RBFleX-NAS with eight NAS algorithms. Specifically,
+we benchmark it with gradient-based algorithms, including
+grad norm [17], snip [18], synflow [19], EProxy [21], and
+ZiCo [20]. Simultaneously, we benchmark it with layer-
+
+===== PAGE 8 =====
+8
+TABLE I
+PEARSON AND KENDALL CORRELATION ON NAS-B ENCH -201 AND NATS-B ENCH -SSS
+Search
+Space
+Method Pearson Correlation Kendall Correlation
+Metric Name CIFAR-10 CIFAR-100 ImageNet CIFAR-10 CIFAR-100 ImageNet
+NAS
+Bench
+201
+Gradient-based
+(requires loss or labels)
+grad norm -0.009 0.034 0.087 0.170 0.204 0.220
+snip 0.003 0.049 0.033 0.174 0.212 0.366
+synflow 0.024 0.050 0.137 0.296 0.346 0.224
+EProxy -0.280 -0.878 -0.618 -0.426 -0.528 -0.469
+ZiCo 0.529 0.636 0.734 0.564 0.603 0.583
+Layer-based
+(no loss and label
+required)
+DAS 0.717 0.636 0.582 0.372 0.406 0.374
+NASWOT 0.727 0.638 0.575 0.374 0.407 0.376
+TE-NAS 0.051 0.095 0.266 0.168 0.127 0.033
+RBFleX-NAS 0.898 0.723 0.514 0.569 0.590 0.513
+NATS
+Bench
+SSS
+Gradient-based
+(requires loss or labels)
+grad norm 0.606 0.437 0.494 0.426 0.317 0.376
+snip 0.698 0.531 0.669 0.511 0.394 0.523
+synflow 0.508 0.453 0.560 0.718 0.579 0.771
+EProxy -0.346 0.376 0.166 -0.237 0.279 0.130
+ZiCo 0.907 0.738 0.871 0.729 0.555 0.697
+Layer-based
+(no loss and labels
+required)
+DAS 0.484 0.241 0.523 0.318 0.159 0.366
+NASWOT 0.484 0.241 0.524 0.318 0.160 0.367
+TE-NAS -0.146 -0.151 -0.363 -0.114 -0.122 -0.313
+RBFleX-NAS 0.607 0.855 0.869 0.419 0.639 0.649
+based methods, including NASWOT [23], DAS [24], and TE-
+NAS [22]. We test on various datasets, including CIFAR-10,
+CIFAR-100, and ImageNet, as well as with different network
+design spaces such as NAS-Bench-201, NATS-Bench-SSS,
+NDS(Amoeba), NDS(DARTS), NDS(ENAS), NDS(PNAS),
+NDS(ResNet), and NDS(NASNet). We configure the mini-
+batch size N as 16 and use 10 networks as the parameter M to
+detect appropriate hyperparameters for RBF kernels. We also
+deploy the same two correlation coefficients and T − test to
+verify the statistical significance.
+To compare the performance of RBFleX-NAS with the
+benchmarks, we conduct experiments on NAS-Bench-201,
+NATS-Bench-SSS, and NDS(ResNet), each with more than
+10,000 networks. We randomly sample 1000 untrained net-
+works and calculate the score of each network using
+RBFleX-NAS and the benchmarks. We repeat this pro-
+cess 10 times and compute the mean correlations for each
+algorithm. For design spaces with fewer networks (i.e.,
+NDS(Amoeba), NDS(DARTS), NDS(ENAS), NDS(PNAS)
+and NDS(NASNet)), we deploy the NAS algorithms to eval-
+uate in each design space.
+We further evaluate RBFleX-NAS on object classification
+and semantic segmentation tasks using TranNAS-Bench-101
+[29] and Taskonomy dataset [42]. Specifically, we compare
+RBFleX-NAS with seven state-of-the-art training-free NAS
+algorithms, which are EProxy, TE-NAS, ZiCo, NASWOT,
+grad norm, snip, and synflow. RBFleX-NAS employs a mini-
+batch size N of 16 and utilizes 10 networks for HDA. All
+algorithms in the experiment score 3,256 networks in the
+macro-level design space and 4,096 networks in the micro-
+level design space. Pearson and Kendall correlations are cal-
+culated to evaluate the relationship between the scores and
+actual accuracies.
+Table I shows the experiment results on NAS-Bench-201
+and NATS-Bench-SSS over CIFAR-10, CIFAR-100, and Im-
+ageNet. Fig. 12 shows the Pearson and Kendall correlation
+on NDS benchmark over CIFAR-10 and ImageNet. Though
+RBFleX-NAS exhibits lower correlation than ZiCo in certain
+Ours (RBFleX-NAS)
+Ours (RBFleX-NAS)
+Fig. 12. Pearson and Kendall Correlations on NDS benchmark. (a) over
+CIAFR-10. (b) over ImageNet
+cases, it can identify networks with higher accuracy using
+less search time, which will be elaborated in Section IV-G.
+Moreover, it shows higher Kendall correlations compared to
+all layer-based training-free NAS methods, including DAS,
+NASWOT and TE-NAS across both search spaces. For NATS-
+Bench-SSS, our RBFleX-NAS also outperforms layer-based
+training-free algorithms (i.e., NASWOT, DAS, and TE-NAS)
+
+===== PAGE 9 =====
+9
+Ours (RBFleX-NAS)
+Fig. 13. Score vs final accuracy over CIFAR-100 in NATS-Bench-SSS with
+a minibatch size of 16. (a) Score by RBFleX-NAS. (b) Score by NASWOT.
+(c) Score by DAS.
+in terms of Pearson correlation. Fig. 12(a) illustrates that
+RBFleX-NAS consistently outperforms state-of-the-art layer-
+based and gradient-based training-free NAS methods in NDS
+over CIFAR-10, as it achieves higher positive correlations
+across all design spaces. In contrast, the gradient-based proxies
+which are evaluated on NDS(Amoeba) and NDS(NASNet)
+show negative Kendall correlations.
+In terms of the Pearson and Kendall correlation over
+CIFAR-100, our RBFleX-NAS outperforms other layer-based
+and gradient-based algorithms significantly in NATS-Bench-
+SSS, achieving a higher Pearson correlation of 0.855 and a
+higher Kendall correlation of 0.639. The experiment on NATS-
+Bench-SSS over ImageNet shows that RBFleX-NAS demon-
+strates apparently higher correlations compared to other layer-
+based traning-free NAS frameworks. Specifically, the Pearson
+and Kendall correlations are 0.869 and 0.649, respectively,
+despite the increased challenge posed by the ImageNet dataset.
+Fig. 12(b) shows RBFleX-NAS also achieves higher cor-
+relation for all design space from NDS while grad norm,
+snip, and synflow proxies achieve negative Kendall correlation
+for NDS(Amoeba). From the data in the tables, we observe
+that RBFleX-NAS can achieve a positive correlation between
+the score and the final accuracy of the networks. Moreover,
+we highlight the better results from RBFlex-NAS, which
+reveals that RBFleX-NAS outperforms NASWOT and DAS in
+predicting the final trained accuracy of the networks. Besides,
+RBFleX-NAS demonstrates positive correlations across all
+design spaces, while the gradient-based proxies yield negative
+correlations for NDS design spaces, indicating RBFleX-NAS’s
+versatility.
+Fig. 13 shows the scatter plots between the score and
+the validated accuracy of the networks over CIFAR-100 in
+Ours (RBFleX-NAS)
+Fig. 14. Score vs final accuracy over ImageNet in NATS-Bench-SSS with a
+minibatch size of 16. (a) Score by RBFleX-NAS. (b) Score by NASWOT. (c)
+Score by DAS.
+NATS-Bench-SSS by RBFleX-NAS, NASWOT, and DAS,
+respectively. RBFleX-NAS successfully evaluates the under-
+performing networks with an accuracy below 40% and ef-
+fectively distinguishes them from other well-performed candi-
+dates. RBFleX-NAS also demonstrates a more linear depen-
+dency between the score and the accuracy of the networks
+compared to NASWOT and DAS.
+Fig. 14 exhibits the dependency between the score and
+the final accuracy of the networks from NATS-Bench-SSS
+over the ImageNet dataset. The plot shows that RBFleX-
+NAS outperforms NASWOT and DAS in identifying better-
+performed networks. Specifically, RBFleX-NAS is able to
+distinguish better networks (i.e., accuracy higher than 30%)
+from inferior networks (i.e., accuracy between 15%-25%)
+while NASWOT and DAS can assign almost the same score
+to the networks with a lower accuracy (i.e., between 20% and
+30%) and the networks with significantly higher accuracy (i.e.,
+30% or above).
+Table II shows Pearson and Kendall correlations on ob-
+ject classification and semantic segmentation tasks using
+TransNAS-Bench-101. On macro-level object classification
+(OC Macro), RBFleX-NAS achieves a higher accuracy of
+45.42% with higher Pearson and Kendall correlations. On
+micro-level object classification (OC Micro), RBFleX-NAS
+also exhibits a higher accuracy of 43.26% with a higher
+Kendall correlation compared to TE-NAS and NASWOT. For
+macro-level semantic segmentation (SS Macro), the Pearson
+and Kendall correlations of RBFleX-NAS are 0.853 and 0.668
+with the highest mIoU of 29.15%. For micro-level semantic
+segmentation (SS Micro), RBFleX-NAS achieves a Pearson
+correlation of 0.547 and a Kendall correlation of 0.381 with the
+highest mIoU of 25.33%. This illustrates that RBFleX-NAS
+
+===== PAGE 10 =====
+10
+TABLE II
+PEARSON AND KENDALL CORRELATION FOR OBJECT CLASSIFICATION
+(OC) AND SEMANTIC SEGMENTATION (SS) T ASKS USING
+TRANS NAS-B ENCH -101.
+Search
+Space
+Method Correlation
+Metric Name Pearson Kendall Top-1 (%)
+OC
+Macro
+Gradient-
+based
+grad norm -0.291 -0.194 44.43
+snip 0.073 0.009 44.49
+synflow -0.788 -0.586 42.42
+EProxy -0.026 -0.049 44.28
+ZiCo -0.167 -0.110 43.45
+Layer-
+based
+TE-NAS 0.011 -0.029 45.02
+NASWOT 0.734 0.554 45.42
+RBFleX-NAS 0.740 0.555 45.42
+OC
+Micro
+Gradient-
+based
+grad norm 0.130 0.094 38.40
+snip 0.068 0.407 42.26
+synflow 0.035 0.102 26.55
+EProxy -0.008 -0.019 40.15
+ZiCo 0.632 0.398 43.05
+Layer-
+based
+TE-NAS -0.030 -0.045 42.57
+NASWOT 0.598 0.322 27.93
+RBFleX-NAS 0.461 0.338 43.26
+Search
+Space
+Method Correlation
+Metric Name Pearson Kendall mIoU (%)
+SS
+Macro
+Gradient-
+based
+grad norm -0.125 -0.083 28.07
+snip 0.059 0.029 28.57
+synflow -0.765 -0.57 21.05
+EProxy -0.049 -0.062 21.18
+ZiCo -0.087 -0.063 26.79
+Layer-
+based
+TE-NAS -0.002 0.001 24.85
+NASWOT 0.854 0.674 29.15
+RBFleX-NAS 0.853 0.668 29.15
+SS
+Micro
+Gradient-
+based
+grad norm 0.216 0.385 22.68
+snip 0.098 0.488 24.43
+synflow 0.035 0.230 5.41
+EProxy -0.036 -0.037 15.25
+ZiCo 0.620 0.416 24.43
+Layer-
+based
+TE-NAS -0.015 -0.115 9.34
+NASWOT 0.592 0.339 21.87
+RBFleX-NAS 0.547 0.381 25.33
+is capable of identifying higher-accuracy networks with good
+correlation in object classification and semantic segmentation.
+G. Analysis of Architecture Search
+This experiment compares the accuracies and search costs
+of the best networks (i.e., the networks with the highest
+score) identified by RBFleX-NAS and other state-of-the-art
+gradient-based and layer-based training-free NAS methods
+in NAS-Bench-201, NATS-Bench-SSS, and DARTS design
+space. To evaluate them on NAS-Bench-201 and NATS-
+Bench-SSS, we randomly sample a total of S networks from
+each design space. We perform architecture search following
+the methodology in NASWOT. Specifically, we firstly work
+with the CIFAR-10 dataset for NAS-Bench-201 and select the
+network with the highest score. In the next scoring phase, we
+evaluate the accuracy of the selected network over CIFAR-
+10, CIFAR-100, and ImageNet, resulting in identical search
+time across datasets. For NATS-Bench-SSS, networks are
+selected and scored separately for CIFAR-10, CIFAR-100, and
+ImageNet. The accuracy of each network is then evaluated on
+the respective dataset, resulting in different search time across
+datasets. For S = 10 and S = 100, the accuracy metrics for
+ZiCo, Synflow, Grad Norm, and NASWOT are averaged over
+500 runs to ensure statistical robustness. However, TE-NAS
+100
+101
+102
+103
+104
+Search Cost (second)
+30
+35
+40
+45ImageNet Accuracy (%)
+RBFleX
+TAS
+FBNet-v2
+TuNAS
+ZiCo(S=10)
+ZiCo(S=100)
+ZiCo(S=1000)
+EProxy(S=10)
+EProxy(S=100)
+EProxy(S=1000)
+Synflow(S=10)
+Synflow(S=100)
+Synflow(S=1000)
+grad norm(S=10)
+grad norm(S=100)
+grad norm(S=1000)
+NASWOT(S=10)
+NASWOT(S=100)
+NASWOT(S=1000)
+TE-NAS(S=10)
+TE-NAS(S=100)
+TE-NAS(S=1000)
+Snip(S=10)
+Snip(S=100)
+Snip(S=1000)
+RBFleX-NAS(S=10)
+RBFleX-NAS(S=100)
+RBFleX-NAS(S=1000)
+Fig. 15. Search cost versus network accuracy in ImageNet classification on
+NATS-Bench-SSS.
+and EProxy are averaged over 50 runs due to computational
+limitations. For S = 1000 , the accuracy metrics for all
+gradient-based and layer-based training-free NAS methods are
+averaged over 50 runs, except for TE-NAS and EProxy, which
+are averaged over 5 runs, also due to computational limitations.
+Besides, we evaluate other common NAS algorithms such as
+Random Search with Parameter Sharing (RSPS) [51], DART
+[31], GDAS [52], ENAS [7], SETN [53], TAS [54], FBNet-
+v2 [55], and TuNAS [56] and compare them with RBFleX-
+NAS. Specifically, we randomly select 500 networks from their
+respective design space and calculate the average accuracy. In
+the DARTS design space, RBFleX-NAS evaluates all 5,000
+networks. We train the top-1 scored network for 800 epochs
+with a batch size of 96 to align with the evaluation method
+used by the benchmark algorithms. The remaining parameters
+are configured the same as those in the DARTS papers [31].
+Besides, we also evaluate ZiCo [20], TE-NAS [22], P-DARTS
+[57], PC-DARTS [58], ENAS [7], GDAS [52], DARTS-v1
+[31], and PNAS [59]. We employ a single NVIDIA Tesla V100
+GPU for all computations to implement this experiment.
+Table III lists the results in detail. Specifically, in NAS-
+Bench-201 with a sample size of 1000, RBFleX-NAS ex-
+hibits superior performance compared to all other state-of-
+the-art NAS methods, achieving the highest top-1 accuracy
+of 93.30% over CIFAR-10, 70.99% over CIFAR-100, and
+44.57% over ImageNet, respectively. Moreover, our results
+outperform NASWOT in terms of a smaller variance as
+Table III shows (i.e., 0.35/0.21/0.70 in RBFlex-NAS vs.
+0.84/1.45/2.52 in NASWOT). In NATS-Bench-SSS with a
+sample size of 1000, our searched top-1 accuracy is 93.16%
+over CIFAR-10, 70.36% over CIFAR-100, and 46.07% over
+ImageNet, respectively, higher than the accuracy resulting
+from all other training-free NAS algorithms. Fig.15 further
+compares the search cost with respect to network accuracy
+in NATS-Bench-SSS, showing that RBFleX-NAS can identify
+networks with higher accuracy yet with less search time in
+every sample size.
+Fig.16 presents the averaged search cost for S = 10 over
+five runs for various state-of-the-art training-free NAS methods
+
+===== PAGE 11 =====
+11
+TABLE III
+COMPARISON ON ARCHITECTURE SEARCH . W EIGHT SHARING METHOD SHARES WEIGHTS TO ALLOW FOR JOINT TRAINING WITH CANDIDATE
+NETWORKS . IN NAS-B ENCH -201, THE TOP -PERFORMING NETWORK FOR EACH DATASET IS IDENTIFIED USING THE CIFAR-10 DATASET. IN
+NATS-B ENCH -SSS, THE TOP -PERFORMING NETWORK FOR EACH DATASET IS DETERMINED USING ITS RESPECTIVE DATASET .
+Search
+Space
+Method CIFAR-10 Search CIFAR-100 Search ImageNet Search
+Metric Name Accuracy (%) Cost (s) Accuracy (%) Cost (s) Accuracy (%) Cost (s)
+NAS
+Bench
+201
+Weight Sharing
+RSPS 88.10±1.06 1524 66.31 ±1.29 1524 38.21 ±2.11 1524
+DARTS(1st) 59.02±13.02 9631 14.99 ±0.05 9631 16.43 ±0.79 9631
+DARTS(2nd) 39.77±0.12 28457 15.03 ±0.07 28457 15.93 ±0.69 28457
+GDAS 89.14±1.81 4506 70.65 ±1.51 4506 41.48 ±3.55 4506
+ENAS 90.17±0.23 2353 70.76 ±0.69 2353 40.68 ±0.60 2353
+SETN 88.78±1.10 5886 66.41 ±1.51 5886 38.96 ±2.43 5886
+Gradient-based
+Training-free
+(requires loss or labels)
+ZiCo(S=10) 89.31±1.09 1.28 68.87 ±1.84 1.28 41.83 ±3.68 1.28
+ZiCo(S=100) 89.89±0.56 12.82 70.13 ±1.34 12.82 42.99 ±3.68 12.82
+ZiCo(S=1000) 90.18±0.25 128.24 70.28 ±1.12 128.24 43.09 ±1.95 128.24
+EProxy(S=10) 76.65±10.69 16.12 50.47 ±12.09 16.12 25.21 ±8.77 16.12
+EProxy(S=100) 54.70±15.79 179.56 28.57 ±14.79 179.56 15.53 ±4.69 179.56
+EProxy(S=1000) 53.51±13.42 1760 27.14 ±11.83 1760 15.07 ±1.89 1760
+Synflow(S=10) 86.07±6.18 0.85 62.66 ±7.55 0.85 34.94 ±6.18 0.85
+Synflow(S=100) 19.12±25.49 8.81 8.91 ±21.46 8.81 5.57 ±3.43 8.81
+Synflow(S=1000) 9.71±1.45 90.65 0.99 ±2.99 90.65 0.83 ±6.85 90.65
+grad norm(S=10) 86.68±5.37 0.78 64.23 ±6.94 0.78 35.35 ±7.57 0.78
+grad norm(S=100) 87.59±1.79 8.12 64.56 ±3.99 8.12 33.48 ±7.65 8.12
+grad norm(S=1000) 86.37±1.66 80.97 61.91 ±3.45 80.97 27.46 ±9.25 80.97
+Snip(S=10) 89.27±1.42 8.94 68.71 ±2.40 8.94 40.98 ±4.19 8.94
+Snip(S=100) 89.82±1.14 90.13 69.92 ±2.02 90.13 41.32 ±4.94 90.13
+Snip(S=1000) 89.70±0.82 912.86 67.69 ±2.68 912.86 40.59 ±4.57 912.86
+Layer-based
+Training-free
+(no loss and label
+required)
+Random 83.94±12.60 N/A 61.62 ±11.82 N/A 33.78 ±8.94 N/A
+NASWOT(S=10) 89.20±1.11 0.64 68.70 ±1.89 0.64 41.51 ±3.24 0.64
+NASWOT(S=100) 89.55±0.83 7.15 69.45 ±1.69 7.15 43.04 ±2.58 7.15
+NASWOT(S=1000) 89.70±0.84 84.31 69.65 ±1.45 84.31 43.61 ±2.52 84.31
+TE-NAS(S=10) 88.28±1.52 10.43 66.39 ±3.04 10.43 39.02 ±4.04 10.43
+TE-NAS(S=100) 89.60±0.38 106.38 67.68 ±0.56 106.38 41.86 ±1.86 106.38
+TE-NAS(S=1000) 89.76±0.23 1052 67.83 ±0.55 1052 42.61 ±1.37 1052
+RBFleX-NAS(S=10) 93.23±1.29 0.89 70.53 ±1.70 0.89 41.54 ±2.65 0.89
+RBFleX-NAS(S=100) 93.36±0.94 9.17 70.90 ±0.93 9.17 45.81 ±0.57 9.17
+RBFleX-NAS(S=1000) 93.30±0.35 95.36 70.99 ±0.21 95.36 44.57 ±0.70 95.36
+NATS
+Bench
+SSS
+Weight Sharing
+TAS 93.40±0.00 1946 70.72 ±0.00 3863 47.17 ±0.00 7776
+FBNet-v2 93.04±0.18 1377 69.96 ±0.69 2733 45.05 ±0.56 5053
+TuNAS 85.84±0.25 1315 57.84 ±4.19 2672 36.06 ±0.10 6228
+Gradient-based
+Training-free
+(requires loss or labels)
+ZiCo(S=10) 89.39±0.50 0.71 67.46 ±1.83 0.77 42.50 ±1.83 13.90
+ZiCo(S=100) 89.83±0.32 7.07 68.74 ±0.97 7.25 44.22 ±0.96 135.93
+ZiCo(S=1000) 90.03±0.26 69.90 69.36 ±0.60 69.76 44.90 ±0.79 1327
+EProxy(S=10) 87.05±1.38 9.94 65.50 ±2.67 9.10 37.44 ±4.22 84.39
+EProxy(S=100) 86.55±1.52 96.67 64.16 ±2.80 95.70 34.59 ±4.14 842.76
+EProxy(S=1000) 85.76±1.05 988.53 60.74 ±5.65 990.87 34.80 ±1.65 8548
+Synflow(S=10) 86.97±1.46 0.39 54.41 ±5.40 0.39 32.08 ±4.42 1.43
+Synflow(S=100) 86.13±1.77 3.78 52.07 ±4.66 3.81 30.74 ±3.90 12.90
+Synflow(S=1000) 86.96±1.35 37.25 51.24 ±3.83 37.17 28.85 ±3.43 126.93
+grad norm(S=10) 88.34±1.02 0.38 66.05 ±2.53 0.38 39.95 ±3.06 4.26
+grad norm(S=100) 88.52±1.05 3.38 66.75 ±1.96 3.52 40.23 ±2.94 41.51
+grad norm(S=1000) 88.40±1.04 34.42 66.85 ±1.88 33.07 40.17 ±2.96 410.43
+Snip(S=10) 89.49±0.45 3.00 68.00 ±1.33 3.18 42.81 ±2.02 5.24
+Snip(S=100) 90.04±0.26 60.41 68.97 ±0.87 62.54 44.65 ±0.81 83.22
+Snip(S=1000) 90.31±0.11 621.16 69.27 ±0.79 639.71 45.25 ±0.32 827.57
+Layer-based
+Training-free
+(no loss and label
+required)
+Random 87.90±1.29 N/A 62.43 ±5.33 N/A 37.13 ±4.57 N/A
+NASWOT(S=10) 88.95±0.83 0.31 64.42 ±4.46 0.31 40.61 ±3.55 1.08
+NASWOT(S=100) 89.73±0.48 2.94 67.12 ±2.91 2.92 42.94 ±2.54 11.12
+NASWOT(S=1000) 90.10±0.35 29.53 69.05 ±1.44 30.62 44.86 ±0.84 76.26
+TE-NAS(S=10) 88.26±0.95 7.83 61.43 ±4.77 8.19 37.02 ±3.75 156.36
+TE-NAS(S=100) 88.52±0.75 76.75 54.39 ±4.70 78.62 36.48 ±3.31 1588
+TE-NAS(S=1000) 85.42±2.76 820.74 54.79 ±4.36 794.64 37.39 ±1.63 15946
+RBFleX-NAS(S=10) 92.91±0.33 0.41 69.10 ±0.89 0.41 45.66 ±7.10 0.84
+RBFleX-NAS(S=100) 93.02±0.02 3.95 69.21 ±1.02 3.96 46.06 ±0.16 8.17
+RBFleX-NAS(S=1000) 93.16±0.24 40.51 70.36 ±0.11 40.15 46.07 ±0.61 84.03
+
+===== PAGE 12 =====
+12
+32x32 56x56 112x112 224x224 336x336 448x448
+Input Size
+0
+5
+10
+15Time [s]
+EProxy TE-NAS ZiCO NASWOT RBFleX-NAS
+Fig. 16. Comparison of search cost (S=10) vs. input size for different
+NAS methods. ZiCO is unable to run on inputs larger than 336 ×336 due
+to insufficient GPU memory (NVIDIA Tesla V100 32GB).
+PNAS ENAS
+DARTS-v1P-DARTSPC-DARTS
+GDAS TE-NAS ZiCo
+RBFleX-NAS
+103
+104
+105
+106
+107
+Search Cost (second)
+96.59%
+97.11% 97.00% 97.50%
+97.43%
+97.07%
+97.37% 97.55%
+96.95%
+39015.0×
+86.7× 69.4× 52.0×
+17.3×
+34.7×
+8.7× 5.2×
+1.0×
+Fig. 17. Comparison of search cost vs. top-1 CIFAR-10 accuracy on DARTS
+design space. The red dot indicates RBFleX-NAS, running 5.2 × faster than
+ZiCo to search the 96.95%-accuracy network.
+(i.e., NASWOT, EProxy, TE-NAS, and ZiCo) across different
+input sizes. Notably, RBFleX-NAS maintains a relatively low
+and stable search cost as input size increases, outperform-
+ing other methods in efficiency. At the largest input size
+(448×448), RBFleX-NAS achieves a search cost of only 2.97
+seconds, significantly faster than TE-NAS (39.34 seconds),
+EProxy (346.2 seconds), and NASWOT (3.95 seconds). Ad-
+ditionally, ZiCo fails to operate with an input size larger than
+336×336 due to the GPU memory limitation.
+Fig.17 compares different NAS methods in the DARTS de-
+sign space using network accuracy over CIFAR-10 and search
+cost as metrics. While ZiCo achieves the highest accuracy of
+97.55%, RBFleX-NAS closely follows with an accuracy of
+96.95%. Notably, ZiCo runs 5.2 × slower than RBFlex-NAS
+with only a marginal accuracy improvement of 0.6%.
+H. Neural Network Activation Function Benchmark (NAFBee)
+and Evaluation of Non-ReLU Activations
+In this experiment, we perform a comparative analysis
+among our RBFleX-NAS, NASWOT [23], ZiCo [20], TE-
+NAS [22], grad norm [17], snip [18], and synflow [19] on a
+design space with activation functions. To accomplish this, we
+have created the Neural Network Activation Function Bench-
+mark (NAFBee). NAFBee utilizes VGG-19 and BERT BASE
+[2] network as backbones. We replace all activation functions
+on a backbone with various types of activation functions
+and build architecture candidates. We select widely used
+activation functions such as ReLU, GELU [60], SiLU [61],
+LeakyReLU, ReLU6, Mish [62], Hardswish, CELU [63], ELU
+[64], Hardtanh, and SELU [65]. Therefore, NAFBee (VGG-
+19) and NAFBee (BERT) each have 11 architecture candidates.
+We then acquire the ground-truth accuracy of each can-
+didate network in NAFBee (VGG-19) and NAFBee (BERT)
+via training. For NAFBee (VGG-19), the 200-epoch training
+deploys the SGD optimizer with a cosine decay learning rate
+from 0.1 to 0, a momentum of 0.9, a weight decay of 5e-
+4 and a batch size of 128. This configuration is inspired by
+NATS-Bench [27]. The target dataset to work with NAFBee
+(VGG-19) is CIFAR-10 which has been preprocessed by
+randomly cropping to 32×32 pixels with 4-pixel padding
+on each border as well as horizontal random flipping and
+normalizing across the RGB channels. For NAFBee (BERT),
+we utilize the same fine-tuning parameters as in the BERT
+paper [2]. The target dataset for demonstration is Stanford
+Sentiment Treebank (SST-2) [66]. SST-2 incorporates a total
+of 215,154 unique phrases for binary classification. RBFleX-
+NAS and the training-free NAS algorithms under comparison
+evaluate each network configuration with the aforementioned
+activation functions. In the evaluation phase, we compute the
+correlation coefficients between the ground-truth accuracy and
+the corresponding scores over CIFAR-10 using VGG-19 and
+over SST-2 using BERT. The batch size N for RBFleX-NAS
+and NASWOT is 16. The number of networks M for HDA is
+1.
+Table IV shows the experimental results obtained using
+NAFBee (VGG-19). The ReLU activation function achieves
+the highest performance with an accuracy of 91.06%. RBFleX-
+NAS successfully identifies this optimal network configuration
+with the highest score, whereas other training-free NAS fail
+to achieve it.
+Table V shows the scores and correlation values by differ-
+ent training-free proxies using NAFBee (BERT). The BERT
+model with GELU activation function achieves the highest
+accuracy of 92.97%. RBFleX-NAS outperforms both layer-
+based and gradient-based NAS as it successfully identifies
+the best-performing network during activation function search.
+In addition, the Kendall correlation of RBFleX-NAS when
+scoring the network with GELU is 0.443 while the correlation
+of TE-NAS is merely 0.058. Apparently, RBFleX-NAS can
+accurately evaluate networks incorporating various widely
+adopted activation functions, expanding the design space with
+activation function exploration for network architecture search.
+V. C ONCLUSION
+This work introduces RBFleX-NAS, a training-free NAS
+approach that leverages a Radial Basis Function (RBF) ker-
+nel with a hyperparameter detection algorithm. RBFleX-NAS
+evaluates candidate networks based on the similarity of ac-
+tivation outputs and input feature maps from the last layer
+of a network across different input images. It demonstrates
+superior top-1 accuracy in network search and excellent
+Kendall correlation across diverse design spaces in image
+classification, object classification/segmentation, and natural
+language processing tasks.
+Additionally, we present NAFBee, a novel benchmarking
+design space that supports a broader range of activation
+functions, enabling activation function exploration. Compared
+to state-of-the-art training-free NAS methods, RBFleX-NAS
+
+===== PAGE 13 =====
+13
+TABLE IV
+THE SCORE RESULT IN NAFB EE(VGG-19). P EARSON AND KENDALL CORRELATION BETWEEN VALIDATED ACCURACY AND SCORE .
+Design Space Activation
+Functions Accuracy(%)
+Score
+Layer-based Gradient-based
+RBFleX-NAS NASWOT TE-NAS grad norm snip synflow ZiCo
+NAFBee
+(VGG-19)
+ReLU 91.06 -6190.45 191.72 -2.11 573.13 3569.66 5.19E+22 259.02
+GELU [60] 91.03 -6207.12 192.04 -4.45 478.64 3045.44 5.25E+22 257.28
+SiLU [61] 91.03 -6212.32 191.88 -9.33 329.59 2027.23 5.01E+22 257.98
+LeakyReLU 90.75 -6195.74 191.75 -2.10 560.38 3547.21 5.19E+22 257.89
+ReLU6 90.61 -6194.21 191.62 -2.14 574.87 3574.24 6.79E+02 259.98
+Mish [62] 90.54 -6202.14 192.00 -2.43 426.65 2810.60 5.19E+22 258.78
+Hardswish 89.94 -6224.58 191.80 -181.95 473.98 2830.19 4.85E+22 257.09
+CELU [63] 88.36 -6216.53 191.95 -1.62 302.95 2126.31 5.42E+22 257.35
+ELU [64] 87.01 -6215.80 191.84 -1.61 313.30 2182.29 5.17E+22 259.02
+Hardtanh 86.74 -6216.71 192.00 -2.08 566.95 3501.04 114.17 258.33
+SELU [65] 85.83 -6217.89 191.97 -1.64 345.97 2404.90 1.12E+23 259.57
+Pearson Correlation 0.623 -0.384 -0.117 0.708 -0.417 -0.574 -0.255
+Kendall Correlation 0.550 -0.240 -0.367 0.257 0.220 0.019 -0.110
+TABLE V
+THE SCORE RESULT IN NAFB EE(BERT). P EARSON AND KENDALL CORRELATION BETWEEN VALIDATED ACCURACY AND SCORE .
+Design Space Activation
+Functions Accuracy(%)
+Score
+Layer-based Gradient-based
+RBFleX-NAS NASWOT TE-NAS grad norm snip synflow ZiCo
+NAFBee
+(BERT)
+GELU 92.97 -4388.62 198.05 -16.09 194.23 2441.72 5.07e-13 1193
+ReLU 92.26 -5635.96 174.57 -159.27 36.45 193.71 2.68e-13 1161
+LeakyReLU 91.76 -5406.85 181.83 -133.37 50.05 589.93 2.36e-13 1231
+ReLU6 91.60 -5664.52 173.18 -173.63 17.18 155.81 1.09e-12 1188
+SiLU 86.77 -4516.79 200.1 -44.06 238.28 8276.62 8.77e-13 1198
+Hardswish 85.23 -4460.36 203.95 -34.41 418.03 4980.75 8.51e-13 1200
+Mish 84.51 -4437.43 201.51 -28.62 547.23 4268.57 8.81e-13 1183
+ELU 49.92 -7638.97 176.97 -110.74 2.73 144.42 8.06e-13 1193
+Hardtanh 49.92 -7621.49 176.72 -120.74 22.66 10.89 4.37e-13 1168
+SELU 49.92 -7482.86 173.16 -147.15 11.81 24.95 1.02e-12 1169
+CELU 49.92 -7637.44 177.17 -134.80 10.05 58.23 1.82e-12 1176
+Pearson Correlation 0.906 0.484 0.306 0.433 0.436 -0.434 0.425
+Kendall Correlation 0.443 0.135 0.058 0.289 0.443 -0.289 0.250
+accurately identifies the best-performing networks with acti-
+vation function searches for architectures such as VGG-19 and
+BERT. Furthermore, it offers rapid network evaluation, requir-
+ing only seconds to assess a candidate network. This makes it
+a highly efficient tool for identifying optimal architectures for
+diverse AI applications.
+REFERENCES
+[1] K. C. Nanda, E. N. Computer, S. K. Ch., and C. B. Madhavi, “Real-time
+face mask detection using computer vision and machine learning,” in
+Proceedings of the 2023 Second International Conference on Electronics
+and Renewable Systems , pp. 1532–1537, 2023.
+[2] D. Jacob, C. Ming-Wei, L. Kenton, and T. Kristina, “BERT: Pre-
+training of deep bidirectional transformers for language understanding,”
+in Proceedings of the 2019 Conference of the North American Chapter
+of the Association for Computational Linguistics: Human Language
+Technologies, vol. 1, pp. 4171–4186, 2019.
+[3] F. Wenqi, M. Yao, L. Qing, H. Yuan, Z. Eric, T. Jiliang, and Y . Dawei,
+“Graph neural networks for social recommendation,” in Proceeding of
+the 2019 World Wide Web Conference , p. 417–426, 2019.
+[4] L. Michael, Y . Yavuz, O. Ozgur, Z. Zhuoran, T. Shin-Yeh, W. Carole-
+Jean, and H. Mark, “Understanding capacity-driven scale-out neural rec-
+ommendation inference,” in Proceeding of the 2021 IEEE International
+Symposium on Performance Analysis of Systems and Software , pp. 162–
+171, 2021.
+[5] B. Zoph and Q. Le, “Neural architecture search with reinforcement
+learning,” inProceeding of the 5th International Conference on Learning
+Representations, 2017.
+[6] Z. Barret, V . Vijay, S. Jonathon, and L. Q. V , “Learning transferable
+architectures for scalable image recognition,” in Proceeding of the 2018
+IEEE/CVF Conference on Computer Vision and Pattern Recognition ,
+pp. 8697–8710, 2018.
+[7] P. Hieu, G. Melody, Z. Barret, L. Quoc, and D. Jeff, “Efficient neural
+architecture search via parameters sharing,” in Proceedings of the 35th
+International Conference on Machine Learning, vol. 80, pp. 4095–4104,
+2018.
+[8] L. Xiangzhong, L. Di, H. Shuo, K. Hao, C. Hui, and L. Weichen, “De-
+signing efficient dnns via hardware-aware neural architecture search and
+beyond,” IEEE Transactions on Computer-Aided Design of Integrated
+Circuits and Systems , vol. 41, no. 6, pp. 1799–1812, 2022.
+[9] J. Weiwen, Y . Lei, S. E. Hsing-Mean, Z. Qingfeng, G. Shouzhen,
+D. Sakyasingha, S. Yiyu, and H. Jingtong, “Hardware/software co-
+exploration of neural architectures,” IEEE Transactions on Computer-
+Aided Design of Integrated Circuits and Systems , vol. 39, no. 12,
+pp. 4805–4815, 2020.
+[10] W. Lanfei, X. Lingxi, B. Kaifeng, Z. Kaili, G. Jun, and T. Qi, “M²nas:
+Joint neural architecture optimization system with network transmis-
+sion,” IEEE Transactions on Computer-Aided Design of Integrated
+Circuits and Systems , vol. 42, no. 8, pp. 2631–2642, 2023.
+[11] L. Jaeseong, R. Jungsub, K. Duseok, and H. Soonhoi, “Snas: Fast
+hardware-aware neural architecture search methodology,” IEEE Trans-
+actions on Computer-Aided Design of Integrated Circuits and Systems ,
+vol. 41, no. 11, pp. 4826–4836, 2022.
+[12] J. Weiwen, Y . Lei, D. Sakyasingha, H. Jingtong, and S. Yiyu, “Standing
+on the shoulders of giants: Hardware and neural architecture co-search
+with hot start,” IEEE Transactions on Computer-Aided Design of Inte-
+grated Circuits and Systems , vol. 39, no. 11, pp. 4154–4165, 2020.
+[13] L. Xiangzhong, L. Di, K. Hao, H. Shuo, C. Hui, and L. Weichen,
+“Lightnas: On lightweight and scalable neural architecture search for
+embedded platforms,” IEEE Transactions on Computer-Aided Design of
+Integrated Circuits and Systems , vol. 42, no. 6, pp. 1784–1797, 2023.
+
+===== PAGE 14 =====
+14
+[14] S. Yanan, W. Handing, X. Bing, J. Yaochu, G. Y . Gary, and Z. Mengjie,
+“Surrogate-assisted evolutionary deep learning using an end-to-end
+random forest-based performance predictor,” IEEE Transactions on
+Evolutionary Computation, vol. 24, no. 2, pp. 350–364, 2020.
+[15] Y . Tang, Y . Wang, Y . Xu, H. Chen, B. Shi, C. Xu, C. Xu, Q. Tian,
+and C. Xu, “A semi-supervised assessor of neural architectures,” in
+proceeding of the 2020 IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, pp. 1807–1816, 2020.
+[16] H. Shayan, D. Xiaoliang, and K. J. Niraj, “Curious: Efficient neural
+architecture search based on a performance predictor and evolutionary
+search,” IEEE Transactions on Computer-Aided Design of Integrated
+Circuits and Systems , vol. 41, no. 11, pp. 4975–4990, 2022.
+[17] M. S. Abdelfattah, A. Mehrotra, Ł. Dudziak, and N. D. Lane, “Zero-Cost
+Proxies for Lightweight NAS,” in Proceeding of the 9th International
+Conference on Learning Representations , 2021.
+[18] L. Namhoon, A. Thalaiyasingam, and T. P. HS, “Snip: Single-shot
+network pruning based on connection sensitivity,” in Proceeding of the
+7th International Conference on Learning Representations , 2019.
+[19] T. Hidenori, K. Daniel, Y . D. L, and G. Surya, “Pruning neural networks
+without any data by iteratively conserving synaptic flow,” inAdvances in
+Neural Information Processing Systems , vol. 33, pp. 6377–6389, 2020.
+[20] G. Li, Y . Yang, K. Bhardwaj, and R. Marculescu, “Zico: Zero-shot
+NAS via inverse coefficient of variation on gradients,” in The Eleventh
+International Conference on Learning Representations , 2023.
+[21] Y . Li, J. Li, C. Hao, P. Li, J. Xiong, and D. Chen, “Extensible and
+efficient proxy for neural architecture search,” in Proceedings of the
+IEEE/CVF International Conference on Computer Vision , pp. 6199–
+6210, 2023.
+[22] W. Chen, X. Gong, and Z. Wang, “Neural architecture search on
+imagenet in four gpu hours: A theoretically inspired perspective,” in
+International Conference on Learning Representations (ICLR) , 2021.
+[23] J. Mellor, J. Turner, A. Storkey, and E. J. Crowley, “Neural architec-
+ture search without training,” in Proceeding of the 20th International
+Conference on Machine Learning , 2021.
+[24] Y . Liu, H. Li, Y . Sun, and S. Liu, “Das: Neural architecture search via
+distinguishing activation score,” ArXiv, vol. abs/2212.12132, 2022.
+[25] Y . Jason, C. Jeff, B. Yoshua, and L. Hod, “How transferable are features
+in deep neural networks?,” Advances in neural information processing
+systems, vol. 27, 2014.
+[26] D. Xuanyi and Y . Yi, “Nas-bench-201: Extending the scope of repro-
+ducible neural architecture search,” in Proceeding of the 8th Interna-
+tional Conference on Learning Representations , 2020.
+[27] D. Xuanyi, L. Lu, M. Katarzyna, and G. Bogdan, “Nats-bench: Bench-
+marking nas algorithms for architecture topology and size,” IEEE
+transactions on pattern analysis and machine intelligence, vol. 44, no. 7,
+pp. 3634–3646, 2021.
+[28] R. Ilija, J. Justin, X. Saining, L. Wan-Yen, and D. Piotr, “On network de-
+sign spaces for visual recognition,” in Proceeding of the 2019 IEEE/CVF
+International Conference on Computer Vision , 2019.
+[29] Y . Duan, X. Chen, H. Xu, Z. Chen, X. Liang, T. Zhang, and Z. Li,
+“Transnas-bench-101: Improving transferability and generalizability of
+cross-task neural architecture search,” in Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition , pp. 5251–
+5260, 2021.
+[30] R. Esteban, A. Alok, H. Yanping, and V . L. Quoc, “Regularized
+evolution for image classifier architecture search,” in Proceedings of the
+Thirty-Third AAAI Conference on Artificial Intelligence and Thirty-First
+Innovative Applications of Artificial Intelligence Conference and Ninth
+AAAI Symposium on Educational Advances in Artificial Intelligence ,
+2019.
+[31] L. Hanxiao, S. Karen, and Y . Yiming, “Darts: Differentiable architecture
+search,” in Proceeding of the 7th International Conference on Learning
+Representations, 2019.
+[32] Q. Yijian, W. Xin, C. Peng, and Z. Wenwu, “Gqnas: Graph q network
+for neural architecture search,” in Proceeding of the 2021 IEEE Inter-
+national Conference on Data Mining , pp. 1288–1293, 2021.
+[33] B. Jianrong, N. Jianyuan, L. Chao, J. Bin, Z. Fang, and H. Jianhai,
+“Improved blind spectrum sensing by covariance matrix cholesky de-
+composition and rbf-svm decision classification at low snrs,” IEEE
+Access, vol. 7, pp. 97117–97129, 2019.
+[34] K. Bor-Chen, H. Hsin-Hua, L. Cheng-Hsuan, H. Chih-Cheng, and T. Jin-
+Shiuh, “A kernel-based feature selection method for svm with rbf kernel
+for hyperspectral image classification,” IEEE Journal of Selected Topics
+in Applied Earth Observations and Remote Sensing , vol. 7, no. 1,
+pp. 317–326, 2014.
+[35] G.-B. Huang, P. Saratchandran, and N. Sundararajan, “An efficient
+sequential learning algorithm for growing and pruning rbf (gap-rbf)
+networks,” IEEE Transactions on Systems, Man, and Cybernetics, Part
+B (Cybernetics), vol. 34, no. 6, pp. 2284–2292, 2004.
+[36] H. Kohei, T. Takashi, T. Ryota, and K. Hisashi, “Self-measuring similar-
+ity for multi-task gaussian process,” in Proceedings of ICML Workshop
+on Unsupervised and Transfer Learning , vol. 27, pp. 145–153, 2012.
+[37] V . Jean-Philippe, T. Koji, and S. Bernhard, “A primer on kernel meth-
+ods,”Kernel methods in computational biology, vol. 47, pp. 35–70, 2004.
+[38] V . A. Alfred and E. H. John, The design and analysis of computer
+algorithms. Pearson Education India, 1974.
+[39] G. C. Valls, L. G. Chova, J. C. Maravilla, J. M. Guerrero, E. S. Olivas,
+L. A. Chorda, and J. Moreno, “Robust support vector method for hyper-
+spectral data classification and knowledge discovery,”IEEE Transactions
+on Geoscience and Remote Sensing, vol. 42, no. 7, pp. 1530–1542, 2004.
+[40] W. Wang, Z. Xu, W. Lu, and X. Zhang, “Determination of the spread
+parameter in the gaussian kernel for classification and regression,”
+Neurocomputing, vol. 55, no. 3, pp. 643–663, 2003.
+[41] F. Keinosuke, Introduction to statistical pattern recognition . Elsevier,
+2013.
+[42] A. R. Zamir, A. Sax, W. Shen, L. J. Guibas, J. Malik, and S. Savarese,
+“Taskonomy: Disentangling task transfer learning,” inProceedings of the
+IEEE conference on computer vision and pattern recognition , pp. 3712–
+3722, 2018.
+[43] K. He, X. Zhang, S. Ren, and J. Sun, “Delving deep into rectifiers:
+Surpassing human-level performance on imagenet classification,” in
+Proceeding of 2015 IEEE International Conference on Computer Vision,
+pp. 1026–1034, 2015.
+[44] K. Simonyan and A. Zisserman, “Very deep convolutional networks for
+large-scale image recognition,” in Proceeding of the 3rd International
+Conference on Learning Representations , pp. 1–14, 2015.
+[45] K. S. Yuan, ”Kernel methods and machine learning” . Cambridge
+University Press, 2014.
+[46] H. Alain and Z. Djemel, “Image quality metrics: Psnr vs. ssim,” in
+Proceeding of the 20th International Conference on Pattern Recognition,
+pp. 2366–2369, 2010.
+[47] Z. Wang, A. Bovik, H. Sheikh, and E. Simoncelli, “Image quality assess-
+ment: from error visibility to structural similarity,” IEEE Transactions
+on Image Processing , vol. 13, no. 4, pp. 600–612, 2004.
+[48] C. Israel, H. Yiteng, C. Jingdong, B. Jacob, B. Jacob, C. Jingdong,
+H. Yiteng, and C. Israel, “Pearson correlation coefficient,” Noise reduc-
+tion in speech processing , pp. 1–4, 2009.
+[49] B. Jens, M. Jana, and D. Riehle, “Effect of transparency and trust on
+acceptance of automatic online comment moderation systems,” in 2019
+IEEE 21st Conference on Business Informatics (CBI) , vol. 01, pp. 429–
+435, 2019.
+[50] Y . Kurihara, T. Yamasaki, T. Kaburagi, S. Kumagai, and T. Matsumoto,
+“Model of urine accumulation in the bladder and method for predicting
+unconstrained urine volume based on absorption spectrum of urine,”
+IEEE Access, vol. 8, pp. 69368–69377, 2020.
+[51] L. Liam and T. Ameet, “Random search and reproducibility for neural
+architecture search,” in Proceedings of The 35th Uncertainty in Artificial
+Intelligence Conference, pp. 367–377, 2020.
+[52] D. Xuanyi and Y . Yi, “Searching for a robust neural architecture in four
+gpu hours,” in Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition , pp. 1761–1770, 2019.
+[53] Dong Xuanyi and Yang Yi, “One-shot neural architecture search via
+self-evaluated template network,” in Proceeding of the IEEE/CVF Inter-
+national Conference on Computer Vision , pp. 3680–3689, 2019.
+[54] D. Xuanyi and Y . Yi, “Network pruning via transformable architecture
+search,” in Proceeding of the 33rd Conference on Neural Information
+Processing Systems, 2019.
+[55] A. Wan, X. Dai, P. Zhang, Z. He, Y . Tian, S. Xie, B. Wu, M. Yu, T. Xu,
+K. Chen, P. Vajda, and J. E. Gonzalez, “Fbnetv2: Differentiable neural
+architecture search for spatial and channel dimensions,” in Proceeding of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+pp. 12962–12971, 2020.
+[56] G. Bender, H. Liu, B. Chen, G. Chu, S. Cheng, P.-J. Kindermans, and
+Q. V . Le, “Can weight sharing outperform random architecture search?
+an investigation with tunas,” inProceedings of the IEEE/CVF conference
+on computer vision and pattern recognition , pp. 14323–14332, 2020.
+[57] X. Chen, L. Xie, J. Wu, and Q. Tian, “Progressive differentiable archi-
+tecture search: Bridging the depth gap between search and evaluation,”
+in Proceedings of the IEEE/CVF international conference on computer
+vision, pp. 1294–1303, 2019.
+[58] Y . Xu, L. Xie, X. Zhang, X. Chen, G.-J. Qi, Q. Tian, and H. Xiong,
+“Pc-darts: Partial channel connections for memory-efficient architecture
+search,” in International Conference on Learning Representations, 2020.
+
+===== PAGE 15 =====
+15
+[59] C. Liu, B. Zoph, M. Neumann, J. Shlens, W. Hua, L.-J. Li, L. Fei-Fei,
+A. Yuille, J. Huang, and K. Murphy, “Progressive neural architecture
+search,” in Proceedings of the European conference on computer vision
+(ECCV), pp. 19–34, 2018.
+[60] H. Dan and G. Kevin, “Bridging nonlinearities and stochastic regu-
+larizers with gaussian error linear units,” in Proceeding of the 5th
+International Conference on Learning Representations , 2017.
+[61] S. Elfwing, E. Uchibe, and K. Doya, “Sigmoid-weighted linear units
+for neural network function approximation in reinforcement learning,”
+Neural Networks, vol. 107, pp. 3–11, 2018.
+[62] M. Diganta, “Mish: A self regularized non-monotonic activation func-
+tion,” in Proceeding of the 31th British Machine Vision Conference ,
+2020.
+[63] J. T. Barron, “Continuously differentiable exponential linear units,” arXiv
+preprint arXiv:1704.07483, 2017.
+[64] D. A. Clevert, T. Unterthiner, and S. Hochreiter, “Fast and accurate deep
+network learning by exponential linear units (elus),” in Proceeding of
+the 4th International Conference on Learning Representations , 2016.
+[65] K. G ¨unter, U. Thomas, M. Andreas, and H. Sepp, “Self-normalizing
+neural networks,” Advances in neural information processing systems ,
+vol. 30, 2017.
+[66] R. Socher, A. Perelygin, J. C. Jean Wu, C. Manning, A. Ng, and C. Potts,
+“Recursive deep models for semantic compositionality over a sentiment
+treebank,” in Proceedings of the 2013 Conference on Empirical Methods
+in Natural Language Processing , p. 1631–1642, 2013.
+Tomomasa Yamasaki received his B.Eng. and
+M.Eng. degrees in System Engineering from
+Aoyama Gakuin University, Tokyo, Japan. He is
+currently pursuing a Ph.D. in Computer Science
+at the Singapore University of Technology and
+Design (SUTD), Singapore. His research interests
+focus on neural architecture search (NAS), and
+design automation tools for hardware–software co-
+optimization.
+He received the Best Paper Award at the
+ACM/IEEE International Symposium on Low Power
+Electronics and Design (ISLPED) in 2023. He was also a recipient of the Best
+Student Paper Award at the 8th IIAE International Conference on Industrial
+Application Engineering in 2020.
+Zhehui Wang received B.S. degree in Electri-
+cal Engineering from Fudan University, China, in
+2010, and Ph.D. degree in Electronic and Com-
+puter Engineering from Hong Kong University of
+Science and Technology, Hong Kong, in 2016. He
+is currently a Research Scientist with the Insti-
+tute of High Performance Computing, Agency for
+Science, Technology and Research, Singapore. He
+authored and co-authored more than 60 research
+papers in peer-reviewed journals, conferences, and
+books. His research interests include efficient AI
+deployment, AI on emerging technologies, hardware-software co-design, and
+high-performance computing.
+Luo Tao received his bachelor’s degree from the
+Harbin Institute of Technology, Harbin, China, in
+2010, his master’s degree from the University
+of Electronic Science and Technology of China,
+Chengdu, China, in 2013, and his Ph.D. degree from
+the School of Computer Science and Engineering,
+Nanyang Technological University, Singapore, in
+2018. He is currently a senior research scientist
+with the Institute of High Performance Computing
+(IHPC), Agency for Science, Technology and Re-
+search, Singapore (A*STAR), Singapore. His current
+research interests include high-performance computing, machine learning,
+computer architecture, hardware–software co-exploration, quantum comput-
+ing, efficient AI and its application.
+Niangjun Chen received the B.S. degree in Com-
+puter Science from the University of Cambridge and
+the M.S. and Ph.D. degrees in Computer Science
+from the California Institute of Technology. After
+graduating in 2017, he joined the Institute of High
+Performance Computing as a Research Scientist
+working on optimizing logistics and modeling and
+simulation of the transport systems. Since September
+2020, he has been an Assistant Professor with the
+Singapore University of Technology and Design. He
+has a joint appointment with the Institute for High
+Performance Computing, Agency for Science, Technology, and Research. His
+research interests include optimization, machine learning, game theory, and
+their applications to complex systems such as smart grids, data centers, and
+transport.
+Bo Wang received the Ph.D. degree in Electrical and
+Electronic Engineering from Nanyang Technological
+University, Singapore, in 2015. From 2015 to 2016,
+she worked as a Staff Circuit Design Engineer at
+MediaTek, Singapore. She then joined the National
+University of Singapore as a Post-Doctoral Research
+Fellow from 2016 to 2020. Since 2020, she has
+been an Assistant Professor at the Singapore Uni-
+versity of Technology and Design, Singapore. She
+has authored and co-authored many papers published
+in prestigious journals and conference proceedings,
+including JSSC, TCAS–I, TVLSI, TCAS–II, A-SSCC, DAC, DATE, ISLPED,
+and MobiSys. Her research interests span various aspects of energy-efficient
+system, architecture and circuit design, as well as design automation tools for
+hardware–software co-optimization.
+Dr. Wang received the Distinguished Design Award at the IEEE Asian
+Solid-State Circuits Conference (A-SSCC) in 2023. She was also a recipient
+of the Best Paper Award at the ACM/IEEE International Symposium on Low
+Power Electronics and Design (ISLPED) in 2023 and the International SoC
+Design Conference (ISOCC) in 2024 and 2014. She currently serves as an
+Associate Editor for the IEEE Open Journal of Circuits and Systems and has
+served as a Guest Editor for Frontiers in Neuroscience.

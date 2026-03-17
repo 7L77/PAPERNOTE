@@ -1,0 +1,95 @@
+Published as a conference paper at ICLR 2023
+zeroize
+skip
+conv_1x1
+conv_3x3
+avg
+zeroize
+skip
+conv_1x1
+conv_3x3
+avg
+zeroize
+skip
+conv_1x1
+conv_3x3
+avg
+zeroize
+skip
+conv_1x1
+conv_3x3
+avg
+zeroize
+skip
+conv_1x1
+conv_3x3
+avg
+zeroize
+skip
+conv_1x1
+conv_3x3
+avg
+0.380
+0.385
+0.390
+0.395
+0.400Mean Adversarial Accuracy
+1 2 3 4 5 6
+Operation
+#5926
+#4015
+#944
+#11286
+#325
+#4911
+#9587
+#1912
+#12295
+#258
+#11226
+#14272
+#959
+#448
+#9193
+#16
+#6555
+#2947
+#6187
+#11693
+architecture
+Figure 7: Top-20 architectures (out of 408) with exactly 2 times 3 × 3 convolutions and no 1 × 1
+convolutions according to mean adversarial accuracy on CIFAR-10. The operation number (1-6)
+corresponds to the edge in the cell, see Figure 1 for cell connectivity and operations. Stacking
+convolutions seems to be an important part of robust architectural design.
+CIFAR-10. It is interesting to see that there are no convolutions on edges 2 and 4, and additionally no
+dropping (operation zeroize) or skipping (operation skip-connect) of edge 1. In the case of edge 4, it
+seems that a single convolutional layer connecting input and output of the cell increases sensitivity of
+the network. Hence, most of the top-20 robust architectures stack convolutions (via edge 1, followed
+by either edge 3 or 5), from which we hypothesize that stacking convolution operations might improve
+robustness when designing architectures. At the same time, skipping input to output via edge 4
+seems not to affect robustness negatively, as long as the input feature map is combined with stacked
+convolutions. Further analyses can be found in Appendix B. We find that optimizing architecture
+design can have a substantial impact on the robustness of a network. In this setting, where networks
+have the same parameter count, we can see a large range of mean adversarial accuracies [0.21, 0.4]
+showing the potential of doubling the robustness of a network by carefully crafting its topology.
+Important to note here is that this is a first observation, which can be made by using our provided
+dataset. This observation functions as a motivation for how this dataset can be used to analyze
+robustness in combination with architecture design.
+5 C ONCLUSION
+We introduce a dataset for neural architecture design and robustness to provide the research community
+with more resources for analyzing what constitutes robust networks. We have evaluated all 6 466
+unique architectures from the commonly used NAS-Bench-201 benchmark against several adversarial
+attacks and image dataset corruptions. With this full evaluation at hand, we presented three use
+cases for this dataset: First, the correlation between the robustness of the architectures and two
+differentiable architecture measurements. We showed that these measurements are a good first
+approach for the architecture’s robustness, but have to be taken with caution when the perturbation
+increases. Second, neural architecture search directly on the robust accuracies, which indeed finds
+more robust architectures for different adversarial attacks. And last, an initial analysis of architectural
+design, where we showed that it is possible to improve robustness of networks with the same number
+of parameters by carefully designing their topology.
+Limitations and Broader Impact We show that carefully crafting the architectural design can lead
+to substantial impact on the architecture’s robustness. This paper aims to promote and streamline
+research on how the architecture design affects model robustness. It does so by evaluating pretrained
+architectures and is thus complementary to any work focusing on the analysis of different, potentially
+adversarial, training protocols.
+9

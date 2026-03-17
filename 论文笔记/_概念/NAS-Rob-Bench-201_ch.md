@@ -2,34 +2,35 @@
 type: concept
 language: zh-CN
 source_concept_note: "[[NAS-Rob-Bench-201]]"
-aliases: [鲁棒NAS-Bench-201, NAS-Rob-Bench201]
+aliases: [鲁棒 NAS-Bench-201, NASRobBench201]
 ---
 
 # NAS-Rob-Bench-201 中文条目
 
 ## 一句话直觉
-NAS-Rob-Bench-201 是一个“鲁棒版 NAS 基准”，把固定搜索空间内大量架构的对抗训练结果预先算好，便于快速比较搜索算法。
+NAS-Rob-Bench-201 是一个“可查表”的鲁棒 NAS 基准：把大量架构的对抗训练结果预先算好，后续搜索算法可以直接比较。
 
 ## 它为什么重要
-鲁棒 NAS 最贵的是反复对抗训练。这个基准能把成本前置，让不同方法在同一预算下公平比较。
+鲁棒 NAS 最大成本在反复对抗训练。这个基准把高成本离线化，让算法比较更公平、更快、更可复现。
 
 ## 一个小例子
-在 [[TRNAS]] 的补充实验里，作者把各类 NAS 方法都迁移到该基准并统一设为 1000 次评估，从而直接比较精度和效率。
+你可以在固定 query 预算下比较随机搜索、进化搜索、局部搜索的 PGD 指标，而不必每次从头重训所有候选架构。
 
 ## 更正式的定义
-NAS-Rob-Bench-201 包含 15,625 个已完成对抗训练的架构，并提供 clean 与多攻击设置下的鲁棒指标。
+NAS-Rob-Bench-201 基于 NAS-Bench-201 搜索空间，报告 6466 个非同构架构在对抗训练后的 clean 与 robust 指标（如 FGSM/PGD/APGD 相关评测）。
 
 ## 核心要点
-1. 对其定义的搜索空间具有较完整覆盖。
-2. 适合做预算受控的鲁棒 NAS 比较。
-3. 随机种子会引入轻微最优结果波动，解读时应关注统计稳定性。
+1. 它是固定搜索空间下的鲁棒 tabular benchmark。
+2. 适合做预算受控的 robust NAS 对比。
+3. 核心价值是“离线重训练一次，在线高效查表多次”。
 
 ## 这篇论文里怎么用
-- [[TRNAS]] 在该基准上对比标准 NAS 与鲁棒 NAS 基线，展示了更高效率和较强鲁棒表现。
+- [[NAS-RobBench-201]]：该论文就是这个基准的提出与分析工作。
+- [[TRNAS]]：在该基准上进行 robust NAS 方法对比验证。
 
 ## 代表工作
-- Robust NAS under adversarial training 的 benchmark 论文（ICLR 2024）构建该基准。
-- [[TRNAS]] 在其上做效率与性能验证。
+- [[NAS-RobBench-201]]：定义并公开该 benchmark。
+- [[TRNAS]]：在该 benchmark 上验证鲁棒搜索效率与性能。
 
 ## 相关概念
 - [[RobustBench]]

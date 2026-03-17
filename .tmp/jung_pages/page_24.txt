@@ -1,0 +1,39 @@
+Published as a conference paper at ICLR 2023
+A.9.2 I MAGE NET16-120 A DVERSARIAL ATTACK ACCURACIES (FIGURE 2)
+0 0.1 0.5 1 2 3 4 5 6 7 8 255
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4accuracy
+ImageNet16-120 FGSM accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4accuracy
+ImageNet16-120 PGD accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4accuracy
+ImageNet16-120 AA_APGD-CE accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4accuracy
+ImageNet16-120 AA_SQUARE accuracies
+Figure 20: Accuracy boxplots over all unique architectures in NAS-Bench-201 for different adver-
+sarial attacks (FGSM (Goodfellow et al., 2015), PGD (Kurakin et al., 2017), APGD (Croce & Hein,
+2020), Square (Andriushchenko et al., 2020)) and perturbation magnitude values ϵ, evaluated on
+ImageNet16-120. Red line corresponds to guessing.
+24

@@ -1,0 +1,3893 @@
+
+
+===== PAGE 1 =====
+Published as a conference paper at ICLR 2024
+ROBUST NAS UNDER ADVERSARIAL TRAINING : BENCH -
+MARK , THEORY , AND BEYOND
+Yongtao Wu
+LIONS, EPFL
+yongtao.wu@epfl.ch
+Fanghui Liu∗
+University of Warwick
+fanghui.liu@warwick.ac.uk
+Carl-Johann Simon-Gabriel†
+Mirelo AI
+cjsg@mirelo.ai
+Grigorios G Chrysos∗
+University of Wisconsin-Madison
+chrysos@wisc.edu
+Volkan Cevher
+LIONS, EPFL
+volkan.cevher@epfl.ch
+ABSTRACT
+Recent developments in neural architecture search (NAS) emphasize the significance
+of considering robust architectures against malicious data. However, there is a
+notable absence of benchmark evaluations and theoretical guarantees for searching
+these robust architectures, especially when adversarial training is considered. In
+this work, we aim to address these two challenges, making twofold contributions.
+First, we release a comprehensive data set that encompasses both clean accuracy and
+robust accuracy for a vast array ofadversarially trained networks from the NAS-
+Bench-201 search space on image datasets. Then, leveraging the neural tangent
+kernel (NTK) tool from deep learning theory, we establish a generalization theory
+for searching architecture in terms of clean accuracy and robust accuracy under
+multi-objective adversarial training. We firmly believe that our benchmark and
+theoretical insights will significantly benefit the NAS community through reliable
+reproducibility, efficient assessment, and theoretical foundation, particularly in the
+pursuit of robust architectures. 1
+1 I NTRODUCTION
+The success of deep learning can be partly attributed to the expert-designed architectures, e.g.,
+ResNet (He et al., 2016), Vision Transformer (Dosovitskiy et al., 2021), and GPT (Brown et al.,
+2020), which spurred research in the field of Neural Architecture Search (NAS) (Baker et al., 2017;
+Zoph & Le, 2017; Suganuma et al., 2017; Real et al., 2019; Liu et al., 2019). The target of NAS is
+to automate the process of discovering powerful network architectures from a search space using
+well-designed algorithms. This automated approach holds the promise of unveiling highly effec-
+tive architectures with promising performance that might have been overlooked in manually crafted
+designs (Zela et al., 2020; Wang et al., 2021; Ye et al., 2022).
+Nevertheless, merely pursuing architectures with high clean accuracy, as the primary target of NAS,
+is insufficient due to the vulnerability of neural networks to adversarial attacks, where even small
+perturbations can have a detrimental impact on performance (Szegedy et al., 2013). Consequently,
+there is a growing interest in exploring robust architectures through the lens of NAS (Guo et al.,
+2020; Mok et al., 2021; Hosseini et al., 2021; Huang et al., 2022). These approaches aim to discover
+architectures that exhibit both high performance and robustness under existing adversarial training
+strategies (Goodfellow et al., 2015; Madry et al., 2018).
+When studying the topic of robust neural architecture search, we find that there are some remaining
+challenges unsolved both empirically and theoretically. From a practical point of view, the accuracy of
+architecture found by NAS algorithms can be directly evaluated using existing benchmarks through
+a look-up approach, which significantly facilitates the evolution of the NAS community (Ying et al.,
+∗Partially done at LIONS, EPFL.
+†Partially done at AWS Lablets.
+1Our project page is available athttps://tt2408.github.io/nasrobbench201hp.
+1
+
+===== PAGE 2 =====
+Published as a conference paper at ICLR 2024
+2019; Duan et al., 2021; Dong & Yang, 2020; Hirose et al., 2021; Zela et al., 2022; Bansal et al., 2022;
+Jung et al., 2023). However, these benchmarks are constructed under standard training, leaving the
+adversarially trained benchmark missing. This requirement is urgent within the NAS community
+because 1) it would accelerate and standardize the process of delivering robust NAS algorithms (Guo
+et al., 2020; Mok et al., 2021), since our benchmark can be used as a look-up table; 2) the ranking of
+robust architectures shows some inconsistency based on whether adversarial training is involved, as
+we show in Table 1. Therefore, one main target of this work is to build a NAS benchmark tailored for
+adversarial training, which would be beneficial to reliable reproducibility and efficient assessment.
+Beyond the need for a benchmark, the theoretical guarantees for architectures obtained through NAS
+under adversarial training remain elusive. Prior literature (Oymak et al., 2021; Zhu et al., 2022a)
+establishes the generalization guarantee of the searched architecture under standard training based on
+neural tangent kernel (NTK) (Jacot et al., 2018). However, when involving adversarial training, it is
+unclear how to derive NTK under the multi-objective objective with standard training and adversarial
+training. Which NTK(s) can be employed to connect and further impact clean accuracy and robust
+accuracy? These questions pose an intriguing theoretical challenge to the community as well.
+Based on our discussions above, we summarize the contributions and insights as follows:
+• We release the first adversarially trained NAS benchmark calledNAS-RobBench-201. This benchmark
+evaluates the robust performance of architectures within the commonly used NAS-Bench-201 (Dong
+& Yang, 2020) search space in NAS community, which includes 6,466 unrepeated network archi-
+tectures. 107k GPU hours are required to build the benchmark on three datasets (CIFAR-10/100,
+ImageNet-16-120) under adversarial training. The entire results of all architectures are included
+in the supplementary material and will be public to foster the development of NAS algorithms for
+robust architecture.
+• We provide a comprehensive assessment of the benchmark, e.g., the performance of different NAS
+algorithms, the analysis of selected nodes from top architectures, and the correlation between clean
+accuracy and robust accuracy. We also test the correlation between various NTK metrics and
+accuracies, which demonstrates the utility of NTK(s) for architecture search.
+• We consider a general theoretical analysis framework for the searched architecture under a multi-
+objective setting, including standard training and adversarial training, from a broad search space,cf.
+Theorem 1. Our framework allows for fully-connected neural networks (FCNNs) and convolutional
+neural networks (CNNs) with activation function search, skip connection search, and filter size search
+(in CNNs). Our results indicate that clean accuracy is determined by a joint NTK that includes partly
+a clean NTK and a robust NTK while the robust accuracy is always influenced by a joint NTK with
+the robust NTK and its “twice” perturbed version2. For a complete theoretical analysis, we provide
+the estimation of the lower bound of the minimum eigenvalue of such joint NTK, which significantly
+affects the (robust) generalization performance with guarantees.
+By addressing these empirical and theoretical challenges, our benchmark comprehensively evaluates
+robust architectures under adversarial training for practitioners. Simultaneously, our theory provides
+a solid foundation for designing robust NAS algorithms. Overall, this work aims to contribute to
+the advancement of NAS, particularly in the realm of robust architecture search, as well as broader
+architecture design.
+2 R ELATED WORK
+In this section, we present a brief summary of the related literature, while a comprehensive overview
+and discussion of our contributions with respect to prior work are deferred to Appendix B.
+Adversarial example and defense.Since the seminal work of Szegedy et al. (2013) illustrated that
+neural networks are vulnerable to inputs with small perturbations, several approaches have emerged to
+defend against such attacks (Goodfellow et al., 2015; Madry et al., 2018; Xu et al., 2018; Xie et al.,
+2019; Zhang et al., 2019; Xiao et al., 2020). Adversarial training (Goodfellow et al., 2015; Madry et al.,
+2018) is one of the most effective defense mechanisms that minimizes the empirical training loss based
+2We call “clean NTK” the standard NTK w.r.t clean input while “robust NTK” refers to the NTK with adversarial
+input. The “twice” perturbed version refers to the input where adversarial noise is added twice.
+2
+
+===== PAGE 3 =====
+Published as a conference paper at ICLR 2024
+#3
+#6
+#4
+#5
+× 5
+#2
+#1
+Z er oiz e,    Skip connect,    1×1 A v g. pool    
+  
+3×3 Conv ,    1×1 Conv
+Lineara v g. pool
+Global 
+CellCell block
+Residual 
+× 5 × 5Cell
+block
+Residual 
+Conv
+Figure 1: Visualization of the NAS-Bench-201 search space.Top left: A neural cell with 4 nodes and 6
+edges. Top right: 5 predefined operations that can be selected as the edge in the cell.Bottom: Macro
+structure of each candidate architecture in the benchmark.
+on the adversarial data, which is obtained by solving a maximum problem. Goodfellow et al. (2015)
+use Fast Gradient Sign Method (FGSM), a one-step method, to generate the adversarial data. However,
+FGSM relies on the linearization of loss around data points and the resulting model is still vulnerable to
+other more sophisticated adversaries. Multi-step methods are subsequently proposed to further improve
+the robustness, e.g., multi-step FGSM (Kurakin et al., 2018), multi-step PGD (Madry et al., 2018).To
+mitigate the effect of hyper-parameters in PGD and the overestimation of robustness (Athalye et al.,
+2018), Croce & Hein (2020b) propose two variants of parameter-free PGD attack, namely,APGDCE
+and APGDDLR, where CE stands for cross-entropy loss and DLR indicates difference of logits ratio
+(DLR) loss. Both APGDCE and APGDDLR attacks dynamically adapt the step-size of PGD based
+on the loss at each step. Furthermore, to enhance the diversity of robust evaluation, Croce & Hein
+(2020b) introduce Auto-attack, which is the integration ofAPGDCE, APGDDLR, Adaptive Boundary
+Attack (FAB) (Croce & Hein, 2020a), and black-box Square Attack (Andriushchenko et al., 2020).
+NAS and benchmarks. Over the years, significant strides have been made towards developing NAS
+algorithms from various perspectives, e.g., differentiable search with weight sharing (Liu et al., 2019;
+Zela et al., 2020; Ye et al., 2022), NTK-based methods (Chen et al., 2021; Xu et al., 2021; Mok
+et al., 2022; Zhu et al., 2022a). Most recent work on NAS for robust architecture belongs to the
+first category (Guo et al., 2020; Mok et al., 2021). Along with the evolution of NAS algorithms, the
+development of NAS benchmarks is also important for an efficient and fair comparison. Regarding
+clean accuracy, several tabular benchmarks, e.g., NAS-Bench-101 (Ying et al., 2019), TransNAS-
+Bench-101 (Duan et al., 2021), NAS-Bench-201 (Dong & Yang, 2020) and NAS-Bench-301 (Zela et al.,
+2022) have been proposed that include the performance under standard training on image classification
+tasks. More recently, Jung et al. (2023) extend NAS-Bench-201 towards robustness by evaluating the
+performance in NAS-Bench-201 space in terms of various attacks. However, all of these benchmarks
+are under standard training, which motivates us to release the first NAS benchmark that contains the
+Other methods of generating adversarial examples include L-BFGS (Szegedy et al., 2013), C&W
+attack (Carlini & Wagner, 2017).
+performance under adversarial training.
+NTK. Originally proposed by Jacot et al. (2018), NTK connects the training dynamics of over-
+parameterized neural networks to kernel regression. In theory, NTK provides a tractable analysis for
+several phenomena in deep learning. For example, the generalization guarantee of over-parameterized
+FCNN under standard training has been established in Cao & Gu (2019); Zhu et al. (2022a). In this
+work, we extend the scope of NTK-based generalization guarantee to multi-objective training, which
+covers the case of both standard training and adversarial training.
+3 NAS-R OBBENCH -201
+In this section, we first describe the construction of the benchmark, including details on search space,
+datasets, training setup, and evaluation metrics. Next, we present a comprehensive statistical analysis
+of the built benchmark. More details can be found in the supplementary.
+3
+
+===== PAGE 4 =====
+Published as a conference paper at ICLR 2024
+Clean
+FGSM,3/255
+PGD,3/255
+FGSM,8/255
+PGD,8/255
+0
+10
+20
+30
+40
+50
+60
+70
+80Accuracy %
+CIFAR-10
+Clean
+FGSM,3/255
+PGD,3/255
+FGSM,8/255
+PGD,8/255
+0
+10
+20
+30
+40
+50Accuracy %
+CIFAR-100
+Clean
+FGSM,3/255
+PGD,3/255
+FGSM,8/255
+PGD,8/255
+0
+2
+4
+6
+8
+10
+12
+14Accuracy %
+ ImageNet-16-120
+Figure 2: Boxplots for both clean and robust accuracy of all6466 non-isomorphic architectures in the
+considered search space. Red line indicates the accuracy of a random guess.
+10 20 30 40 50 60 70 80
+Accuracy %
+0
+100
+200
+300
+400Frequency
+Clean
+FGSM, 8/255
+PGD, 8/255
+(a) Distribution of accuracy.
+0 1293 2586 3879 5172
+Architecture ranking. Clean
+0 2155 4310
+Architecture ranking
+Clean
+PGD, 8/255
+FGSM, 8/255 (b) Ranking of different metrics.
+0 1293 2586 3879 5172
+Architecture ranking. CIFAR-10
+0 2155 4310
+Architecture ranking
+CIFAR-10
+CIFAR-100
+ImageNet-16-120 (c) Ranking across datasets.
+Figure 3: (a) Distribution of accuracy on CIFAR-10. The peak in the distribution of clean accuracy is
+much more notable than that of FGSM and PGD. (b) The architecture ranking on CIFAR-10 sorted
+by robust metric and clean metric correlate well for lower ranking (see larger x-axis) but there still
+exists a difference for higher ranking. Both (a) and (b) motivate the NAS for robust architecture in
+terms of robust accuracy instead of clean accuracy. (c) Architecture ranking of average robust accuracy
+on 3 datasets, sorted by the average robust accuracy on CIFAR-10. The architectures present similar
+performance across different datasets, which motivates transferable NAS under adversarial training.
+Table 1: Spearman coefficient between various accuracies on CIFAR-10 on NAS-RobBench-201 and
+the benchmark of Jung et al. (2023). Specifically, thefirst three columns/rows(without *) indicate
+the clean, PGD (8/255), and FGSM (8/255) accuracies in NAS-RobBench-201, while thelast three
+columns/rows (with *) indicate the corresponding accuracies in Jung et al. (2023).
+Clean PGD FGSM Clean* PGD* FGSM*
+Clean 1.000 0.985 0.989 0.977 0.313 0.898
+PGD 0.985 1.000 0.998 0.970 0.382 0.937
+FGSM 0.989 0.998 1.000 0.974 0.371 0.931
+Clean* 0.977 0.970 0.974 1.000 0.322 0.891
+PGD* 0.313 0.382 0.371 0.322 1.000 0.487
+FGSM* 0.898 0.937 0.931 0.891 0.487 1.000
+3.1 B ENCHMARK CONSTRUCTION
+Search space. We construct our benchmark based on a commonly-used cell-based search space
+in the NAS community: NAS-Bench-201 (Dong & Yang, 2020), which consists of 6 edges and
+5 operators as depicted in Figure 1. Each edge can be selected from the following operator:
+{3 × 3 Convolution, 1 × 1 Convolution, Zeroize, Skip connect, 1 × 1 Average pooling}, which results
+in 56 = 15625 architectures while only 6466 architectures are non-isomorphic. Therefore, we only
+train and evaluate6466 architectures.
+Dataset. We evaluate each network architecture on (a) CIFAR-10 (Krizhevsky et al., 2009), (b) CIFAR-
+100 (Krizhevsky et al., 2009), and (c) ImageNet-16-120 (Chrabaszcz et al., 2017). Both CIFAR-10
+4
+
+===== PAGE 5 =====
+Published as a conference paper at ICLR 2024
+ 
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+59.4
+59.6
+59.8
+60.0
+60.2Average robust accuracy %
+Edge#1 Edge#2 Edge#3 Edge#4 Edge#5 Edge#6
+Architectures ID
+2581
+9930
+13714
+655
+6111
+1459
+5292
+4954
+9586
+2778
+Figure 4: The operators of each edge in the top-10 architectures (average robust accuracy) on NAS-
+RobBench-201. The definition of edge number (#1 ∼#6) and operators are illustrated in Figure 1.
+and CIFAR-100 contain60,000 RGB images of resolution32×32, where 50,000 images are in the
+training set and 10,000 images are in the test set. Each image in CIFAR-10 is annotated with1 out
+of the 10 categories while there are100 categories in CIFAR-100. ImageNet-16-120 is a variant of
+ImageNet that down-samples the images to resolution16×16 and selects images within the classes
+[1,120]. In total, there are 151,700 images in the training set and6,000 images in the test set. Data
+augmentation is applied for the training set. On CIFAR-10 and CIFAR-100, we apply a random crop
+for the original patch with 4 pixels padding on the border, a random flip with a probability of0.5, and
+standard normalization. On ImageNet-16-120, we apply similar augmentations via random crop with 2
+pixels padding. The data is normalized before the attack, following the setup in Zhang et al. (2019);
+Rice et al. (2020).
+Training procedure. We adopt a standard adversarial training setup via mini-batch SGD with a
+step-size of 0.05, momentum of 0.9, weight decay of 10−4, and batch size of 256. We train each
+network for 50 epochs where one-cycle step-size schedule with maximum step-size 0.1 (Smith &
+Topin, 2019), which is proposed for faster convergence. Each run is repeated for3 different seeds.
+Regarding the adversarial attack during training, we follow a common setting, i.e.,7 steps of projected
+gradient descent (PGD) with step-size2/255 and perturbation radiusρ=8 /255 (Madry et al., 2018).
+We apply the same setup for all of the aforementioned datasets. In total, we adversarially train and
+evaluate 6466×3×3 ≈ 58k architecturesby a number of NVIDIA T4 Tensor Core GPUs. One seed for
+one dataset consumes approximately 34 hours on 350 GPUs. Consequently, 3 datasets and 3 seeds take
+around 34×350×3×3 ≈ 107k GPU hours.
+Evaluation metrics. We evaluate the clean accuracy and robust accuracy of each architecture after train-
+ing. Specifically, we measure the robust accuracy based on fast gradient sign method (FGSM) (Goodfel-
+low et al., 2015) and PGD attack withℓ∞ constraint attack with perturbation radiusρ ∈ {3/255,8/255}.
+For PGD attack, we adopt20 steps with step-size2.5×ρ/20. Additionally, we evaluate each architec-
+ture under AutoAttack with perturbation radiusρ=8 /255.
+3.2 S TATISTICS OF THE BENCHMARK
+Overall preview of the benchmark.In Figure 2, we show the boxplots of the clean accuracy and robust
+accuracy of all architectures in the search space, respectively. Notice that there exists a non-negligible
+gap between the performance of different architectures, e.g., ranging from40% ∼70% accuracy under
+FGSM attack on CIFAR-10. Therefore, designing the architecture holds immense significance given
+the wide spectrum of achievable accuracy values. In Figure 3a, we plot the distribution of the clean
+accuracy and robust accuracy on CIFAR-10 in the proposed NAS-RobBench-201. We observe that the
+distribution of FGSM accuracy and PGD accuracy is similar while the peak in the distribution of clean
+accuracy is much more notable than that of FGSM and PGD. Overall, the architecture ranking sorted
+by robust metric and clean metric correlate well, as shown in Figure 3b.
+Effect of operators selection on robustness. To see the impact of operators in robust architecture
+design, in Figure 4, we present the selected operators at each edge of the top-10 architectures in
+5
+
+===== PAGE 6 =====
+Published as a conference paper at ICLR 2024
+Table 2: Result of different NAS algorithms on the proposed NAS-RobBench-201. “Optimal” refers to
+the architecture with the highest average robust accuracy among the benchmark. “Attack scheme” in
+the first column indicates how the accuracy is measured during the searching phase of these baseline
+methods.
+Attack scheme Method Clean FGSM
+(3/255)
+PGD
+(3/255)
+FGSM
+(8/255)
+PGD
+(8/255)
+- Optimal 0.794 0.698 0.692 0.537 0.482
+Clean
+Regularized Evolution 0.791 0.693 0.688 0.530 0.476
+Random Search 0.779 0.682 0.676 0.520 0.470
+Local Search 0.796 0.697 0.692 0.533 0.478
+FGSM (8/255)
+Regularized Evolution 0.790 0.693 0.688 0.532 0.478
+Random Search 0.774 0.679 0.674 0.521 0.471
+Local Search 0.794 0.695 0.689 0.535 0.481
+PGD (8/255)
+Regularized Evolution 0.789 0.692 0.686 0.531 0.478
+Random Search 0.771 0.676 0.671 0.520 0.471
+Local Search 0.794 0.695 0.689 0.535 0.481
+CIFAR-10 dataset. The top-10 criterion is the average robust accuracy, which is the mean of all robust
+metrics mentioned in Section 3.1. Overall, these top architectures have similar operator selections at
+each edge. We can see there exists a frequently selected operator for each edge. For instance, the3×3
+convolution operation appears to be the best choice for the majority of edges, except for edge 4, where
+the skip-connection operation demonstrates its optimality.
+Architecture ranking across different datasets.Figure 3c depicts the architecture ranking based
+on the average robust accuracy across CIFAR-10/100 and ImageNet-16. The result reveals a high
+correlation across various datasets, thereby inspiring the exploration of searching on a smaller dataset
+to find a robust architecture for larger datasets.
+Comparison with the existing benchmark (Jung et al., 2023). The closest benchmark to ours is
+built by Jung et al. (2023), where the robust evaluation of each architecture under standard training is
+given. In Table 1, we present the Spearman coefficient among different accuracies. The observation
+underscores the significance of adversarial training within our benchmark. Specifically, it suggests that
+employing Jung et al. (2023) to identify a resilient architecture may not guarantee its robustness under
+adversarial training. Moreover, in Figure 8 of the appendix, we can see a notable difference between
+these two benchmarks in terms of top architectures id and selected nodes.
+NAS algorithms on the benchmark. Let us illustrate how to use the proposed NAS-RobBench-201
+for NAS algorithms. As an example, we test several NAS algorithms on CIFAR-10. The search-based
+NAS algorithms include regularized evolution (Real et al., 2019), local search (White et al., 2021)
+and random search (Li & Talwalkar, 2020). We run each algorithm100 times with 150 queries and
+report the mean accuracy in Table 2. We can observe that by searching the robust metrics, e.g., FGSM
+and PGD, these methods are able to find a more robust architecture than using clean accuracy metrics.
+Additionally, local search performs better than other methods. Evaluation results on more NAS
+approaches including differentiable search approaches (Liu et al., 2019; Mok et al., 2021) and train-free
+approaches (Xu et al., 2021; Zhu et al., 2022a; Shu et al., 2022; Mellor et al., 2021) are deferred to
+Table 7 of the appendix.
+4 R OBUST GENERALIZATION GUARANTEES UNDER NAS
+Till now, we have built NAS-RobBench-201 to search robust architectures under adversarial training.
+To expedite the search process, NTK-based NAS algorithms allow for a train-free style in which
+neural architectures can be initially screened based on the minimum eigenvalue of NTK as well as its
+variants, e.g., Chen et al. (2021); Xu et al. (2021); Mok et al. (2022); Zhu et al. (2022a). Admittedly, it’s
+worth noting that these methods build upon early analysis on FCNNs under standard training within
+the learning theory community (Du et al., 2019c; Cao & Gu, 2019; Lee et al., 2019). Consequently,
+our subsequent theoretical results aim to provide a solid groundwork for the development of NTK-
+based robust NAS algorithms. Below, the problem setting is introduced in Section 4.1. The (robust)
+6
+
+===== PAGE 7 =====
+Published as a conference paper at ICLR 2024
+generalization guarantees of FCNNs as well as CNNs are present in Section 4.2. Detailed definitions
+for the notations can be found in Appendix A.
+4.1 P ROBLEM SETTING
+We consider a search space suitable for residual FCNNs and residual CNNs. To be specific, the class of
+L-layer (L ≥3) residual FCNN with inputx ∈ Rd and output f(x,W ) ∈ R is defined as follows:
+f1 = σ1(W1x), fl = 1
+L σl(Wlfl−1)+ αl−1fl−1, 2 ≤ l ≤ L−1,
+fL = ⟨wL,fL−1⟩, f (x,W )= fL,
+(1)
+where W1 ∈ Rm×d, Wl ∈ Rm×m, l =2 ,...,L−1 and wL ∈ Rm are learnable weights under Gaussian
+initialization i.e., W (i,j)
+l ∼ N(0,1/m), for l ∈[L]. This is the typical NTK initialization to ensure the
+convergence of the NTK (Allen-Zhu et al., 2019; Zhu et al., 2022a). We useW :=( W1,...,wL) ∈ W
+to represent the collection of all weights. The binary parameterαl ∈ {0,1} determines whether a skip
+connection is used and σl(·) represents an activation function in the lth layer. Similarly, we define
+L-layer (L ≥ 3) residual CNNs with input X ∈ Rd×p, where d denotes the input channels and p
+represents the pixels, and outputf(X,W ) ∈ R as follows:
+F1 = σ1(W1 ∗X), Fl = 1
+L σl(W l ∗Fl−1)+ αl−1Fl−1, 2 ≤ l ≤ L−1,
+FL = ⟨WL,FL−1⟩, f (X,W )= FL,
+(2)
+where W1 ∈ Rκ×m×d,W l ∈ Rκ×m×m, l=2 ,...,L−1, and WL ∈ Rm×p are learnable weights withm
+channels and κ filter size. We define the convolutional operator betweenX and W1 as:
+(W1 ∗X)(i,j) =
+κX
+u=1
+dX
+v=1
+W(u,i,v)
+1 X(v,j+u− κ+1
+2 ),for i ∈[m],j ∈[p],
+where we use zero-padding, i.e.,X(v,c) =0 for c <1 or c > p.
+Firstly, we introduce the following two standard assumptions to establish the theoretical result.
+Assumption 1 (Normalization of inputs). We assume the input space of FCNN is: X ⊆ { x ∈ Rd :
+∥x∥2 =1 }. Similarly, the input space of CNN is:X ⊆ {X ∈ Rd×p : ∥X∥F =1 }.
+Assumption 2 (Lipschitz of activation functions). We assume there exist two positive constantsCl,Lip
+and CLip such that |σl(0)| ≤Cl,Lip ≤ CLip with l ∈[L] and for anyz,z ′ ∈ R:
+|σl(z)−σl(z′)| ≤Cl,Lip|z−z′| ≤CLip|z−z′|,
+where CLip is the maximum value of the Lipschitz constants of all activation functions in the networks.
+Remarks: a) The first assumption is standard in deep learning theory and attainable in practice as we
+can always scale the input (Zhang et al., 2020).b) The second assumption covers a range of commonly
+used activation functions, e.g., ReLU, LeakyReLU, or sigmoid (Du et al., 2019a).
+Based on our description, thesearch space for the class of FCNNs and CNNs includes:a) Activation
+function search: any activation function σl that satisfies Assumption 2. b) Skip connection search:
+whether αl is zero or one.c) Convolutional filter size search: the value ofκ.
+Below we describe the adversarial training of FCNN while the corresponding one for CNN can be
+defined in the same way by changing the input asX.
+Definition 1(ρ-Bounded adversary). An adversary Aρ : X ×R×W → X is ρ-bounded for ρ >0 if it
+satisfies: Aρ(x,y,W ) ∈ ˆB(x,ρ). We denote byA∗
+ρ the worst-case ρ-bounded adversary given a loss
+function ℓ: A∗
+ρ(x,y,W ):=argmax ˆx∈ ˆB(x,ρ)ℓ(yf (ˆx,W )).
+For notational simplicity, we simplify the above notations asAρ(x,W ) and A∗
+ρ(x,W ) by omitting the
+label y. Without loss of generality, we restrict our inputx as well as its perturbation set ˆB(x,ρ) within
+the surface of the unit ballS := {x ∈ Rd : ∥x∥2 =1 } (Gao et al., 2019).
+7
+
+===== PAGE 8 =====
+Published as a conference paper at ICLR 2024
+We employ the cross-entropy lossℓ(z) := log[1+exp(−z)] for training. We consider the following
+multi-objective function involving with the standard training loss Lclean(W ) under empirical risk
+minimization and adversarial training lossLrobust(W ) with adversary in Definition 1:
+min
+W
+(1−β) 1
+N
+NX
+i=1
+ℓ[yif(xi,W )]
+| {z }
+:=Lclean(W )
++β 1
+N
+NX
+i=1
+ℓ[yif(Aρ(xi,W ),W )]
+| {z }
+:=Lrobust(W )
+, (3)
+where the regularization parameter β ∈ [0,1] is for a trade-off between the standard training and
+adversarial training. The β = 0 case refers to the standard training and β = 1 corresponds to the
+adversarial training. Based on our description, the neural network training by stochastic gradient
+descent (SGD) with a step-sizeγ is shown in Algorithm 1.
+4.2 G ENERALIZATION BOUNDS
+NTK plays an important role in understanding the generalization of neural networks (Jacot et al., 2018).
+Specifically, the NTK is defined as the inner product of the network Jacobian w.r.t the weights at
+initialization with infinite width, i.e.,k(xi,xj)=lim m→∞
+D
+∂f (xi,W [1])
+∂vec(W ) , ∂f (xj ,W [1])
+∂vec(W )
+E
+. To present the
+generalization theory, let us denote the NTK matrix for clean accuracy as:
+Kall :=(1 −β)2K+β(1−β)( ¯Kρ+ ¯K⊤
+ρ )+ β2 ˆKρ, (4)
+where K(i,j) = k(xi,xj) is called the clean NTK, ¯K(i,j)
+ρ = k(xi,A∗
+ρ(xj,W [1])) is the cross NTK, and
+ˆK(i,j)
+ρ = k(A∗
+ρ(xi,W [1]),A∗
+ρ(xj,W [1])) is the robust NTK, for anyi,j ∈[N]. Similarly, denote the
+NTK for robust accuracy as:
+fKall =(1 −β)2 ˆKρ+β(1−β)( ¯K2ρ+ ¯K⊤
+2ρ)+ β2 ˆK2ρ, (5)
+where the robust NTK ˆKρ has been defined in Eq. (4), ¯K(i,j)
+2ρ = k(A∗
+ρ(xi,W [1]),ˆxj), and ˆK(i,j)
+2ρ =
+k(ˆxi, ˆxj), for i,j ∈ [N], with ˆxj = A∗
+ρ(A∗
+ρ(xj,W [1]),W [1]) under “twice” perturbation. Note that
+the formulation of “twice” perturbation allows seeking a perturbed point outside the radius of ρ,
+indicating stronger adversarial data is used. Such perturbation is essentially different from doubling
+the step size under a single ρ. Interestingly, such a scheme has the benefit of avoiding catastrophic
+overfitting (de Jorge et al., 2022). Accordingly, we have the following theorem on generalization
+bounds for clean/robust accuracy with the proof deferred to Appendix C.
+Theorem 1 (Generalization bound of FCNN by NAS) . Denote the expected clean 0-1 loss
+as Lclean
+0−1 (W ) := E(x,y)[1 {yf (x,W ) <0}] , and expected robust 0-1 loss as Lrobust
+0−1 (W ) :=
+E(x,y)[1{yf (Aρ(x,W ),W ) <0}]. Consider the residual FCNNs in Eq. (1) by activation function
+search and skip connection search, under Assumption 1 and 2 withCLip. If one runs Algorithm 1 with
+a step-size γ = ν
+q
+min{y⊤(Kall)−1y,y⊤(fKall)−1y}/(
+p
+CLipeCLip m
+√
+N) for small enough abso-
+lute constant ν and width m ≥ m⋆, where m⋆ depends on (N,L,CLip,λmin(Kall),λmin(fKall),β,ρ,δ),
+then for anyρ ≤1, with probability at least1−δ over the randomness ofW [1], we obtain:
+E ¯W
+
+Lclean
+0−1 ( ¯W )
+
+≲ ˜O
+
+
+s
+L2y⊤K−1
+all y
+N
+
++O
+ r
+log(1/δ)
+N
+!
+,
+E ¯W
+
+Lrobust
+0−1 ( ¯W )
+
+≲ ˜O
+
+
+s
+L2y⊤fK−1
+all y
+N
+
++O
+ r
+log(1/δ)
+N
+!
+,
+(6)
+where λmin(·) indicates the minimum eigenvalue of the NTK matrix, the expectation in the LHS is taken
+over the uniform sample of ¯W from {W [1],...,W [N]}, as illustrated in Algorithm 1.
+Remarks: a) By courant minimax principle (Golub & Van Loan, 1996), we can further have
+y⊤Kall
+−1y ≤ y⊤y
+λmin(Kall), and y⊤ ˆK−1
+all y ≤ y⊤y
+λmin( ˆKall). Cao & Gu (2019); Zhu et al. (2022b) prove
+8
+
+===== PAGE 9 =====
+Published as a conference paper at ICLR 2024
+Algorithm 1: Multi-objective adversarial training with stochastic gradient descent
+Input: data distribution D, adversary Aρ, step size γ, iteration N, initialized weightW [1].
+for i=1 to N do
+Sample (xi,yi) from D.
+W [i+1] = W [i] −γ ·(1−β)∇W ℓ
+
+yif(xi,W [i])
+
+−γ ·β∇W ℓ
+
+yif(Aρ(xi,W [i]),W [i])
+
+.
+end for
+Randomly choose ¯W uniformly from
+
+W [1],...,W [N]	
+.
+Output: ¯W .
+for FCNN under standard training that the standard generalization error is affected by onlyλmin(K).
+As a comparison, our result exhibits that under multi-objective training, the generalization error is
+controlled by a mixed kernelKall with regularization factorβ. We can recover their result by taking
+β =0, i.e., standard training under the clean NTK. Takingβ =1 falls in the case of adversarial training
+with robust NTK.c) Our theory demonstrates that the clean accuracy is affected by both the clean NTK
+and robust NTK, but the robust generalization bound is influenced by the robust NTK and its “twice”
+perturbation version.
+Here we extend our generalization bound to CNN with proof postponed to Appendix E.
+Corollary 1. Consider the residual CNN defined in Eq. (2). If one applies Algorithm 1
+with a step-size γ = ν min{y⊤(Kall)−1y, y⊤(fKall)−1y}/(
+p
+CLippκeCLip
+√κm
+√
+N) for
+some small enough absolute constant ν and the width m ≥ m⋆, where m⋆ depends on
+(N, L, p, κ, CLip, λmin(Kall), λmin(fKall), β, ρ, δ), then under Assumption 1 and 2, for any ρ ≤ 1,
+with probability at least1−δ, one has the generalization result as in Eq.(6).
+Remarks: Notice that the filter size κ affects the step-size and the required over-parameterization
+condition. A larger filter size enables larger step-sizes to achieve a faster convergence rate, which aligns
+with practical insights (Ding et al., 2022).
+4.3 C ORRELATION BETWEEN NTK AND ACCURACY ON NAS-R OBBENCH -201
+KNAS PGD,
+ 3/255
+PGD,
+ 8/255
+PGD, 2
+ 3/255
+PGD. 2
+ 8/255
+NTK score
+Clean
+ FGSM 
+ 3/255 
+ PGD 
+ 3/255 
+ APGD 
+ 3/255 
+ FGSM 
+ 8/255 
+ PGD 
+ 8/255 
+ APGD 
+ 8/255 
+Accuracy
+0.527 0.533 0.540 0.537 0.549
+0.546 0.552 0.559 0.556 0.568
+0.543 0.550 0.556 0.553 0.565
+0.541 0.548 0.554 0.551 0.564
+0.601 0.608 0.614 0.611 0.622
+0.598 0.604 0.610 0.608 0.619
+0.593 0.599 0.605 0.602 0.615
+0.54
+0.56
+0.58
+0.60
+0.62
+Figure 5: Spearman coefficient between NTK-scores and
+various metrics. Labels with 2ρ in the x-axis indicate
+the scores w.r.t the robust twice NTK while labels withρ
+indicates the score w.r.t the robust NTK.
+In Figure 5, we plot the Spearman corre-
+lation between different NTK scores and
+various accuracy metrics. Specifically, we
+use adversarial data with PGD attack to
+construct the kernel ˆKρ defined in Eq. (4).
+Then, to efficiently compute λmin, we es-
+timate it by its Frobenius norm as in Xu
+et al. (2021), and we simply name it NTK-
+score. Specifically, we focus on 5 distinct
+NTK variants, including clean NTK, robust
+NTKs with ρ ∈ { 3/255,8/255}, and the
+corresponding robust twice NTKs. Regard-
+ing the robust twice NTK, we first perform
+one PGD attack on the raw image data to
+generate the adversarial data, and then we
+perform the same attack on this adversarial
+data again and use it to construct the NTK.
+Our findings reveal that robust NTKs ex-
+hibit a notably stronger correlation when
+compared to standard NTK under adversar-
+ial training. More interestingly, we observe
+that the correlation is increasing for met-
+rics with larger perturbation. Such findings
+persist when examining NTKs with FGSM
+attack, as we elaborate in Appendix F.
+9
+
+===== PAGE 10 =====
+Published as a conference paper at ICLR 2024
+5 C ONCLUSION
+In this paper, to facilitate the research of the NAS community, we release NAS-RobBench-201 that
+includes the robust evaluation result of6466 architectures on3 image datasets under adversarial training.
+Furthermore, we study the robust generalization guarantee of both FCNN and CNN for NAS. Our
+result reveals how various NTKs can affect the robustness of neural networks, which can motivate new
+designs of robust NAS approaches. The first limitation is that our benchmark and theoretical results do
+not explore the cutting-edge (vision) Transformers. Additionally, our NTK-based analysis studies the
+neural network in the linear regime, which can not fully explain its success in practice (Allen-Zhu et al.,
+2019; Yang & Hu, 2021). Nevertheless, we believe both our benchmark and theoretical analysis can be
+useful for practitioners in exploring robust architectures.
+ACKNOWLEDGEMENTS
+We thank the reviewers for their constructive feedback. We are grateful to Kailash Budhathoki from
+Amazon for the assistance. This work has received funding from the Swiss National Science Foundation
+(SNSF) under grant number 200021 205011. This work was supported by Hasler Foundation Program:
+Hasler Responsible AI (project number 21043). Corresponding author: Fanghui Liu.
+ETHICS STATEMENT
+On one hand, in the pursuit of facilitating innovation in robust neural architecture design, we build a
+benchmark by using around 107k GPU hours. We acknowledge that such a substantial computational
+footprint has environmental consequences, e.g., energy consumption and carbon emissions. On the
+other hand, the core target of robust NAS is to guarantee that AI models excel not only in accuracy but
+also in robustness towards malicious data. Therefore, we anticipate positive societal consequences
+stemming from our research efforts.
+REPRODUCIBILITY STATEMENT
+Details on the construction of the benchmark can be found in Section 3.1, including the description
+of search space, dataset, and hyperparameters setting. Furthermore, in the supplementary material,
+we provide the evaluation results of all architectures in the proposed benchmark. The code and the
+pre-trained weight will be publicly released after the paper’s acceptance. Regarding the theoretical
+result, all the proofs can be found in Appendix C to E.
+REFERENCES
+Zeyuan Allen-Zhu, Yuanzhi Li, and Zhao Song. A convergence theory for deep learning via over-
+parameterization. In International Conference on Machine Learning (ICML), 2019.
+Maksym Andriushchenko, Francesco Croce, Nicolas Flammarion, and Matthias Hein. Square attack:
+a query-efficient black-box adversarial attack via random search. In European Conference on
+Computer Vision (ECCV), pp. 484–501. Springer, 2020.
+Sanjeev Arora, Simon S Du, Zhiyuan Li, Ruslan Salakhutdinov, Ruosong Wang, and Dingli Yu.
+Harnessing the power of infinitely wide deep nets on small-data tasks. InInternational Conference
+on Learning Representations (ICLR), 2020.
+Anish Athalye, Nicholas Carlini, and David Wagner. Obfuscated gradients give a false sense of security:
+Circumventing defenses to adversarial examples. InInternational Conference on Machine Learning
+(ICML), 2018.
+Bowen Baker, Otkrist Gupta, Nikhil Naik, and Ramesh Raskar. Designing neural network architectures
+using reinforcement learning. In International Conference on Learning Representations (ICLR),
+2017.
+10
+
+===== PAGE 11 =====
+Published as a conference paper at ICLR 2024
+Archit Bansal, Danny Stoll, Maciej Janowski, Arber Zela, and Frank Hutter. Jahs-bench-201: A
+foundation for research on joint architecture and hyperparameter search. In Advances in neural
+information processing systems (NeurIPS), 2022.
+Alberto Bietti and Julien Mairal. On the inductive bias of neural tangent kernels. InAdvances in neural
+information processing systems (NeurIPS), 2019.
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal,
+Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are
+few-shot learners. Advances in neural information processing systems (NeurIPS), 2020.
+Yuan Cao and Quanquan Gu. Generalization bounds of stochastic gradient descent for wide and deep
+neural networks. Advances in neural information processing systems (NeurIPS), 2019.
+Yuan Cao, Zhiying Fang, Yue Wu, Ding-Xuan Zhou, and Quanquan Gu. Towards understanding the
+spectral bias of deep learning.arXiv preprint arXiv:1912.01198, 2019.
+Nicholas Carlini and David Wagner. Towards evaluating the robustness of neural networks. In2017
+ieee symposium on security and privacy (sp), pp. 39–57. Ieee, 2017.
+Wuyang Chen, Xinyu Gong, and Zhangyang Wang. Neural architecture search on imagenet in
+four gpu hours: A theoretically inspired perspective. In International Conference on Learning
+Representations (ICLR), 2021.
+Lenaic Chizat, Edouard Oyallon, and Francis Bach. On lazy training in differentiable programming.
+Advances in neural information processing systems (NeurIPS), 2019.
+Moulik Choraria, Leello Tadesse Dadi, Grigorios Chrysos, Julien Mairal, and V olkan Cevher. The spec-
+tral bias of polynomial neural networks. InInternational Conference on Learning Representations
+(ICLR), 2022.
+Patryk Chrabaszcz, Ilya Loshchilov, and Frank Hutter. A downsampled variant of imagenet as an
+alternative to the cifar datasets, 2017.
+Moustapha Cisse, Piotr Bojanowski, Edouard Grave, Yann Dauphin, and Nicolas Usunier. Parseval
+networks: Improving robustness to adversarial examples. InInternational Conference on Machine
+Learning (ICML), 2017.
+Francesco Croce and Matthias Hein. Minimally distorted adversarial examples with a fast adaptive
+boundary attack. In International Conference on Machine Learning (ICML), 2020a.
+Francesco Croce and Matthias Hein. Reliable evaluation of adversarial robustness with an ensemble of
+diverse parameter-free attacks. InInternational Conference on Machine Learning (ICML), 2020b.
+Pau de Jorge, Adel Bibi, Riccardo V olpi, Amartya Sanyal, Philip Torr, Gr´egory Rogez, and Puneet K.
+Dokania. Make some noise: Reliable and efficient single-step adversarial training. InAdvances in
+neural information processing systems (NeurIPS), 2022.
+Xiaohan Ding, Xiangyu Zhang, Jungong Han, and Guiguang Ding. Scaling up your kernels to 31x31:
+Revisiting large kernel design in cnns. InConference on Computer Vision and Pattern Recognition
+(CVPR), 2022.
+Xuanyi Dong and Yi Yang. Nas-bench-201: Extending the scope of reproducible neural architecture
+search. In International Conference on Learning Representations (ICLR), 2020.
+Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas
+Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit,
+and Neil Houlsby. An image is worth 16x16 words: Transformers for image recognition at scale. In
+International Conference on Learning Representations (ICLR), 2021.
+Simon Du, Jason Lee, Haochuan Li, Liwei Wang, and Xiyu Zhai. Gradient descent finds global minima
+of deep neural networks. InInternational Conference on Machine Learning (ICML), 2019a.
+11
+
+===== PAGE 12 =====
+Published as a conference paper at ICLR 2024
+Simon S Du, Kangcheng Hou, Russ R Salakhutdinov, Barnabas Poczos, Ruosong Wang, and Keyulu
+Xu. Graph neural tangent kernel: Fusing graph neural networks with graph kernels.Advances in
+neural information processing systems (NeurIPS), 2019b.
+Simon S Du, Xiyu Zhai, Barnabas Poczos, and Aarti Singh. Gradient descent provably optimizes
+over-parameterized neural networks. In International Conference on Learning Representations
+(ICLR), 2019c.
+Yawen Duan, Xin Chen, Hang Xu, Zewei Chen, Xiaodan Liang, Tong Zhang, and Zhenguo Li.
+Transnas-bench-101: Improving transferability and generalizability of cross-task neural architecture
+search. In Conference on Computer Vision and Pattern Recognition (CVPR), 2021.
+Ruiqi Gao, Tianle Cai, Haochuan Li, Cho-Jui Hsieh, Liwei Wang, and Jason D Lee. Convergence
+of adversarial training in overparametrized neural networks. In Advances in neural information
+processing systems (NeurIPS), 2019.
+Xitong Gao, Cheng-Zhong Xu, et al. Mora: Improving ensemble robustness evaluation with model
+reweighing attack. Advances in Neural Information Processing Systems, 2022.
+Gene H. Golub and Charles F. Van Loan.Matrix Computations (3rd Ed.). 1996.
+Ian J Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing adversarial
+examples. In International Conference on Learning Representations (ICLR), 2015.
+Minghao Guo, Yuzhe Yang, Rui Xu, Ziwei Liu, and Dahua Lin. When nas meets robustness: In search
+of robust architectures against adversarial attacks. InConference on Computer Vision and Pattern
+Recognition (CVPR), 2020.
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recognition.
+In Conference on Computer Vision and Pattern Recognition (CVPR), 2016.
+Zhezhi He, Adnan Siraj Rakin, and Deliang Fan. Parametric noise injection: Trainable randomness to
+improve deep neural network robustness against adversarial attack. InProceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, pp. 588–597, 2019.
+Dan Hendrycks and Thomas Dietterich. Benchmarking neural network robustness to common cor-
+ruptions and perturbations. In International Conference on Learning Representations (ICLR) ,
+2019.
+Yoichi Hirose, Nozomu Yoshinari, and Shinichi Shirakawa. Nas-hpo-bench-ii: A benchmark dataset
+on joint optimization of convolutional neural network architecture and training hyperparameters. In
+Asian Conference on Machine Learning, 2021.
+Ramtin Hosseini, Xingyi Yang, and Pengtao Xie. Dsrna: Differentiable search of robust neural
+architectures. In Conference on Computer Vision and Pattern Recognition (CVPR), pp. 6196–6205,
+2021.
+Hanxun Huang, Yisen Wang, Sarah Erfani, Quanquan Gu, James Bailey, and Xingjun Ma. Exploring
+architectural ingredients of adversarially robust deep neural networks. In Advances in neural
+information processing systems (NeurIPS), 2021.
+Kaixuan Huang, Yuqing Wang, Molei Tao, and Tuo Zhao. Why do deep residual networks generalize
+better than deep feedforward networks?—a neural tangent kernel perspective. Advances in neural
+information processing systems (NeurIPS), 2020.
+Shihua Huang, Zhichao Lu, Kalyanmoy Deb, and Vishnu Naresh Boddeti. Revisiting residual networks
+for adversarial robustness: An architectural perspective.arXiv preprint arXiv:2212.11005, 2022.
+Arthur Jacot, Franck Gabriel, and Clement Hongler. Neural tangent kernel: Convergence and general-
+ization in neural networks. In S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-Bianchi,
+and R. Garnett (eds.),Advances in neural information processing systems (NeurIPS), 2018.
+Steffen Jung, Jovita Lukasik, and Margret Keuper. Neural architecture design and robustness: A
+dataset. In International Conference on Learning Representations (ICLR), 2023.
+12
+
+===== PAGE 13 =====
+Published as a conference paper at ICLR 2024
+Alex Krizhevsky, Geoffrey Hinton, et al. Learning multiple layers of features from tiny images. In
+Technical report, 2009.
+Souvik Kundu, Mahdi Nazemi, Peter A Beerel, and Massoud Pedram. Dnr: A tunable robust pruning
+framework through dynamic network rewiring of dnns. InProceedings of the 26th Asia and South
+Pacific Design Automation Conference, pp. 344–350, 2021.
+Alexey Kurakin, Ian J Goodfellow, and Samy Bengio. Adversarial examples in the physical world. In
+Artificial intelligence safety and security, 2018.
+Jaehoon Lee, Lechao Xiao, Samuel Schoenholz, Yasaman Bahri, Roman Novak, Jascha Sohl-Dickstein,
+and Jeffrey Pennington. Wide neural networks of any depth evolve as linear models under gradient
+descent. In Advances in neural information processing systems (NeurIPS), 2019.
+Liam Li and Ameet Talwalkar. Random search and reproducibility for neural architecture search. In
+Uncertainty in artificial intelligence, 2020.
+Hanxiao Liu, Karen Simonyan, and Yiming Yang. DARTS: Differentiable architecture search. In
+International Conference on Learning Representations (ICLR), 2019.
+Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, and Adrian Vladu.
+Towards deep learning models resistant to adversarial attacks. In International Conference on
+Learning Representations (ICLR), 2018.
+Joe Mellor, Jack Turner, Amos Storkey, and Elliot J Crowley. Neural architecture search without
+training. In International Conference on Machine Learning (ICML), 2021.
+Jisoo Mok, Byunggook Na, Hyeokjun Choe, and Sungroh Yoon. Advrush: Searching for adversarially
+robust neural architectures. In International Conference on Computer Vision (ICCV), 2021.
+Jisoo Mok, Byunggook Na, Ji-Hoon Kim, Dongyoon Han, and Sungroh Yoon. Demystifying the neural
+tangent kernel from a practical perspective: Can it be trusted for neural architecture search without
+training? In Conference on Computer Vision and Pattern Recognition (CVPR), 2022.
+Quynh N Nguyen and Marco Mondelli. Global convergence of deep networks with one wide layer
+followed by pyramidal topology. InAdvances in neural information processing systems (NeurIPS),
+2020.
+Samet Oymak, Mingchen Li, and Mahdi Soltanolkotabi. Generalization guarantees for neural archi-
+tecture search with train-validation split. In International Conference on Machine Learning, pp.
+8291–8301, 2021.
+Adityanarayanan Radhakrishnan, George Stefanakis, Mikhail Belkin, and Caroline Uhler. Simple, fast,
+and flexible framework for matrix completion with infinite width neural networks.Proceedings of
+the National Academy of Sciences, 119(16):e2115064119, 2022.
+Esteban Real, Sherry Moore, Andrew Selle, Saurabh Saxena, Yutaka Leon Suematsu, Jie Tan, Quoc V
+Le, and Alexey Kurakin. Large-scale evolution of image classifiers. InInternational Conference on
+Machine Learning (ICML), 2017.
+Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc V Le. Regularized evolution for image
+classifier architecture search. InAAAI Conference on Artificial Intelligence, 2019.
+Leslie Rice, Eric Wong, and Zico Kolter. Overfitting in adversarially robust deep learning. In
+International Conference on Machine Learning, pp. 8093–8104. PMLR, 2020.
+Andrew Ross and Finale Doshi-Velez. Improving the adversarial robustness and interpretability of deep
+neural networks by regularizing their input gradients. InAAAI Conference on Artificial Intelligence,
+2018.
+Yao Shu, Shaofeng Cai, Zhongxiang Dai, Beng Chin Ooi, and Bryan Kian Hsiang Low. Nasi: Label-and
+data-agnostic neural architecture search at initialization. InInternational Conference on Learning
+Representations (ICLR), 2022.
+13
+
+===== PAGE 14 =====
+Published as a conference paper at ICLR 2024
+Leslie N Smith and Nicholay Topin. Super-convergence: Very fast training of neural networks using
+large learning rates. In Artificial intelligence and machine learning for multi-domain operations
+applications, volume 11006, pp. 369–386. SPIE, 2019.
+Masanori Suganuma, Shinichi Shirakawa, and Tomoharu Nagao. A genetic programming approach to
+designing convolutional neural network architectures. InProceedings of the genetic and evolutionary
+computation conference, 2017.
+Christian Szegedy, Wojciech Zaremba, Ilya Sutskever, Joan Bruna, Dumitru Erhan, Ian Goodfellow,
+and Rob Fergus. Intriguing properties of neural networks.arXiv preprint arXiv:1312.6199, 2013.
+Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara Fridovich-Keil, Nithin Raghavan, Utkarsh
+Singhal, Ravi Ramamoorthi, Jonathan Barron, and Ren Ng. Fourier features let networks learn
+high frequency functions in low dimensional domains.Advances in Neural Information Processing
+Systems, 33:7537–7547, 2020.
+Roman Vershynin. Introduction to the non-asymptotic analysis of random matrices, pp. 210–268.
+Cambridge University Press, 2012. doi: 10.1017/CBO9780511794308.006.
+Ruochen Wang, Minhao Cheng, Xiangning Chen, Xiaocheng Tang, and Cho-Jui Hsieh. Rethinking
+architecture selection in differentiable nas. InInternational Conference on Learning Representations
+(ICLR), 2021.
+Yihan Wang, Zhouxing Shi, Quanquan Gu, and Cho-Jui Hsieh. On the convergence of certified robust
+training with interval bound propagation. InInternational Conference on Learning Representations
+(ICLR), 2022.
+Colin White, Sam Nolen, and Yash Savani. Exploring the loss landscape in neural architecture search.
+In Uncertainty in Artificial Intelligence, 2021.
+Chang Xiao, Peilin Zhong, and Changxi Zheng. Enhancing adversarial defense by k-winners-take-all.
+In International Conference on Learning Representations (ICLR), 2020.
+Cihang Xie, Yuxin Wu, Laurens van der Maaten, Alan L Yuille, and Kaiming He. Feature denoising
+for improving adversarial robustness. InConference on Computer Vision and Pattern Recognition
+(CVPR), pp. 501–509, 2019.
+Jingjing Xu, Liang Zhao, Junyang Lin, Rundong Gao, Xu Sun, and Hongxia Yang. Knas: green neural
+architecture search. In International Conference on Machine Learning (ICML), 2021.
+Weilin Xu, David Evans, and Yanjun Qi. Feature squeezing: Detecting adversarial examples in deep
+neural networks. Network and Distributed Systems Security Symposium, 2018.
+Greg Yang and Edward J Hu. Feature learning in infinite-width neural networks. In International
+Conference on Machine Learning (ICML), 2021.
+Peng Ye, Baopu Li, Yikang Li, Tao Chen, Jiayuan Fan, and Wanli Ouyang. b-darts: Beta-decay
+regularization for differentiable architecture search. InConference on Computer Vision and Pattern
+Recognition (CVPR), 2022.
+Chris Ying, Aaron Klein, Eric Christiansen, Esteban Real, Kevin Murphy, and Frank Hutter. Nas-bench-
+101: Towards reproducible neural architecture search. In International Conference on Machine
+Learning (ICML), 2019.
+Arber Zela, Thomas Elsken, Tonmoy Saikia, Yassine Marrakchi, Thomas Brox, and Frank Hutter.
+Understanding and robustifying differentiable architecture search. InInternational Conference on
+Learning Representations (ICLR), 2020.
+Arber Zela, Julien Niklas Siems, Lucas Zimmer, Jovita Lukasik, Margret Keuper, and Frank Hutter.
+Surrogate nas benchmarks: Going beyond the limited search spaces of tabular nas benchmarks. In
+International Conference on Learning Representations (ICLR), 2022.
+Hongyang Zhang, Yaodong Yu, Jiantao Jiao, Eric Xing, Laurent El Ghaoui, and Michael Jordan.
+Theoretically principled trade-off between robustness and accuracy. InInternational Conference on
+Machine Learning (ICML), 2019.
+14
+
+===== PAGE 15 =====
+Published as a conference paper at ICLR 2024
+Yi Zhang, Orestis Plevrakis, Simon S Du, Xingguo Li, Zhao Song, and Sanjeev Arora. Over-
+parameterized adversarial training: An analysis overcoming the curse of dimensionality. InAdvances
+in neural information processing systems (NeurIPS), 2020.
+Zhenyu Zhu, Fanghui Liu, Grigorios Chrysos, and V olkan Cevher. Generalization properties of NAS
+under activation and skip connection search. InAdvances in neural information processing systems
+(NeurIPS), 2022a.
+Zhenyu Zhu, Fanghui Liu, Grigorios Chrysos, and V olkan Cevher. Robustness in deep learning: The
+good (width), the bad (depth), and the ugly (initialization). In Advances in neural information
+processing systems (NeurIPS), 2022b.
+Barret Zoph and Quoc Le. Neural architecture search with reinforcement learning. InInternational
+Conference on Learning Representations (ICLR), 2017.
+Barret Zoph, Vijay Vasudevan, Jonathon Shlens, and Quoc V Le. Learning transferable architectures
+for scalable image recognition. InConference on Computer Vision and Pattern Recognition (CVPR),
+2018.
+15
+
+===== PAGE 16 =====
+Published as a conference paper at ICLR 2024
+CONTENTS OF THE APPENDIX
+The Appendix is organized as follows:
+• In Appendix A, we summarize the symbols and notation used in this paper.
+• A comprehensive overview of related literatures can be found in Appendix B.1. A detailed clarifica-
+tion of the distinctions between our work and prior research is present in Appendix B.2.
+• In Appendix C, we include the proof for the generalization bound of FCNNs.
+• The proof for the lower bound on the minimum eigenvalue of the NTK is present in Appendix D.
+• The extension of theoretical results to CNN can be found at Appendix E.
+• Further details on the experiment are developed in Appendix F.
+• Limitations and societal impact of this work are discussed in Appendix G and Appendix H, respec-
+tively.
+A S YMBOLS AND NOTATION
+Vectors/matrices/tensors are symbolized by lowercase/uppercase/calligraphic boldface letters, e.g.,
+w, W , W. We use∥·∥F and ∥·∥2 to represent the Frobenius norm and the spectral norm of a matrix,
+respectively. The Euclidean norm of a vector is symbolized by∥·∥ 2. The superscript with brackets is
+used to represent a particular element of a vector/matrix/tensor, e.g.,w(i) is the i-th element of w. The
+superscript with brackets symbolizes the variables at different training step, e.g.,W [t]. Regarding the
+subscript, we denote byWl the learnable weights atl-th layer, xi the i-th input data. [L] is defined as a
+shorthand of {1,2,...,L} for any positive integerL. We denote byX ⊂ Rd and Y ⊂ R the input space
+and the output space, respectively. The training data(xi,yi) is drawn from a probability measureD on
+X ×Y . For an inputx ∈ X, we symbolize itsρ-neighborhood by
+ˆB(x,ρ):= {ˆx ∈ X : ∥ˆx−x∥2 ≤ ρ}∩X .
+For any W ∈ W, we define itsτ-neighborhood as follows:
+B(W ,τ):= {W ′ ∈ W: ∥W ′
+l −Wl∥F ≤ τ,l ∈[L]}.
+We summarize the core symbols and notation in Table 3.
+B C OMPLETE RELATED WORK AND OUR CONTRIBUTION
+B.1 C OMPLETE RELATED WORK
+Adversarial example and defense.Since the seminal work of (Szegedy et al., 2013) illustrated that
+neural networks are vulnerable to inputs with small perturbations, several approaches have emerged to
+defend against such attacks, e.g., adversarial training (Goodfellow et al., 2015; Madry et al., 2018),
+feature denoising (Xu et al., 2018; Xie et al., 2019), modifying network architecture (Xiao et al.,
+2020), regularizing Lipschitz constant (Cisse et al., 2017) or input gradient (Ross & Doshi-Velez,
+2018). Adversarial training is one of the most effective defense mechanisms that minimizes the
+empirical training loss based on the adversarial data, which is obtained by solving a maximum problem.
+Goodfellow et al. (2015) use Fast Gradient Sign Method (FGSM), a one-step method, to generate
+the adversarial data. However, FGSM relies on the linearization of loss around data points and the
+resulting model is still vulnerable to other more sophisticated adversaries. Multi-step methods are
+subsequently proposed to further improve the robustness, e.g., multi-step FGSM (Kurakin et al., 2018),
+multi-step PGD (Madry et al., 2018). Other methods of generating adversarial examples include
+L-BFGS (Szegedy et al., 2013), C&W attack (Carlini & Wagner, 2017).
+NAS and benchmarks. Over the years, significant strides have been made towards develop-
+ing NAS algorithms, which have been explored from various angles, e.g., differentiable search with
+weight-sharing (Liu et al., 2019; Zela et al., 2020; Ye et al., 2022), reinforcement learning (Baker et al.,
+2017; Zoph & Le, 2017; Zoph et al., 2018), evolutionary algorithm (Suganuma et al., 2017; Real et al.,
+2017; 2019), NTK-based methods (Chen et al., 2021; Xu et al., 2021; Mok et al., 2022; Zhu et al.,
+16
+
+===== PAGE 17 =====
+Published as a conference paper at ICLR 2024
+Table 3: Core symbols and notations used in this paper.
+Symbol Dimension(s) Definition
+N (µ,σ) - Gaussian distribution with meanµ and variance σ
+[L] - Shorthand of {1,2,...,L}
+O, o, Ω and Θ - Standard Bachmann–Landau order notation
+∥w∥2 - Euclidean norms of vectorw
+∥W ∥2 - Spectral norms of matrixW
+∥W ∥F - Frobenius norms of matrixW
+λmin(W ), λmax(W ) - Minimum and maximum eigenvalues of matrixW
+σmin(W ),σmax(W ) - Minimum and Maximum singular values of matrixW
+w(i) - i-th element of vectorw
+W (i,j) - (i,j)-th element of matrixW
+W [t] - matrix W at time stept
+N - Number of training data points
+d - Dimension (channel) of the input in FCNN (CNN)
+m - Width (Channel) of intermediate layers in FCNN (CNN)
+p - Pixel of the input in CNN
+κ - Filter size in CNN
+xi Rd The i-th data point
+yi R The i-th target
+DX - Input data distribution
+DY - Target data distribution
+σl(·) - Element-wise activation function atl-th layer in FCNN
+W1, Wl, wL Rm×d, Rm×m, Rm Learnable weights in FCNN,l=2 ,...,L−1
+W :=( W1,...,wL) Collection of all learnable weights in FCNN
+Dl Rm×m Diagonal matrix, Dl =Diag(σl
+′(Wlfl−1)), for l ∈[L−1] in FCNN
+2022a). Most recent work on NAS for robust architecture belongs to the first category. Guo et al. (2020)
+first trains a huge network that contains every edge in the cell of the search space and then obtains a
+specific robust architecture based on this trained network. Mok et al. (2021) propose a robust NAS
+method by imposing a regularized term in the DARTS objective to ensure a smoother loss landscape.
+These algorithms are different from the NTK-based methods, where we can select a robust architecture
+based on the NTK metrics without training a huge network.
+Along with the evolution of NAS algorithms, the development of NAS benchmarks is also important
+for an efficient and fair comparison. Regarding clean accuracy, several tabular benchmarks, e.g., NAS-
+Bench-101 (Ying et al., 2019), TransNAS-Bench-101 (Duan et al., 2021), NAS-Bench-201 (Dong &
+Yang, 2020) and NAS-Bench-301 (Zela et al., 2022), have been proposed that include the evaluation
+performance of architectures under standard training on image classification tasks. More recently, Jung
+et al. (2023) extend the scope of the benchmark towards robustness by evaluating the performance of
+the pre-trained architecture in NAS-Bench-201 in terms of various adversarial attacks. However, all of
+these benchmarks are under standard training, which motivates us to release the first NAS benchmark
+that contains the performance of each architecture under adversarial training.
+Neural tangent kernel. Neural tangent kernel (NTK) was first proposed by Jacot et al. (2018)
+that connects the training dynamics of over-parameterized neural network, where the number of
+parameters is greater than the number of training data, to kernel regression. In theory, NTK provides a
+tractable analysis for several phenomena in deep learning, e.g., convergence (Allen-Zhu et al., 2019),
+generalization (Huang et al., 2020), and spectral bias (Cao et al., 2019; Choraria et al., 2022). The study
+on the NTK has been expanded to a range of neural networks including, fully-connected networks (Jacot
+et al., 2018), convolutional networks (Bietti & Mairal, 2019), and graph networks (Du et al., 2019b).
+The analysis has also been extended from standard training to adversarial training. In particular, Gao
+et al. (2019) prove the convergence of FCNN with quadratic ReLU activation function, relying on the
+NTK theory, which suggests that the weights of the network are close to their initialization (Jacot et al.,
+2018). Zhang et al. (2020) provide a refined analysis for FCNN with ReLU activation functions and
+prove that polynomial width suffices instead of exponential width. More recently, Wang et al. (2022)
+present a convergence analysis convergence of 2-layer FCNN under certified robust training. From
+the generalization perspective, the guarantee of over-parameterized FCNN under standard training
+has been established in Cao & Gu (2019); Zhu et al. (2022a). In this work, we extend the scope of
+generalization guarantee of over-parameterized networks to multi-objective training, which covers
+the case of both standard training and adversarial training. Meanwhile, Huang et al. (2021) studies
+17
+
+===== PAGE 18 =====
+Published as a conference paper at ICLR 2024
+the impact of network width and depth on the robustness of adversarially trained DNNs. From the
+theoretical side, Huang et al. (2021) is based on the Lipschitz constant for robustness evaluation while
+our analysis builds a general framework for the generalization guarantees on both clean and robust
+accuracy
+NTK has brought insights into several practical applications. For example, in NAS, (Xu et al., 2021;
+Shu et al., 2022; Zhu et al., 2022a) show that one can use NTK as a guideline to select architectures
+without training. As a kernel, NTK can be used in supervised learning and has demonstrated remarkable
+performance over neural networks on small datasets (Arora et al., 2020). Lastly, NTK has also shown
+its potential in virtual drug screening, image impainting (Radhakrishnan et al., 2022), and MRI
+reconstruction (Tancik et al., 2020).
+Let us now provide further intuition on why training neural networks via gradient descent can be
+connected to the NTK. Let us denote the loss as ℓ(W ) = 1
+2
+PN
+n=1(f(xn;W ) − yn)2. By choosing
+an infinitesimally small learning rate, one has the following gradient flow:dW [t]
+dt = −∇ℓ(W [t]). By
+simple chain rule, we can observe that the network outputs admit the following dynamics:d f(W [t])
+dt =
+−K[t](f(W [t])−y), where K[t] =
+
+∂f (W [t])
+∂W
+
+∂f (W [t])
+∂W
+⊤
+∈ RN ×N is the NTK at t step. Hence,
+NTK can be used to characterize the training process of neural networks.
+B.2 C ONTRIBUTIONS AND RELATIONSHIP TO PRIOR WORK
+In this section, we clarify the contribution of our work when compared to the prior work on robust NAS.
+Specifically, our work makes contributions both theoretically and empirically.
+From the theoretical side, our work differs from previous theoretical work (Zhu et al., 2022a; Cao &
+Gu, 2019) in the following aspects:
+• Problem setting: Cao & Gu (2019) build the generalization bound of FCNN via NTK and (Zhu et al.,
+2022a) extend this result under the activation function search and skip connection search. Instead, our
+work studies the robust generalization bound of both FCNN/CNN under multi-objective adversarial
+training. How to handle the multi-objective, clean/robust accuracy, more general architecture search
+(CNN) is still unknown in prior theoretical work.
+• Results: Differently from Zhu et al. (2022a); Cao & Gu (2019) that are based on the sole NTK for
+generalization guarantees, our result demonstrates that, under adversarial training, the generalization
+performance (clean accuracy and robust accuracy) is affected by several NTKs. Concretely, the clean
+accuracy is determined by one clean NTK and robust NTK; while robust accuracy is determined by
+robust NTK and its “twice” perturbation version.
+• The technical difficulties lie in a) how to build the proof framework under multi-objective training by
+the well-designed joint of NTKs and b) how to tackle the coupling relationship among several NTKs
+and derive the lower bound of the minimum eigenvalue of NTKs. Accordingly, our work builds the
+generalization guarantees of the searched architecture under multi-objective adversarial training.
+Our results demonstrate the effect of different search schemes, perturbation radius, and the balance
+parameter, which doesn’t exist in previous literature.
+From the application side, we release an adversarially trained benchmark on the NAS-bench201 search
+space, which differs from previous benchmark in the following aspects:
+• Motivation: As a comparison, existing benchmarks on the NAS-bench201 search space are built
+on standard training (Dong & Yang, 2020; Jung et al., 2023). Since robust NAS algorithms usually
+include the evaluation results under adversarial training (Guo et al., 2020; Mok et al., 2021), our bench-
+mark facilitates a direct retrieval of these results for reliable reproducibility and efficient assessment.
+• Statistical result: In Table 1, we present the rank correlation among different accuracies within our
+proposed benchmark as well as the benchmark in (Jung et al., 2023). The observation underscores the
+significance of adversarial training within our benchmark. Specifically, it suggests that employing
+Jung et al. (2023) to identify a resilient architecture may not guarantee its robustness under the
+context of adversarial training. Additionally, in Figure 8, we can see a notable difference between
+these two benchmarks in terms of top architectures id and selected nodes.
+18
+
+===== PAGE 19 =====
+Published as a conference paper at ICLR 2024
+• Lastly, we investigate the correlation between various NTK metrics and the robust accuracy of the
+architecture in the benchmark. By integrating this result with our theoretical generalization bound,
+we can inspire practitioners to craft more robust and potent algorithms.
+C P ROOF OF THE GENERALIZATION OF RESIDUAL FCNN
+C.1 S OME AUXILIARY LEMMAS
+Lemma 1 (Corollary 5.35 in Vershynin (2012)). Given a matrix W ∈ Rm1×m2 where each element is
+sampled independently fromN (0,1), for everyζ ≥0, with probability at least1−2exp(−ζ2/2) one
+has:
+√m1 −√m2 −ζ ≤ σmin(W ) ≤ σmax(W ) ≤ √m1+√m2+ζ,
+where σmax(W ) and σmin(W ) represents the maximum singular value and the minimum singular
+value of W , respectively.
+Lemma 2 (Upper bound of spectral norms of initial weight). Given a weight matrixW [1]
+l ∈ Rm1×m2
+where m1 ≥ m2 and each element is sampled independently fromN (0, 1
+m1
+), then with probability at
+least 1−2exp(−m1/2), one has:
+∥W [1]
+l ∥2 ≤3.
+Proof of Lemma 2. Following Lemma 1, w.p. at least1−2exp(−ζ2/2), one has:
+∥W [1]
+l ∥2 ≤
+r
+1
+m1
+(√m1+√m2+ζ).
+Setting ζ = √m1 and using the fact thatm1 ≥ m2 completes the proof.
+Lemma 3 (The order of the network output at initialization). Fix any l ∈ [1,L −1] and x, when the
+width satisfies m = Ω(N/δ), with probability at least1−2lexp(−m/2)−δ over the randomness of
+{W [1]
+i }l
+i=1, we have:
+Cfmin ≤
+
+
+
+fl(x,W [1])
+
+
+
+
+2
+≤ Cfmax,
+where Cfmax and Cfmax are someΘ(1) constant.
+Proof. The result can be obtained by simply applying Lemma 2 for the initial weights and Lemma C.1
+in Du et al. (2019a).
+The following lemma shows that the perturbation ofx can be considered as an equivalent perturbation
+of the weights.
+Lemma 4. Given any fixed inputx ∈ X, with probability at least1−2e−m/2 over random initialization,
+for any ˆx ∈ X satisfying ∥x− ˆx∥2 ≤ ρ, and any W ∈ ˆB(W [1],τ), there existsfW ∈ B(W [1],τ +3ρ+
+τ ρ) such that:
+fl(ˆx,W )= fl(x,fW ), 1 ≤ l ≤ L−1,
+Dl(ˆx,W )= Dl(x,fW ), 1 ≤ l ≤ L−1,
+f(ˆx,W )= f(x,fW ).
+Proof. Let us define:
+fW1 = W1+ W1(ˆx−x)x⊤
+∥x∥2
+2
+.
+Obviously,fW1 satisfiesfW1x= W1 ˆx. Then settingfW2,...,fWL equal to W2,...,WL will make the
+output of the following layers equal. Besides, by Lemma 2, with probability 1 −2e−m/2, one has
+
+
+W [1]
+1
+
+
+
+
+2
+≤3 and thus
+19
+
+===== PAGE 20 =====
+Published as a conference paper at ICLR 2024
+
+
+
+fW1 −W1
+
+
+
+
+F
+=
+
+
+
+
+
+
+W1(ˆx−x)x⊤
+∥x∥2
+2
+
+
+
+
+
+
+F
+≤ ∥W1(ˆx−x)∥2∥x∥2
+∥x∥2
+2
+= ∥W1∥2∥ˆx−x∥2
+≤
+
+
+
+W [1]
+1
+
+
+
+
+2
++τ
+
+ρ ≤3ρ+ρτ ,
+which indicates that
+
+
+
+fW −W
+
+
+
+
+F
+≤ 3ρ + ρτ w.p. Lastly, by triangle inequality, with probability
+1−2e−m/2, we have:
+
+
+
+fW −fW [1]
+
+
+
+
+F
+≤
+
+
+
+fW −W
+
+
+
+
+F
++
+
+
+
+W −fW [1]
+
+
+
+
+F
+≤ τ +3ρ+τ ρ,
+which completes the proof.
+The following lemma shows that the network output does not change too much if the weights are close
+to that in initialization.
+Lemma 5. ForfW ∈ B(W [1],τ ) with τ ≤ 3, if the width satisfies m = Ω(N/δ), with probability at
+least 1−2(L−1)exp(−m/2)−δ, one has:
+
+
+
+fL−1(x,fW )−fL−1(x,W [1])
+
+
+
+
+2
+≤ e6CLip(CLip+Cfmax)τ .
+Proof. To simplify the notation, in the following proof, the variable withe· is related tofW , and without
+e· is related toW [1]. For the output of the first layer, we have:
+
+
+
+ef1 −f1
+
+
+
+
+2
+=
+
+
+
+σ1(fW1x)−σ1(W1x)
+
+
+
+
+2
+≤ CLip
+
+
+
+fW1 −W1
+
+
+
+
+2
+∥x∥2 ≤ τ CLip.
+For the l-th layer (l ∈ {2,3,...,L−1}), we have:
+
+
+
+efl −fl
+
+
+
+
+2
+
+
+
+
+1
+L σl(fWlefl−1)+ αl−1efl−1 − 1
+L σl(Wlfl−1)−αl−1fl−1
+
+
+
+
+
+2
+≤ 1
+L
+
+
+
+σl(fWlefl−1)−σl(Wlfl−1)
+
+
+
+
+2
++αl−1
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
+(By triangle inequality)
+≤ CLip
+L
+
+
+
+fWlefl−1 −Wlfl−1
+
+
+
+
+2
++
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
+(By the Lipschitz continuity ofσl)
+= CLip
+L
+
+
+
+Wl(efl−1 −fl−1)+(fWl −Wl)efl−1
+
+
+
+
+2
++
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
+≤ CLip
+L
+n
+∥Wl∥2
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
++
+
+
+
+fWl −Wl
+
+
+
+
+2
+
+
+
+efl−1
+
+
+
+
+2
+o
++
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
+≤( CLip
+L ∥Wl∥2+1)
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
++ CLip
+L τ
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
++∥fl−1∥2
+
+=
+ CLip
+L (∥Wl∥2+τ)+1
+
+
+
+efl−1 −fl−1
+
+
+
+
+2
++ CLip
+L τ ∥fl−1∥2.
+20
+
+===== PAGE 21 =====
+Published as a conference paper at ICLR 2024
+Therefore, by the inequality recursively and Lemmas 2 and 3, with probability at least 1 − 2(L −
+1)exp(−m/2)−δ, we have:
+
+
+efL−1 −fL−1
+
+
+
+
+2
+≤[ CLip
+L (3+ τ)+1]
+
+
+
+efL−2 −fL−2
+
+
+
+
+2
++ CLip
+L τ Cfmax, (By Lemmas 2 and 3)
+≤[ CLip
+L (3+ τ)+1] L−2
+
+
+
+ef1 −f1
+
+
+
+
+2
++
+L−3X
+i=0
+[ CLip
+L (3+ τ)+1] i CLip
+L τ Cfmax (By recursion)
+≤
+6CLip
+L +1
+L−2
+τ CLip+
+L−3X
+i=0
+[6CLip
+L +1]i CLip
+L τ Cfmax
+=
+6CLip
+L +1
+L−2
+τ CLip+ 1−(6CLip/L+1)L−2
+1−6CLip/L−1
+CLip
+L τ Cfmax
+≤ e6CLip(CLip+Cfmax)τ .
+Lemma 6. ForfW ,W ∈ B(W [1],τ) with τ ≤3, when the width satisfiesm=Ω( N/δ) and ρ ≤1, with
+probability at least1−2Lexp(−m/2)−δ, one has:f(x,fW )−f(x,W )−
+D
+(1−β)∇W f(x,W )+ β∇W f(Aρ(x,W ),W ),fW −W
+E
+≤18e6CLip(1+ β)(CLip+Cfmax)τ .f(Aρ(x,W ),fW )−f(Aρ(x,W ),W )−
+D
+(1−β)∇W f(x,W )+ β∇W f(Aρ(x,W ),W ),fW −W
+E
+≤18e6CLip(2−β)(CLip+Cfmax)τ .
+Proof. To simplify the notation, in the following proof, the variable withe· is related tofW , and without
+e· is related toW . The variable withˆ· is related to inputAρ(x,W ), and without is related to inputx .
+For instance, we denote by:
+fl := fl(x,W ), Dl =Diag(σl
+′(Wlfl−1)),
+efl := fl(x,fW ), eDl =Diag(σl
+′(fWlefl−1)),
+ˆfl := fl(ˆx,W ), ˆDl =Diag(σl
+′(Wl ˆfl−1)).
+Then, let us prove the first inequality. We have:ef −f −
+D
+(1−β)∇W f +β∇W ˆf ,fW −W
+E
+=
+
+D
+ewL,efL−1
+E
+−⟨wL,fL−1⟩−
+LX
+l=1
+D
+(1−β)∇Wl f +β∇Wl
+ˆf ,fWl −Wl
+E
+=
+
+D
+ewL,efL−1 −fL−1
+E
++⟨fL−1,ewL −wL⟩−
+L−1X
+l=1
+D
+(1−β)∇Wl f +β∇Wl
+ˆf ,fWl −Wl
+E
+−
+D
+(1−β)fL−1+β ˆfL−1,ewL −wL
+E
+≤ ∥ewL∥2
+
+
+
+efL−1 −fL−1
+
+
+
+
+2
++β
+
+
+
+fL−1 − ˆfL−1
+
+
+
+
+2
+∥ewL −wL∥2
++
+
+L−1X
+l=1
+D
+(1−β)∇Wl f,fWl −Wl
+E+
+
+L−1X
+l=1
+D
+β∇Wl
+ˆf ,fWl −Wl
+E.
+(7)
+The first term can be bounded by Lemmas 2 and 5 as follows:
+∥ewL∥2
+
+
+
+efL−1 −fL−1
+
+
+
+
+2
+≤
+
+
+
+w[1]
+L
+
+
+
+
+2
++
+
+
+
+ewL −w[1]
+L
+
+
+
+
+2
+
+
+
+efL−1 −f[1]
+L−1
+
+
+
+
+2
++
+
+
+
+fL−1 −f[1]
+L−1
+
+
+
+
+2
+
+≤(3+ τ)2e6CLip(CLip+Cfmax)τ .
+21
+
+===== PAGE 22 =====
+Published as a conference paper at ICLR 2024
+The second term can be bounded by Lemmas 3 to 5 withρ ≤1 as follows:
+β
+
+
+
+ ˆfL−1 −fL−1
+
+
+
+
+2
+∥ewL −wL∥2
+≤ β
+
+
+
+f[1]
+L−1 −fL−1
+
+
+
+
+2
++
+
+
+
+ ˆfL−1 − ˆf[1]
+L−1
+
+
+
+
+2
++
+
+
+
+f[1]
+L−1 − ˆf[1]
+L−1
+
+
+
+
+2
+
+
+
+wL −w[1]
+L
+
+
+
+
+2
++
+
+
+
+ewL −w[1]
+L
+
+
+
+
+2
+
+≤ βe6CLip(CLip+Cfmax)(2τ +3ρ)2τ .
+(8)
+The third term can be bounded by Lemmas 2 and 3 as follows:
+(1−β)
+
+L−1X
+l=1
+D
+∇Wl f,fWl −Wl
+E
+=(1 −β)
+
+L−1X
+l=1
+"
+w⊤
+L
+L−1Y
+r=l+1
+(DrWr+αr−1Im×m)Dl(fWl −Wl)fl−1
+#
+≤(1−β)
+L−1X
+l=1
+"
+∥wL∥2
+L−1Y
+r=l+1
+(∥Dr∥2∥Wr∥2+1)∥Dl∥2
+
+
+
+fWl −Wl
+
+
+
+
+2
+∥fl−1∥2
+#
+≤(1−β)
+L−1X
+l=1
+CLip(3+ τ)Cfmax( CLip
+L (3+ τ)+1) L−l−1τ
+≤(1−β)Cfmaxe6CLip τ .
+(9)
+Similarly, the fourth term can be upper bounded byβCfmaxe6CLip τ. Plugging back Eq. (7) yields:f(x,fW )−f(x,W )−
+D
+(1−β)∇W f +β∇W ˆf ,fW −W
+E
+≤(3+ τ)2e6CLip(CLip+Cfmax)τ +βe6CLip(CLip+Cfmax)(2τ +3ρ)2τ +Cfmaxe6CLip τ
+≤18e6CLip(1+ β)(CLip+Cfmax)τ .
+which completes the proof of the first inequality in the lemma. Next, we prove the second inequality in
+the lemma following the same method.
+ ˜ˆf − ˆf −
+D
+(1−β)∇W ˆf +β∇W ˆf ,fW −W
+E
+=
+
+D
+ewL,˜ˆfL−1
+E
+−
+D
+wL, ˆfL−1
+E
+−
+LX
+l=1
+D
+(1−β)∇Wl f +β∇Wl
+ˆf ,fWl −Wl
+E
+=
+
+D
+ewL,˜ˆfL−1 − ˆfL−1
+E
++
+D
+ˆfL−1,ewL −wL
+E
+−
+L−1X
+l=1
+D
+(1−β)∇Wl f +β∇Wl
+ˆf ,fWl −Wl
+E
+−
+D
+(1−β)fL−1+β ˆfL−1,ewL −wL
+E
+≤ ∥ewL∥2
+
+
+
+˜ˆfL−1 − ˆfL−1
+
+
+
+
+2
++(1 −β)
+
+
+
+fL−1 − ˆfL−1
+
+
+
+
+2
+∥ewL −wL∥2
++
+
+L−1X
+l=1
+D
+(1−β)∇Wl f,fWl −Wl
+E+
+
+L−1X
+l=1
+D
+β∇Wl
+ˆf ,fWl −Wl
+E
+≤(3+ τ)2e6CLip(CLip+Cfmax)τ +(1 −β)e6CLip(CLip+Cfmax)(2τ +3ρ)2τ +Cfmaxe6CLip τ
+≤18e6CLip(2−β)(CLip+Cfmax)τ ,
+(10)
+Lemma 7. There exists an absolute constantC1 such that, for anyϵ >0 and any W ,fW ∈ B(W [1],τ)
+with τ ≤ C1ϵ(β + 1)−1(CLip + Cfmax)−1e−6CLip, with probability at least 1 − 2Lexp(−m/2) − δ,
+when the width satisfiesm=Ω( N/δ) and ρ ≤1, one has:
+L(x,fW ) ≥ L(x,W )+
+D
+(1−β)∇W L(x,W )+ β∇W L(Aρ(x,W ),W ),fW −W
+E
+−ϵ,
+L(Aρ(x,W ),fW ) ≥ L(Aρ(x,W ),W )+
+D
+(1−β)∇W L(x,W )+ β∇W L(Aρ(x,W ),W ),fW −W
+E
+−ϵ.
+22
+
+===== PAGE 23 =====
+Published as a conference paper at ICLR 2024
+Proof. Firstly, we will prove the first inequality. Recall that the cross-entropy loss is written as
+ℓ(z)=log(1+exp( −z)) and we denote byL(x,W ):= ℓ[y·f(x,W )]. Then one has:
+L(x,fW )−L(x,W )
+= ℓ[yef]−ℓ[yf ]
+≥ ℓ′[yf ]·y·(ef −f) (By convexity ofℓ(z)).
+≥ ℓ′[yf ]·y·
+D
+(1−β)∇f,fW −W
+E
++ℓ′[y ˆf]·y·
+D
+β∇ ˆf ,fW −W
+E
+−κ1
+=
+D
+(1−β)∇W L(x,W )+ β∇W L(Aρ(x,W ),W ),fW −W
+E
+−κ1 (By chain rule),
+where we define:
+κ1 :=
+ℓ′[yf ]·y·(ef −f)−ℓ′[yf ]·y·
+D
+(1−β)∇f,fW −W
+E
+−ℓ′[y ˆf]·y·
+D
+β∇ ˆf ,fW −W
+E.
+Thus, it suffices to show thatκ1 can be upper bounded byϵ :
+κ1 ≤
+ℓ′[yf ]·y
+n
+ef −f −
+D
+(1−β)∇W f +β∇W ˆf ,W ),fW −W
+Eo+
+
+n
+ℓ′[yf ]·y−ℓ′[y ˆf]·y
+o
+β
+D
+∇W ˆf ,fW −W
+E
+≤18e6CLip(1+ β)(CLip+Cfmax)τ +2β
+
+D
+∇W ˆf ,fW −W
+E
+≤18e6CLip(1+ β)(CLip+Cfmax)τ +2β
+
+L−1X
+l=1
+D
+∇Wl f(x,W ),fWl −Wl
+E+2β|⟨fL−1,fwL −wL⟩|
+≤18e6CLip(1+ β)(CLip+Cfmax)τ +2βCfmaxe6CLip τ +4βCfmaxτ
+≤24(1+ β)e6CLip(CLip+Cfmax)τ
+≤ ϵ,
+(11)
+where the first and the third inequality is by triangle inequality, the second inequality is by Lemma 6
+and the fact that |ℓ′[yf (x,W )] · y| ≤ 1, , the fourth inequality follows the same proof as in Eqs. (8)
+and (9), and the last inequality is by the condition that ifτ ≤ C2ϵ(1+ β)−1(CLip+Cfmax)−1e−6CLip
+for some absolute constantC2.
+Now we will prove the second inequality of the lemma.
+L(Aρ(x,W ),fW )−L(Aρ(x,W ),W )
+= ℓ[y ˜ˆf]−ℓ[y ˆf]
+≥ ℓ′[y ˆf]·y·( ˜ˆf − ˆf) (By convexity ofℓ(z)).
+≥ ℓ′[yf ]·y·
+D
+(1−β)∇f,fW −W
+E
++ℓ′[y ˆf]·y·
+D
+β∇ ˆf ,fW −W
+E
+−κ2
+=
+D
+(1−β)∇W L(x,W )+ β∇W L(Aρ(x,W ),W ),fW −W
+E
+−κ2 (By chain rule),
+where we define:
+κ2 :=
+ℓ′[y ˆf]·y·( ˜ˆf − ˆf)−ℓ′[yf ]·y·
+D
+(1−β)∇f,fW −W
+E
+−ℓ′[y ˆf]·y·
+D
+β∇ ˆf ,fW −W
+E.
+Thus, it suffices to show thatκ2 can be upper bounded byϵ. Following by the same method in Eq. (11)
+with Lemma 6, we have:
+κ2 ≤18e6CLip(2−β)(CLip+Cfmax)τ +2βCfmaxe6CLip τ +4βCfmaxτ
+≤12(3−β)e6CLip(CLip+Cfmax)τ ≤ ϵ,
+where the last inequality is by the condition that if τ ≤ C3ϵ(3 − β)−1(CLip + Cfmax)−1e−6CLip for
+some absolute constantC3. Lastly, settingC1 =max {C2,C3} and noting that(3−β)−1 <(1+ β)−1
+completes the proof.
+23
+
+===== PAGE 24 =====
+Published as a conference paper at ICLR 2024
+Lemma 8. For anyϵ,δ,R >0 such that δ′ :=2 Lexp(−m/2)+ δ ∈(0,1), there exists:
+m⋆ = O(poly(R,L,CLip,β))·ϵ−2e12CLiplog(1/δ′)
+such that if m ≥ m⋆, then for any W ⋆ ∈ B(W [1],Rm−1/2), under the following choice of step-size
+γ = νϵ/[CLipC2
+fmaxmLe12CLip] and N = L2R2CLipC2
+fmaxe12CLip /(2ε2ν) for some small enough
+absolute constant ν, the cumulative loss can be upper bounded with probability at least1−δ′ by:
+1
+N
+NX
+i=1
+L(xi,W [i]) ≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+3 ϵ,
+1
+N
+NX
+i=1
+L(Aρ(xi,W [i]),W [i]) ≤ 1
+N
+NX
+i=1
+L(Aρ(xi,W [i]),W ⋆)+3 ϵ.
+Proof. We set τ = C1ϵ(1 + β)−1(CLip + Cfmax)−1e−6CLip where C1 is a small enough absolute
+constant so that the requirements onτ in Lemmas 6 and 7 can be satisfied. LetRm−1/2 ≤ τ, then we
+obtain the condition forW ⋆ ∈ B(W [1],τ), i.e., m ≥ R2C −2
+1 ϵ−2(1+ β)2(CLip+Cfmax)2e12CLip . We
+now show thatW [1],...,W [N] are inside B(W [1],τ) as well. The proof follows by induction. Clearly,
+we have W [1] ∈ B(W [1],τ). Suppose that W [1],...,W [i] ∈ B(W [1],τ), then with probability at least
+1−δ′, we have:
+
+
+W [i+1]
+l −W [1]
+l
+
+
+
+F ≤
+iX
+j=1
+
+
+W [j+1]
+l −W [j]
+l
+
+
+
+F
+=
+iX
+j=1
+γ
+
+
+
+(1−β)∇Wl L(xj,W [j])+ β∇Wl L(Aρ(xj,W [j]),W [j])
+
+
+
+
+F
+≤ γ(1−β)N
+
+
+
+∇Wl L(xj,W [j])
+
+
+
+
+F
++γβN
+
+
+
+∇Wl L(Aρ(xj,W [j]),W [j])
+
+
+
+
+F
+≤ γN CLip∥wL∥2∥fl−1∥2
+L−1Y
+r=l+1
+( CLip
+L ∥Wr∥2+1)
+
+
+
+fWl −Wl
+
+
+
+
+F
+≤ γN CLip(3+ τ)Cfmax( CLip
+L (3+ τ)+1) L−l−1
+≤6γN CLipCfmaxe6CLip .
+Plugging in our parameter choice forγ and N leads to:
+
+
+W [i+1]
+l −W [1]
+l
+
+
+
+F ≤3CLipCfmaxe6CLip LR2ϵ−1m−1 ≤ τ ,
+where the last inequality holds as long asm ≥3CLipCfmaxe12CLip LR2C −1
+1 ϵ−2. Therefore by induction
+we see that W [1],...,W [N] ∈ B(W [1],τ). Now, we are ready to prove the first inequality in the lemma.
+We provide an upper bound for the cumulative loss as follows:
+L(xi,W [i])−L(xi,W ⋆)
+≤
+D
+(1−β)∇W L(xi,W [i])+ β∇W L(Aρ(xi,W [i]),W [i]),W [i] −W ⋆
+E
++ϵ (By Lemma 7)
+=
+
+W [i] −W [i+1],W [i] −W ⋆
+γ +ϵ
+= ∥W [i] −W [i+1]∥2
+F+∥W [i] −W ⋆
+l ∥2
+F −∥W [i+1] −W ⋆∥2
+F
+2γ +ϵ
+= ∥W [i] −W ⋆∥2
+F −∥W [i+1] −W ⋆∥2
+F+γ2
+
+(1−β)∇W L(xi,W [i])+ β∇W L(Aρ(xi,W [i]),W [i])
+
+
+2
+F
+2γ +ϵ
+≤ ∥W [i] −W ⋆∥2
+F −∥W [i+1] −W ⋆∥2
+F
+2γ +
+62γ2C2
+LipC2
+fmaxe12CLip
+2γ +ϵ.
+24
+
+===== PAGE 25 =====
+Published as a conference paper at ICLR 2024
+Telescoping overi=1 ,...,N, we obtain:
+1
+N
+NX
+i=1
+L(xi,W [i])
+≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+ ∥W (1) −W ⋆∥2
+F
+2N γ +18γC 2
+LipC2
+fmaxe12CLip +ϵ
+≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+ LR2
+2γmN +18γC 2
+LipC2
+fmaxe12CLip +ϵ
+≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+3 ϵ,
+where in the first inequality we simply remove the term−∥W [N+1] −W ⋆∥2
+F/(2γ) to obtain an upper
+bound, the second inequality follows by the assumption that W ⋆ ∈ B(W [1], Rm−1/2), the third
+inequality is by the parameter choice ofγ and N. Lastly, we denoteδ′ :=2 Lexp(−m/2)+ δ ∈(0,1),
+which requires m ≥ ˜Ω(1) satisfied by takingm=Ω( N/δ). One can follow the same procedure to prove
+the second inequality in the lemma that is based on Lemma 7.
+C.2 P ROOF OF THEOREM 1
+Proof. Since ¯W is uniformly sampled from {W [1], ··· , W [N]}, by Hoeffding’s inequality, with
+probability at least1−δ′′:
+E ¯W (Lclean
+0−1 ( ¯W )) ≤ 1
+N
+NX
+i=1
+1
+h
+yi ·f(xi,W [i]) <0
+i
++
+r
+2log(1/δ′′)
+N . (12)
+Since the cross-entropy lossℓ(z)=log(1+exp( −z)) satisfies 1{z ≤0} ≤4ℓ(z), we have:
+1
+h
+yi ·f(xi,W [i]) <0
+i
+≤4L(xi,W [i]), (13)
+with L(xi,W [i]):= ℓ(yi ·f(xi,W [i])). Next, setting ϵ= LR
+p
+CLipCfmaxe6CLip /
+√
+2νN in Lemma 8
+leads to step-size γ = √νR/(
+p
+2CLipCfmaxe6CLip m
+√
+N), then by combining it with Eqs. (12)
+and (13), with probability at least1−δ′ −δ′′, we have:
+E ¯W
+
+Lclean
+0−1 ( ¯W ))
+
+≤ 4
+N
+NX
+i=1
+(L(xi,W ⋆))+ 12√
+2ν · LR√
+N
++
+r
+2log(1/δ′′)
+N , (14)
+for all W ⋆ ∈ B(W [1],Rm−1/2).
+Define the linearized network around initializationW [1] as
+FW [1],W ⋆(x):= f(x,W [1])+ ⟨(1−β)∇fW (x,W [1])+ β∇fW (A∗
+ρ(x,W [1]),W [1]),W ⋆ −W [1]⟩.
+(15)
+We now compare the loss induced by the original network with its linearized network:
+L(xi,W ⋆)−ℓ(yi ·FW [1],W ⋆(xi))= ℓ(yi ·f(xi,W ⋆))−ℓ(yi ·FW [1],W ⋆(xi))
+≤ yi(f(xi,W ⋆)−FW [1],W ⋆(xi)) ≤18e6CLip(1+ β)(CLip+Cfmax)Rm−1/2 ≤ LRN −1/2,
+where the first inequality is by the 1-Lipschitz continuity ofℓ, the second inequality is by Lemma 6
+with Rm−1/2 ≤ 3, i.e., m ≥ R2/9, the third inequality holds when m ≥ 182e12CLip(1+ β)2(CLip +
+Cfmax)2N L−2. Plugging the inequality above back to Eq. (14), we obtain:
+E ¯W
+
+L0−1
+D ( ¯W )
+
+≤ 4
+N
+NX
+i=1
+ℓ(yi ·FW [1],W ⋆(xi))+( 12√
+2ν +1) · LR√
+N
++
+r
+2log(1/δ′′)
+N . (16)
+Next, we will upper bound the RHS of the inequality above. For cross-entropy loss we have:ℓ(z) ≤
+N −1/2 for z ≥ B :=log {1/[exp(N −1/2)−1]}= O(logN). We define:
+B′ = max
+i∈[N]
+|f(xi,W [1])|, y′ =( B+B′)·y.
+25
+
+===== PAGE 26 =====
+Published as a conference paper at ICLR 2024
+Then for anyi ∈[N], we have:
+yi ·[y′
+i+f(xi,W [1])]= yi ·[(B+B′)yi+f(xi,W [1])] ≥ B+B′ −B′ = B.
+As a result, we have:
+ℓ{yi ·(y′
+i+f(xi,W [1]))} ≤N −1/2, i ∈[N].
+Denote by Jall :=(1 −β)J +β ˆJ, where
+J = m−1/2 ·[vec(∇fW (x1,W [1])),...,vec(∇fW (xN ,W [1]))],
+ˆJ = m−1/2 ·[vec(∇fW (A∗
+ρ(x1,W [1]),W [1])),...,vec∇fW (A∗
+ρ(xN ,W [1]),W [1]))].
+Let P ΛQ⊤ be the singular value decomposition of Jall, where P ∈ R(md+(L−2)m2+m)×N , Q ∈
+RN ×N ,Λ ∈ RN ×N . Let us definewvec := P Λ−1Q⊤y′, then we have:
+J ⊤
+allwvec = QΛP ⊤P Λ−1Q⊤y′ = y′,
+which implies ((1−β)J ⊤+β ˆJ ⊤)wvec = y′. Moreover, we have:
+∥wvec∥2
+2 =
+
+
+
+P Λ−1Q⊤y′
+
+
+
+
+2
+2
+= y′⊤QΛ−2Q⊤y′ = y′⊤(J ⊤
+allJall)−1y′.
+= y′⊤[(J ⊤
+allJall)−1 −(Kall)−1]y′+y′⊤(Kall)−1y′
+≤ N(B+B′)2∥(J ⊤
+allJall)−1 −(Kall)−1∥2+(B+B′)2y′⊤(Kall)−1y′.
+(17)
+By Lemma 3.8 in Cao & Gu (2019) and standard matrix perturbation bound, there exists
+m⋆(δ, L, N, λmin(Jall), β) , such that, if m ≥ m⋆, then with probability at least 1 − δ, J ⊤
+allJall is
+positive-definite and
+∥(J ⊤
+allJall)−1 −K−1
+all ∥2 ≤ y⊤K−1
+all y
+N .
+Therefore, Eq. (17) can be further upper bounded by: ∥wvec∥2
+2 ≤ ˜O(y⊤K−1
+all y). Plugging it back
+Eq. (16), with probability at least1−δ−δ′ −δ′′, we obtain:
+E ¯W
+
+L0−1
+D ( ¯W )
+
+≤ 4
+N
+NX
+i=1
+ℓ(B)+( 12√
+2ν
++1) · L∥wvec∥2√
+N
++
+r
+log(1/δ′′)
+N
+≤ ˜O
+
+
+s
+L2y⊤K −1
+all y
+N
+
++O
+ r
+log(1/δ′′)
+N
+!
+,
+which finishes the proof for generalization guarantees on clean accuracy.
+In the next, we present the proof for generalization guarantees on robust accuracy. The proof technique
+is the same as that of clean accuracy.
+Since ¯W is uniformly sampled from{W [1],···,W [N]}, by Hoeffding’s inequality, with probability at
+least 1−δ′′:
+E ¯W (Lrobust
+0−1 ( ¯W )) ≤ 1
+N
+NX
+i=1
+1
+h
+yi ·f(Aρ(xi,W [i]),W [i]) <0
+i
++
+r
+2log(1/δ′′)
+N . (18)
+Since the cross-entropy lossℓ(z)=log(1+exp( −z)) satisfies 1{z ≤0} ≤4ℓ(z), we have:
+1
+h
+yi ·f(Aρ(xi,W [i]),W [i]) <0
+i
+≤4L(Aρ(xi,W [i]),W [i]). (19)
+Next, setting ϵ = LR
+p
+CLipCfmaxe6CLip /
+√
+2νN in Lemma 8 leads to step-size γ =√νR/(
+p
+2CLipCfmaxe6CLip m
+√
+N), then by combining it with Eqs. (18) and (19), with probabil-
+ity at least1−δ′ −δ′′, we have:
+E ¯W
+
+Lrobust
+0−1 ( ¯W )
+
+≤ 4
+N
+NX
+i=1
+(L(Aρ(xi,W [i]),W ⋆))+ 12√
+2ν · LR√
+N
++
+r
+2log(1/δ′′)
+N
+≤ 4
+N
+NX
+i=1
+(L(A∗
+ρ(xi,W ⋆),W ⋆))+ 12√
+2ν · LR√
+N
++
+r
+2log(1/δ′′)
+N ,
+(20)
+26
+
+===== PAGE 27 =====
+Published as a conference paper at ICLR 2024
+for all W ⋆ ∈ B(W [1],Rm−1/2), where the second inequality is by the definition of the worst-case
+adversary A∗
+ρ(·).
+Next, we compare the loss induced by the original network with its linearized network defined in
+Eq. (15):
+L(A∗
+ρ(xi,W ⋆),W ⋆)−ℓ(yi ·FW [1],W ⋆(A∗
+ρ(xi,W [1])))
+= ℓ(yi ·f(A∗
+ρ(xi,W ⋆),W ⋆))−ℓ(yi ·FW [1],W ⋆(A∗
+ρ(xi,W [1])))
+≤ f(A∗
+ρ(xi,W ⋆),W ⋆)−FW [1],W ⋆(A∗
+ρ(xi,W [1])))
+≤18e6CLip(1+ β)(CLip+Cfmax)(Rm−1/2+6ρ+2Rm−1/2ρ)
+≤ LRN −1/2,
+where the first inequality is by the 1-Lipschitz continuity ofℓ, the second inequality is by Lemmas 4
+and 6 with Rm−1/2+6ρ+2Rρm−1/2 ≤3, i.e., m ≥ R(1+2 ρ)/[3(1−2ρ)], the last inequality holds
+when m ≥ 18e6CLip(1 +β)(CLip + Cfmax)R(1 +ρ)2(LR/N −18e6CLip(1 +β)(CLip + Cfmax))−2.
+Plugging the inequality above back to Eq. (20), we obtain:
+E ¯W
+
+Lrobust
+0−1 ( ¯W )
+
+≤ 4
+N
+NX
+i=1
+ℓ(yi ·FW [1],W ⋆(A∗
+ρ(xi,W [1])))+( 12√
+2ν +1) · LR√
+N
++
+r
+2log(1/δ′′)
+N .
+(21)
+Lastly, noticing that based on Eq. (15):
+FW [1],W ⋆(A∗
+ρ(xi,W [1]))
+= f(A∗
+ρ(xi,W [1]),W [1])+ ⟨(1−β)∇fW (A∗
+ρ(xi,W [1]),W [1])+ β∇fW (A∗
+ρ(A∗
+ρ(xi,W [1]),W [1]),W [1]),W ⋆ −W [1]⟩.
+Then we can define the JacobianeJall :=(1 −β) ˆJρ+β ˆJ2ρ, where
+ˆJρ = m−1/2 ·[vec(∇fW (A∗
+ρ(x1,W [1]),W [1])),...,vec∇fW (A∗
+ρ(xN ,W [1]),W [1]))]
+ˆJ2ρ = m−1/2 ·[vec(∇fW (A∗
+ρ(A∗
+ρ(xi,W [1]),W [1]),W [1])),...,vec∇fW (A∗
+ρ(A∗
+ρ(xi,W [1]),W [1]),W [1]))].
+Lastly, by replacingJall by eJall as in the step on clean generalization bound, we can finish the proof.
+D T HE LOWER BOUND OF THE MINIMUM EIGENVALUE OF ROBUST NTK
+We have shown that the minimum eigenvalue of robust NTK significantly affects both clean and robust
+generalizations. Hence we provide a lower bound estimation for its minimum eigenvalue.
+Assumption 3. We assume the perturbationρ <O(C/d). For any data⟨xi,xj⟩+2ρ+ρ2 <1, in other
+words,
+⟨xi,xj⟩ ≤1− C
+d −o(1/d),∀xi,xj,
+where C is some constant independent of the number of data pointsN and the dimensional of the input
+feature d.
+Remark: For example, we can setC :=2 Cmax. Here the o(1/d) means a high-order small term of1/d
+and can be omitted. This assumption holds for a larged in practice, e.g.,d=796 for MNIST dataset
+and d=3072 for CIFAR10/100 dataset.
+Theorem 2. Under Assumption 1 and 3, we have the following lower bound estimation for the minimum
+eigenvalue of ˆKρ
+λmin(fKall) ≥2µr(σ1)2
+
+1−(N −1)max
+i̸=j
+(|⟨xi,xj⟩|+2ρ+ρ2)r
+
+.
+where µ(σ) is r-Hermite coefficient of the activation at the first layer.
+27
+
+===== PAGE 28 =====
+Published as a conference paper at ICLR 2024
+Proof.
+λmin( ˆKρ) ≥ λmin
+
+2Ew∼N(0,Id)[σ1( ˆXw)σ1( ˆXw)⊤]
+
+=2 λmin
+ ∞X
+s=0
+µs(σ1)2 ⃝s
+i=1( ˆX ˆX ⊤)
+
+(Nguyen & Mondelli, 2020, Lemma D.3)
+≥2µr(σ1)2λmin(⃝r
+i=1 ˆX ˆX ⊤)
+
+taking r ≥ −logN −1
+maxi̸=j(|⟨xi,xj ⟩|+2ρ+ρ2)
+
+≥2µr(σ1)2
+
+min
+i∈[N]
+∥ˆxi∥2r
+2 −(N −1)max
+i̸=j
+|⟨ˆxi,ˆxj⟩|r
+
+(Gershgorin circle theorem)
+≥2µr(σ1)2
+
+1−(N −1)max
+i̸=j
+(|⟨xi,xj⟩|+|⟨xi,∆j⟩|+|⟨xj,∆i⟩|+|⟨∆i,∆j⟩|)r
+
+≥2µr(σ1)2
+
+1−(N −1)max
+i̸=j
+(|⟨xi,xj⟩|+2ρ+ρ2)r
+
+.
+E P ROOF OF THE GENERALIZATION OF RESIDUAL CNN
+In this section, we provide proof for residual CNN. Firstly, we reformulate the network in Appendix E.1.
+Secondly, we introduce several lemmas in Appendix E.2 in order to show the upper bound for the
+cumulative loss (Lemma 14). The remaining step is the same as FCNN.
+E.1 R EFORMULATION OF THE NETWORK
+Firstly, we will rewrite the definition of CNN in Eq. (2) in a way to facilitate the proof. Specifically, we
+define an operatorϕ1(·) that divides its input intop patches. The dimension of each patch iskd. For
+example, when the size of filterk =3, we have:
+ϕ1(X)=
+
+
+
+X(1,0:2)⊤
+, ... ,
+
+X(1,p−1:p+1)⊤
+..., ..., ...
+X(d,0:2)⊤
+, ...,
+
+X(d,p−1:p+1)⊤
+
+ ∈ R3d×p.
+Similarly, we defineϕl(Fl) ∈ Rκm×p for the subsequent layers. Then we can re-write the formula of
+CNN as follows:
+F1 = σ1(W1ϕ1(X)),
+Fl = 1
+L σl(Wlϕl(Fl−1))+ αl−1Fl−1, 2 ≤ l ≤ L−1,
+FL = ⟨WL,FL−1⟩,
+f(X,W )= FL,
+where learnable weights areW1 ∈ Rm×kd, Wl ∈ Rm×κm, l=2 ,...,L−1, and WL ∈ Rm×p.
+E.2 S OME AUXILIARY LEMMAS
+Lemma 9 (Upper bound of spectral norms of initial weight) . With probability at least 1 −
+2exp(−m/2)−2(L−2)exp(−κm/2)−2pexp(−m/2), the norm of the weight of residual CNN has
+the following upper bound:
+∥W [1]
+l ∥2 ≤3,for l ∈[L−1], ∥W [1]
+L ∥F ≤3√p.
+Proof. The bound of∥W [1]
+l ∥2,for l ∈[L−1] can be obtained by directly applying Lemma 2. Regarding
+∥W [1]
+L ∥F, note that W [1]
+L ∈ Rm×p, then we bound its norm by Lemma 2 as follows
+
+
+
+W [1]
+L
+
+
+
+
+F
+=
+vuut
+pX
+i=1
+
+
+
+(W [1]
+L )(:,i)
+
+
+
+
+2
+2
+≤3√p,
+28
+
+===== PAGE 29 =====
+Published as a conference paper at ICLR 2024
+with probability at least1−2pexp(−m/2) .
+Lemma 10 (The order of the network output at initialization). Fix any l ∈[1,L−1] and X, when the
+width satisfiesm=Ω( p2N/δ), with probability at least1−2lexp(−m/2)−δ over the randomness of
+{W [1]
+i }l
+i=1, we have:
+Cfmin ≤
+
+
+
+Fl(X,W [1])
+
+
+
+
+F
+≤ Cfmax,
+where Cfmax and Cfmax are someΘ(1) constant.
+Proof. The result can be obtained by simply applying Lemma 2 for the initial weights and Lemma D.1
+in Du et al. (2019a).
+Lemma 11. ForfW ∈ B(W [1],τ) with τ ≤3, when the width satisfiesm=Ω( p2N/δ) and ρ ≤1, with
+probability at least1−2(L−1)exp(−κm/2)−δ, one has:
+
+
+FL−1(X,fW )−FL−1(X,W [1])
+
+
+
+
+F
+≤ e6CLip
+√κ(√κCLip+Cfmax)τ .
+Proof. To simplify the notation, in the following proof, the variable withe· is related tofW , and without
+e· is related toW [1]. For the output of the first layer, we have:
+
+
+eF1 −F1
+
+
+
+
+F
+=
+
+
+
+σ1(fW1ϕ1(X))−σ1(W1ϕ1(X))
+
+
+
+
+F
+≤ CLip
+
+
+
+fW1 −W1
+
+
+
+
+F
+∥ϕ1(X)∥F
+≤ CLip
+
+
+
+fW1 −W1
+
+
+
+
+F
+√κ∥X∥F ≤ τ √κCLip.
+For the l-th layer (l ∈ {2,3,...,L−1}), we have:
+
+
+eFl −Fl
+
+
+
+
+F
+=
+
+
+
+
+
+1
+L σl(fWlϕl(eFl−1))+ αl−1eFl−1 − 1
+L σl(Wlϕl(Fl−1))−αl−1Fl−1
+
+
+
+
+
+F
+≤
+
+
+
+
+
+1
+L σl(fWlϕl(eFl−1))− 1
+L σl(Wlϕl(Fl−1))
+
+
+
+
+
+F
++αl−1
+
+
+
+eFl−1 −Fl−1
+
+
+
+
+F
+(By Triangle inequality)
+≤ CLip
+L
+
+
+
+fWlϕl(eFl−1)−Wlϕl(Fl−1)
+
+
+
+
+F
++
+
+
+
+eFl−1 −Fl−1
+
+
+
+
+F
+(By the Lipschitz continuity ofσl)
+≤ CLip
+L
+n
+∥Wl∥2
+
+
+
+ϕl(eFl−1)−ϕl(Fl−1)
+
+
+
+
+F
++
+
+
+
+fWl −Wl
+
+
+
+
+2
+
+
+
+ϕl(eFl−1)
+
+
+
+
+F
+o
++
+
+
+
+eFl−1 −Fl−1
+
+
+
+
+F
+≤ CLip
+L
+√κ
+n
+∥Wl∥2
+
+
+
+eFl−1 −Fl−1
+
+
+
+
+F
++
+
+
+
+fWl −Wl
+
+
+
+
+2
+
+
+
+eFl−1
+
+
+
+
+F
+o
++
+
+
+
+eFl−1 −Fl−1
+
+
+
+
+F
+≤
+ CLip
+L
+√κ(∥Wl∥2+τ)+1
+
+
+
+eFl−1 −Fl−1
+
+
+
+
+F
++ CLip
+L
+√κτ ∥Fl−1∥F.
+Therefore, by applying the inequality recursively and Lemmas 2 and 10, with probability at least
+1−2(L−1)exp(−m/2)−δ, we have:
+
+
+eFL−1 −FL−1
+
+
+
+
+F
+≤[ CLip
+L
+√κ(3+ τ)+1]
+
+
+
+eFL−2 −FL−2
+
+
+
+
+F
++ CLip
+L
+√κτ Cfmax (By Lemmas 2 and 10)
+≤[ CLip
+L
+√κ(3+ τ)+1] L−2
+
+
+
+eF1 −F1
+
+
+
+
+F
++
+L−3X
+i=0
+[ CLip
+L
+√κ(3+ τ)+1] i CLip
+L
+√κτ Cfmax (By recursion)
+≤(6 CLip
+L
+√κ+1)L−2τ √κCLip+
+L−3X
+i=0
+(6 CLip
+L
+√κ+1)i CLip
+L
+√κτ Cfmax
+≤ e6CLip
+√κ(√κCLip+Cfmax)τ .
+29
+
+===== PAGE 30 =====
+Published as a conference paper at ICLR 2024
+Lemma 12. ForW ,fW ∈ B(W [1],τ) with τ ≤3, when the width satisfiesm=Ω( p2N/δ) and ρ ≤1,
+with probability at least1−2exp(−m/2)−2(L−2)exp(−κm/2)−2pexp(−m/2)−δ, we have:
+f(X,fW )−f(X,W )−f(x,W )−
+D
+(1−β)∇W f(x,W )+ β∇W f(Aρ(x,W ),W ),,fW −W
+E
+≤18√pe6CLip
+√κ(1+ β)(√κCLip+Cfmax)τ ,f(Aρ(x,W ),fW )−f(Aρ(x,W ),W )−
+D
+(1−β)∇W f(x,W )+ β∇W f(Aρ(x,W ),W ),fW −W
+E
+≤18√pe6CLip
+√κ(2−β)(√κCLip+Cfmax)τ .
+Proof. To simplify the notation, in the following proof, the variable withe· is related tofW , and without
+e· is related toW . Then, let us prove the first inequality.
+ef −f −
+D
+(1−β)∇W f +β∇W ˆf ,fW −W
+E
+=
+
+D
+ewL,efL−1
+E
+−⟨wL,fL−1⟩−
+LX
+l=1
+D
+(1−β)∇Wl f +β∇Wl
+ˆf ,fWl −Wl
+E
+=
+
+D
+ewL,efL−1 −fL−1
+E
++⟨fL−1,ewL −wL⟩−
+L−1X
+l=1
+D
+(1−β)∇Wl f +β∇Wl
+ˆf ,fWl −Wl
+E
+−
+D
+(1−β)fL−1+β ˆfL−1,ewL −wL
+E
+≤ ∥ewL∥2
+
+
+
+efL−1 −fL−1
+
+
+
+
+2
++β
+
+
+
+fL−1 − ˆfL−1
+
+
+
+
+2
+∥ewL −wL∥2
++
+
+L−1X
+l=1
+D
+(1−β)∇Wl f,fWl −Wl
+E+
+
+L−1X
+l=1
+D
+β∇Wl
+ˆf ,fWl −Wl
+E.
+(22)
+The first term can be bounded by Lemmas 2 and 11 as follows:
+∥ewL∥2
+
+
+
+efL−1 −fL−1
+
+
+
+
+2
+≤
+
+
+
+w[1]
+L
+
+
+
+
+2
++
+
+
+
+ewL −w[1]
+L
+
+
+
+
+2
+
+
+
+efL−1 −f[1]
+L−1
+
+
+
+
+2
++
+
+
+
+fL−1 −f[1]
+L−1
+
+
+
+
+2
+
+≤(3√p+τ)2e6CLip
+√κ(√κCLip+Cfmax)τ .
+The second term can be bounded by Lemmas 3, 4 and 11 withρ ≤1 as follows:
+β
+
+
+
+ ˆfL−1 −fL−1
+
+
+
+
+2
+∥ewL −wL∥2
+≤ β
+
+
+
+f[1]
+L−1 −fL−1
+
+
+
+
+2
++
+
+
+
+ ˆfL−1 − ˆf[1]
+L−1
+
+
+
+
+2
++
+
+
+
+f[1]
+L−1 − ˆf[1]
+L−1
+
+
+
+
+2
+
+
+
+wL −w[1]
+L
+
+
+
+
+2
++
+
+
+
+ewL −w[1]
+L
+
+
+
+
+2
+
+≤ βe6CLip
+√κ(√κCLip+Cfmax)(2τ +3ρ)2τ .
+(23)
+The third term can be bounded by Lemmas 2 and 10 as follows:
+(1−β)
+
+L−1X
+l=1
+D
+∇Wl f,fWl −Wl
+E
+≤(1−β)
+L−1X
+l=1
+CLip∥WL∥F∥ϕl(Fl−1)∥F
+L−1Y
+r=l+1
+( CLip
+L
+√κ∥Wr∥2+1)
+
+
+
+fWl −Wl
+
+
+
+
+F
+≤(1−β)
+L−1X
+l=1
+CLip(3√p+τ)κCfmax( CLip
+L
+√κ(3+ τ)+1) L−l−1τ
+≤(1−β)√pCfmaxe6√κCLip τ.
+(24)
+30
+
+===== PAGE 31 =====
+Published as a conference paper at ICLR 2024
+Similarly, the fourth term can be upper bounded by β√pCfmaxe6√κCLip τ. Plugging back Eq. (22)
+yields:
+f(x,fW )−f(x,W )−
+D
+(1−β)∇W f +β∇W ˆf ,fW −W
+E
+≤(3√p+τ)2e6√κCLip(√κCLip+Cfmax)τ +βe6√κCLip(√κCLip+Cfmax)(2τ +3ρ)2τ +√pCfmaxe6√κCLip τ
+≤18√pe6√κCLip(1+ β)(√κCLip+Cfmax)τ ,
+which completes the proof of the first inequality in the lemma. The second inequality can be proved by
+the same method as in Lemma 6.
+Lemma 13. There exists an absolute constantC1 such that, for anyϵ >0 and any W ,fW ∈ B(W [1],τ)
+with τ ≤ C1ϵ(√κCLip + Cfmax)−1p−1/2e−6CLip
+√κ, with probability at least 1 − 2exp(−m/2) −
+2(L−2)exp(−κm/2)−2pexp(−m/2)−δ, one has:
+L(x,fW ) ≥ L(x,W )+
+D
+(1−β)∇W L(x,W )+ β∇W L(Aρ(x,W ),W ),fW −W
+E
+−ϵ,
+L(Aρ(x,W ),fW ) ≥ L(Aρ(x,W ),W )+
+D
+(1−β)∇W L(x,W )+ β∇W L(Aρ(x,W ),W ),fW −W
+E
+−ϵ.
+Proof. Firstly, we will prove the first inequality. Recall that the cross-entropy loss is written as
+ℓ(z)=log(1+exp( −z)) and we denote byL(x,W ):= ℓ[y·f(x,W )]. Then one has:
+L(x,fW )−L(x,W )
+= ℓ[yef]−ℓ[yf ]
+≥ ℓ′[yf ]·y·(ef −f) (By convexity ofℓ(z)).
+≥ ℓ′[yf ]·y·
+D
+(1−β)∇f,fW −W
+E
++ℓ′[y ˆf]·y·
+D
+β∇ ˆf ,fW −W
+E
+−κ1
+=
+D
+(1−β)∇W L(x,W )+ β∇W L(Aρ(x,W ),W ),fW −W
+E
+−κ1 (By chain rule),
+where we define:
+κ1 :=
+ℓ′[yf ]·y·(ef −f)−ℓ′[yf ]·y·
+D
+(1−β)∇f,fW −W
+E
+−ℓ′[y ˆf]·y·
+D
+β∇ ˆf ,fW −W
+E.
+Thus, it suffices to show thatκ1 can be upper bounded byϵ :
+κ1 ≤
+ℓ′[yf ]·y
+n
+ef −f −
+D
+(1−β)∇W f +β∇W ˆf ,W ),fW −W
+Eo+
+
+n
+ℓ′[yf ]·y−ℓ′[y ˆf]·y
+o
+β
+D
+∇W ˆf ,fW −W
+E
+≤18√pe6√κCLip(1+ β)(√κCLip+Cfmax)τ +2β
+
+D
+∇W ˆf ,fW −W
+E
+≤18√pe6√κCLip(1+ β)(√κCLip+Cfmax)τ +2β
+
+L−1X
+l=1
+D
+∇Wl f(x,W ),fWl −Wl
+E+2β|⟨fL−1,fwL −wL⟩|
+≤18√pe6√κCLip(1+ β)(√κCLip+Cfmax)τ +2β√pCfmaxe6√κCLip τ +4βCfmaxτ
+≤24√p(1+ β)e6κCLip(κCLip+Cfmax)τ
+≤ ϵ,
+(25)
+where the first and the third inequality is by triangle inequality, the second inequality is by Lemma 12
+and the fact that |ℓ′[yf (x,W )]·y| ≤1, , the fourth inequality follows the same proof as in Eqs. (23)
+and (24), and the last inequality is by the condition that if τ ≤ C2ϵ(1 + β)−1p−1/2(√κCLip +
+Cfmax)−1e−6CLip
+√κ for some absolute constant C2. Following the same method in Lemma 7, we
+can prove the second inequality ifτ ≤ C3ϵ(3−β)−1p−1/2(√κCLip+Cfmax)−1e−6√κCLip for some
+absolute constant C3. Lastly, setting C1 = max{C2, C3} and noting that (3 − β)−1 < (1 + β)−1
+completes the proof.
+31
+
+===== PAGE 32 =====
+Published as a conference paper at ICLR 2024
+Lemma 14. For anyϵ,δ,R >0, there exists: m⋆ = O(poly(R,L,k,CLip,p,β))·ϵ−2e12CLip
+√κlog(1/δ)
+such that if m ≥ m⋆, then for any W ∗ ∈ B(W [1],Rm−1/2), under the following choice of step-size
+γ = νϵ/[CLippkC2
+fmaxmLe12CLip
+√κ] and iterations N = L2R2CLippkC2
+fmaxe12CLip
+√κ/(2ε2ν) for
+some small enough absolute constantν, the cumulative loss can be upper bounded with probability at
+least 1−δ by:
+1
+N
+NX
+i=1
+L(xi,W [i]) ≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+3 ϵ,
+1
+N
+NX
+i=1
+L(Aρ(xi,W [i]),W [i]) ≤ 1
+N
+NX
+i=1
+L(Aρ(xi,W [i]),W ⋆)+3 ϵ.
+Proof. We set τ = C1(1+ β)−1ϵ(√κCLip + Cfmax)−1p−1/2e−6CLip
+√κ where C1 is a small enough
+absolute constant so that the requirements onτ in Lemmas 12 and 13 can be satisfied.
+We setτ = C1ϵ(1+ β)−1(CLip+Cfmax)−1e−6CLip where C1 is a small enough absolute constant so
+that the requirements onτ in Lemmas 6 and 7 can be satisfied. LetRm−1/2 ≤ τ, then we obtain the
+condition for W ⋆ ∈ B(W [1],τ ), i.e., m ≥ R2C −2
+1 ϵ−2(1 +β)2p(√κCLip + Cfmax)2e12CLip
+√κ. We
+now show thatW [1],...,W [N] are inside B(W [1],τ) as well. The proof follows by induction. Clearly,
+we have W [1] ∈ B(W [1],τ). Suppose that W [1],...,W [i] ∈ B(W [1],τ), then with probability at least
+1−δ′, we have:
+
+
+W [i+1]
+l −W [1]
+l
+
+
+
+F ≤
+iX
+j=1
+
+
+W [j+1]
+l −W [j]
+l
+
+
+
+F
+=
+iX
+j=1
+γ
+
+
+
+(1−β)∇Wl L(xj,W [j])+ β∇Wl L(Aρ(xj,W [j]),W [j])
+
+
+
+
+F
+≤ γ(1−β)N
+
+
+
+∇Wl L(xj,W [j])
+
+
+
+
+F
++γβN
+
+
+
+∇Wl L(Aρ(xj,W [j]),W [j])
+
+
+
+
+F
+≤ γN CLip∥WL∥F∥ϕl(Fl−1)∥F
+L−1Y
+r=l+1
+( CLip
+L
+√
+k∥Wr∥2+1)
+
+
+
+fWl −Wl
+
+
+
+
+F
+≤ γN CLip(3√p+τ)
+√
+kCfmax
+ CLip
+L
+√
+k(3+ τ)+1
+L−l−1
+≤6γN CLip
+√pκCfmaxe6√κCLip .
+Plugging in our parameter choice forγ and N leads to:
+
+
+W [i+1]
+l −W [1]
+l
+
+
+
+F ≤3CLip
+√pκCfmaxe6√κCLip LR2ϵ−1m−1 ≤ τ ,
+where the last inequality holds as long asm ≥3CLip
+√pκCfmaxe12√κCLip LR2C −1
+1 ϵ−2. Therefore by
+induction we see thatW [1],...,W [N] ∈ B(W [1],τ). Now, we are ready to prove the first inequality in
+the lemma. We provide an upper bound for the cumulative loss as follows:
+L(xi,W [i])−L(xi,W ⋆)
+≤
+D
+(1−β)∇W L(xi,W [i])+ β∇W L(Aρ(xi,W [i]),W [i]),W [i] −W ⋆
+E
++ϵ (By Lemma 7)
+=
+
+W [i] −W [i+1],W [i] −W ⋆
+γ +ϵ
+= ∥W [i] −W [i+1]∥2
+F+∥W [i] −W ⋆
+l ∥2
+F −∥W [i+1] −W ⋆∥2
+F
+2γ +ϵ
+= ∥W [i] −W ⋆∥2
+F −∥W [i+1] −W ⋆∥2
+F+γ2
+
+(1−β)∇W L(xi,W [i])+ β∇W L(Aρ(xi,W [i]),W [i])
+
+
+2
+F
+2γ +ϵ
+≤ ∥W [i] −W ⋆∥2
+F −∥W [i+1] −W ⋆∥2
+F
+2γ +
+62γ2C2
+LippκC2
+fmaxe12√κCLip
+2γ +ϵ.
+32
+
+===== PAGE 33 =====
+Published as a conference paper at ICLR 2024
+Telescoping overi=1 ,...,N, we obtain:
+1
+N
+NX
+i=1
+L(xi,W [i])
+≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+ ∥W (1) −W ⋆∥2
+F
+2N γ +18γC 2
+LippκC2
+fmaxe12√κCLip +ϵ
+≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+ LR2
+2γmN +18γC 2
+LippκC2
+fmaxe12√κCLip +ϵ
+≤ 1
+N
+NX
+i=1
+L(xi,W ⋆)+3 ϵ,
+where in the first inequality we simply remove the term−∥W [N+1] −W ⋆∥2
+F/(2γ) to obtain an upper
+bound, the second inequality follows by the assumption that W ⋆ ∈ B(W [1], Rm−1/2), the third
+inequality is by the parameter choice of γ and N. One can follow the same procedure to prove the
+second inequality in the lemma that is based on Lemma 13.
+F A DDITIONAL EXPERIMENTS
+F.1 C ORRELATION BETWEEN FGSM-NTK AND PGD-NTK SCORES AND ACCURACY
+We present a comprehensive analysis of the correlation between NTK scores and accuracy in Figure 6.
+The following 10 NTKs are selected: clean NTK, robust NTK withρ ∈ {3/255,8/255} subjected to
+FGSM/PGD attack, the corresponding robust twice NTK subjected to FGSM/PGD attack. The result
+demonstrates that robust NTK has a higher correlation compared with standard NTK under adversarial
+training. Moreover, our analysis indicates a general trend wherein NTKs with FGSM attacks display
+a higher correlation with accuracy than those subjected to PGD attacks. These results suggest that
+employing NTKs with FGSM attacks is preferable for guiding robust architecture searches.
+KNAS PGD ,
+ 3/255
+PGD ,
+ 8/255
+PGD2 ,
+ 3/255
+PGD2 ,
+ 8/255
+FGSM ,
+ 3/255
+FGSM ,
+ 8/255
+FGSM2 ,
+ 3/255
+FGSM2 ,
+ 8/255
+NTK score
+CleanFGSM, 3/255PGD, 3/255FGSM, 8/255PGD, 8/255
+Accuracy
+0.527 0.533 0.540 0.537 0.549 0.531 0.536 0.534 0.556
+0.546 0.552 0.559 0.556 0.568 0.550 0.555 0.553 0.575
+0.543 0.550 0.556 0.553 0.565 0.548 0.552 0.550 0.572
+0.601 0.608 0.614 0.611 0.622 0.606 0.610 0.608 0.628
+0.598 0.604 0.610 0.608 0.619 0.602 0.607 0.605 0.625
+0.54
+0.56
+0.58
+0.60
+0.62
+Figure 6: Spearman coefficient between NTK-score, and various metrics. The label with subscriptρ in
+the x-axis indicates the score w.r.t the robust NTK while the one with subscriptρ indicates the score
+w.r.t the twice robust NTK.
+33
+
+===== PAGE 34 =====
+Published as a conference paper at ICLR 2024
+F.2 E VALUATION RESULTS ON NAS APPROACHES
+In Table 7, we provide additional evaluation results on NAS approaches, e.g., AdvRush (Mok et al.,
+2021), KNAS (Xu et al., 2021), EigenNAS (Zhu et al., 2022a), NASI (Shu et al., 2022), NASWOT (Mel-
+lor et al., 2021). For KNAS, we use the data with PGD attack to construct the kernel. We follow the
+same set-up in Xu et al. (2021) to efficiently compute the NTK. Specifically, we randomly select 50
+samples and estimate the minimum eigenvalue of NTK by its Frobenius norm. Similarly, in EigenNAS,
+we choose the trace of the NTK as proposed in Zhu et al. (2022a). Regarding NASI, NASWOT, and
+AdvRush, we use the official open-source implementation to produce the result. For DARTS, we use
+the first-order implementation, i.e., DARTS-V1, from the library of Dong & Yang (2020).
+F.3 G RADIENT OBFUSCATION IN SPARSE AND DENSE ARCHITECTURES
+Originally pointed out by Athalye et al. (2018), gradient obfuscation is a cause for the overestimated
+robustness of several adversarial defense mechanisms, e.g., parametric noise injection defense (He
+et al., 2019) and ensemble defenses (Gao et al., 2022). Such gradient obfuscation might exist in
+the defense of several dense or sparse architectures (Kundu et al., 2021). In this work, we employ
+vanilla adversarial training as a defense approach, which does not suffer from gradient obfuscation, as
+originally demonstrated in (Athalye et al., 2018). Given the huge considered search space with 6466
+architectures, we investigate whether the sparsity of the architecture design might have an impact on
+gradient obfuscation. Specifically, based on the search space in Figure 1, we group all architectures in
+terms of the number of operators “Zeroize”, which can represent the sparsity of the network. Next,
+we select the one with the highest robust accuracy in each group and check whether this optimal
+architecture satisfies the characteristics of non-gradient obfuscation in Table 4.
+Table 4: Characteristics of non-gradient obfuscation Athalye et al. (2018).
+a) One-step attack performs worse than iterative attacks.
+b) Black-box attacks perform worse than white-box attacks.
+c) Unbounded attacks fail to obtain100%attack success rate.
+d) Increasing the perturbation radiusρ does not increase the attack success rate.
+e) Adversarial examples can not be found by random sampling if gradient-based attacks do not.
+Table 5 presents the evaluation result of these architectures under FGSM, Square Attack, and PGD
+attack with varying radius. We can see that all of these architectures clearly satisfy a), c), d). Regarding
+e), all of the networks still satisfy it because gradient-based attacks can find adversarial examples.
+For b), only the sparse network with 4 “Zeroize” does not satisfy. Therefore, we can see that these
+architectures can be considered without suffering gradient obfuscation, which is consistent with the
+original conclusion for adversarial training in (Athalye et al., 2018).
+Table 5: Testing of gradient obfuscation for architectures with different sparsity.
+Number of
+“Zeroize” Clean FGSM
+(3/255)
+Square
+(3/255)
+PGD
+(3/255)
+PGD
+(8/255)
+PGD
+(16/255)
+PGD
+(32/255)
+PGD
+(64/255)
+PGD
+(128/255)
+PGD
+(255/255)
+0 0.7946 0.6975 0.6929 0.6924 0.4826 0.1774 0.0083 0.0000 0.0000 0.0000
+1 0.7928 0.6933 0.6884 0.6874 0.4798 0.1744 0.0077 0.0000 0.0000 0.0000
+2 0.7842 0.6832 0.6786 0.6779 0.4711 0.1739 0.0080 0.0000 0.0000 0.0000
+3 0.7456 0.6515 0.6482 0.6472 0.4442 0.1599 0.0079 0.0000 0.0000 0.0000
+4 0.5320 0.4560 0.4427 0.4528 0.3191 0.1393 0.0193 0.0010 0.0000 0.0000
+F.4 R OBUSTNESS TOWARDS DISTRIBUTION SHIFT
+To make the benchmark more comprehensive in a realistic setting, we evaluate each architecture in
+the search space under distribution shift. We choose CIFAR-10-C (Hendrycks & Dietterich, 2019),
+34
+
+===== PAGE 35 =====
+Published as a conference paper at ICLR 2024
+shot_noise1motion_blur1
+snow1
+pixelate1
+gaussian_noise1
+0
+10
+20
+30
+40
+50
+60
+70
+80Accuracy %
+defocus_blur1brightness1
+fog1
+zoom_blur1
+frost1
+0
+10
+20
+30
+40
+50
+60
+70
+80Accuracy %
+glass_blur1
+impulse_noise1
+contrast1
+jpeg_compression1elastic_transform1
+0
+10
+20
+30
+40
+50
+60
+70
+80Accuracy %
+shot_noise5motion_blur5
+snow5
+pixelate5
+gaussian_noise5
+0
+10
+20
+30
+40
+50
+60
+70Accuracy %
+defocus_blur5brightness5
+fog5
+zoom_blur5
+frost5
+0
+10
+20
+30
+40
+50
+60
+70Accuracy %
+glass_blur5
+impulse_noise5
+contrast5
+jpeg_compression5elastic_transform5
+0
+10
+20
+30
+40
+50
+60
+70
+80Accuracy %
+Figure 7: Boxplots for accuracy under various corruptions and severity levels (1 and 5) of all6466
+architectures in the considered search space. Red line indicates the accuracy of a random guess.
+Table 6: Spearman coefficient between various accuracies on CIFAR-10-C and adversarial robust
+accuracy on CIFAR-10. We can see that the adversarial robust accuracy has a relatively high correlation
+with all corruptions except for contrast corruptions.
+PGD 3/255 FGSM 3/255 PGD 8/255 FGSM 8/255
+Shot noise 0.984 0.984 0.965 0.968
+Motion blur 0.990 0.990 0.980 0.982
+Snow 0.995 0.995 0.989 0.990
+Pixelate 0.996 0.996 0.984 0.988
+Gaussian noise 0.981 0.981 0.961 0.965
+Defocus blur 0.993 0.993 0.983 0.986
+Brightness 0.993 0.993 0.984 0.986
+Fog 0.916 0.916 0.918 0.918
+Zoom blur 0.992 0.992 0.978 0.982
+Frost 0.991 0.991 0.985 0.987
+Glass blur 0.993 0.993 0.981 0.984
+Impulse noise 0.947 0.947 0.936 0.938
+Contrast -0.555 -0.555 -0.574 -0.571
+Jpeg compression 0.996 0.997 0.984 0.987
+Elastic transform 0.995 0.995 0.984 0.987
+which includes 15 visual corruptions with 5 different severity levels, resulting in 75 new metrics. In
+Figure 7, we show the boxplots of the accuracy. All architectures are robust towards corruption with
+lower severity levels. When increasing the severity levels to five, the models are no longer robust
+to fog and contrast architectures. Similar to robust accuracy under FGSM and PGD attacks, we can
+see a non-negligible gap between the performance of different architectures, which motivates robust
+architecture design. Moreover, in Table 6, we plot the Spearman coefficient between various accuracies
+under corruptions with severity level 5 on CIFAR-10-C and adversarial robust accuracy on CIFAR-10.
+Interestingly, we can see that the adversarial robust accuracy has a relatively high correlation with all
+corruptions except for contrast corruptions. As a result, performing NAS on the adversarially trained
+architectures in the benchmark can obtain a robust guarantee of distribution shift.
+35
+
+===== PAGE 36 =====
+Published as a conference paper at ICLR 2024
+Table 7: Result of different NAS algorithms on our NAS-RobBench-201.
+Method Clean FGSM
+(3/255)
+PGD
+(3/255)
+FGSM
+(8/255)
+PGD
+(8/255)
+Optimal 0.794 0.698 0.692 0.537 0.482
+Clean
+Regularized Evolution 0.791 0.693 0.688 0.530 0.476
+Random Search 0.779 0.682 0.676 0.520 0.470
+Local Search 0.796 0.697 0.692 0.533 0.478
+FGSM (8/255)
+Regularized Evolution 0.790 0.693 0.688 0.532 0.478
+Random Search 0.774 0.679 0.674 0.521 0.471
+Local Search 0.794 0.695 0.689 0.535 0.481
+PGD (8/255)
+Regularized Evolution 0.789 0.692 0.686 0.531 0.478
+Random Search 0.771 0.676 0.671 0.520 0.471
+Local Search 0.794 0.695 0.689 0.535 0.481
+Train-free
+KNAS 0.767 0.675 0.67 0.521 0.472
+EigenNAS 0.766 0.674 0.668 0.52 0.471
+NASI 0.666 0.571 0.567 0.410 0.379
+NASWOT 0.766 0.674 0.668 0.52 0.471
+Differentiable search AdvRush 0.587 0.492 0.489 0.352 0.330
+DARTS 0.332 0.286 0.285 0.215 0.213
+ 
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+Zeroize
+Skip
+1x1 Conv 
+3x3 Conv 
+1x1 Ave
+30.0
+30.2
+30.4
+30.6
+30.8
+31.0Average robust accuracy %
+Edge#1 Edge#2 Edge#3 Edge#4 Edge#5 Edge#6
+Architectures ID
+15537
+1414
+15452
+6118
+10733
+7632
+1062
+13082
+10575
+14624
+Figure 8: The operators of each edge in the top-10 (average robust accuracy of PGD-3/255, PGD-8/255
+FGSM-3/255 FGSM-8/255) architecture in Jung et al. (2023). We can see a notable difference from
+the one present in Figure 4 in terms of architectures id and selected nodes. Additionally, the best
+architecture in NAS-RobBench-201 has a higher accuracy (≈60%) than that of the best architecture
+(≈30%) in Jung et al. (2023).
+G L IMITATIONS
+Our benchmark and theoretical results have a primary limitation, as they currently pertain exclusively
+to Fully Connected Neural Networks (FCNN) and Convolutional Neural Networks (CNN), with no
+exploration of their applicability to state-of-the-art vision Transformers. Furthermore, our study is
+constrained by a search space encompassing only 6466 architectures, leaving room for future research
+to consider a more expansive design space.
+Our analysis framework could be adapted for a vision Transformer but the analysis for Transformer
+is still difficult because of different training procedures and more complicated architectures. The
+optimization guarantees of Transformer under a realistic setting (e.g., scaling, architecture framework)
+in theory is still an open question. Secondly, similar to the NTK-based analysis in the community, we
+study the neural network in the linear regime, which can not fully explain the success of practical neural
+networks (Allen-Zhu et al., 2019; Yang & Hu, 2021). However, NAS can still benefit from the NTK
+result. For example, the empirical NTK-based NAS algorithm allows for feature learning by taking
+extra metrics (Mok et al., 2022). Additionally, though our theoretical result uses the NTK tool under
+36
+
+===== PAGE 37 =====
+Published as a conference paper at ICLR 2024
+the lazy training regime (Chizat et al., 2019), NAS can still benefit from the NTK result. For example,
+the empirical NTK-based NAS algorithm allows for feature learning by taking extra metrics, see Mok
+et al. (2022) for details.
+H S OCIETAL IMPACT
+Firstly, this work releases a NAS benchmark that includes the evaluation result of6466 architectures
+under adversarial training, which facilitates researchers to efficiently and fairly evaluate various NAS
+algorithms. Secondly, this work provides the generalization guarantee for searching robust architecture
+for the NAS community, which paves the way for practitioners to develop train-free NAS algorithms.
+Hence, we do not expect any negative societal bias from this perspective. However, we encourage the
+community to explore further the general societal bias from machine learning models into real-world
+applications.
+37

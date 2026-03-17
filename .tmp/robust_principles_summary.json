@@ -1,0 +1,36 @@
+{
+  "pages": 14,
+  "text_len": 44182,
+  "urls": [
+    "http://www.rahulduggal.com/",
+    "https://dxoig.mn/",
+    "https://faculty",
+    "https://github.com/poloclub/robust-principles.",
+    "https://matthewdhull.github.io",
+    "https://mphute.github.io/",
+    "https://shengyun-peng.github.io/",
+    "https://www.kevinyli.com/",
+    "https://xuweilin.org/"
+  ],
+  "sections": [
+    "1 Georgia Institute of T echnology",
+    "2 Intel Corporation",
+    "Abstract",
+    "1 Introduction",
+    "2 Related Work",
+    "3 Preliminaries",
+    "4 Robust Architectural Design Principles",
+    "4.2 Convolutional over Patchify stem stage",
+    "4.3 Robust Residual Block Design",
+    "4.3.2 Non-parametric Smooth Activation Functions",
+    "5 Adversarial Robustness Evaluation",
+    "5.1 Combining the Three Design Principles",
+    "5.3 Evaluations on ImageNet",
+    "6 Conclusion",
+    "7 Acknowledgement",
+    "References"
+  ],
+  "table_mentions": 7,
+  "figure_mentions": 2,
+  "equation_mentions": 5
+}

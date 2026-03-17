@@ -1,0 +1,620 @@
+S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES 1
+Robust Principles: Architectural Design
+Principles for Adversarially Robust CNNs
+ShengY un Peng1
+https://shengyun-peng.github.io/
+Weilin Xu2
+https://xuweilin.org/
+Cory Cornelius 2
+https://dxoig.mn/
+Matthew Hull1
+https://matthewdhull.github.io
+Kevin Li1
+https://www.kevinyli.com/
+Rahul Duggal1
+http://www.rahulduggal.com/
+Mansi Phute1
+https://mphute.github.io/
+Jason Martin2
+jason.martin@intel.com
+Duen Horng Chau 1
+https://faculty .cc.gatech.edu/~dchau
+1 Georgia Institute of T echnology
+Atlanta, GA, USA
+2 Intel Corporation
+Hillsboro, OR, USA
+Abstract
+We aim to unify existing works’ diverging opinions on how architectural components
+affect the adversarial robustness of CNNs. To achieve our goal, we synthesize a suite
+of generalizable robust architectural design principles: (a) optimal range for depth and
+width conﬁgurations, (b) preferring convolutional over patchify stem stage, and (c) robust
+residual block design by adopting squeeze and excitation blocks, and non-parametric
+smooth activation functions. Through extensive experiments across a wide spectrum
+of dataset scales, adversarial training methods , model parameters, and network design
+spaces, our principles consistently and markedly improve AutoAttack accuracy: 1–3
+percentage points (pp) on CIFAR-10 and CIFAR-100, and 4–9 pp on ImageNet. The
+code is publicly available at https://github.com/poloclub/robust-principles.
+1 Introduction
+Convolutional neural networks (CNNs) and Transformers are staples in computer vision re-
+search [ 11, 15], but they are vulnerable to adversarial attacks [ 13, 31, 40], and adversarial
+© 2023. The copyright of this document resides with its authors.
+It may be distributed unchanged freely in print or electronic forms.
+2 S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES
+CRobust Residual BlockResidualSE
+# Blocks (Depth)#C h a n n e l s( W i d t h )A
+ConvolutionalOverlappingPatchifyNon-Overlapping
+Stem Stage: Prefer ConvolutionalB
+Optimal Range for Depth and Width Configurations
+PredictionsStage nStage 3
+Stage 2
+Stage 1InputImagesStem Stage
+Non-parametric Smooth Activation Functions
+SiLU(Preferred)
+PSiLU
+ReLU
+PReLU
+Figure 1: We synthesize a suite of generalizable architectural design principles to robustify CNNs,
+spanning a network’s macro and micro designs: (A) optimal range for depth and width conﬁgurations,
+(B) preferring convolutional over patchify stem stage, and (C) robust residual block design by adopting
+squeeze and excitation blocks, and non-parametric smooth activation functions. The principles consis-
+tently and markedly improve AutoAttack accuracy for CIFAR-10, CIFAR-100, and ImageNet over the
+wide spectrum of A T methods, model parameters, and network design spaces.
+training (A T) is the most effective way to improve their robustness [ 29]. While CNNs and
+Transformers have comparable clean accuracy [ 27, 47], there is a disparity between the two
+families in robustness research. A T has robustiﬁed a wide range of Transformers [ 6, 31].
+Y et, for CNNs, wide residual networks (WRN) [53], proposed back in 2016, is still the most
+studied architecture in A T research [19, 45].
+Although a variety of instructions have been proposed to enhance the robustness of
+WRN, there are still conﬂicting opinions on how architectural components impact the over-
+all robustness. For example, recent research [ 19, 20] explored how scaling depth and width
+might be correlated with improved adversarial robustness; however, Mok et al .[ 32] sug-
+gested such a relationship was unclear. As another example, for micro block design, Xie et
+al.[ 51] and Bai et al.[ 2] found smooth activation functions improved robustness, but Huang
+et al .[ 20] suggested that the performance was dependent on A T settings. Furthermore, as
+most existing robust architecture research experimented only on the small-scale CIFAR-
+10 [ 19, 20, 31, 32], it was unclear whether such ﬁndings might generalize to large-scale
+datasets, e.g., ImageNet [7]. For example, while prior work suggested that a straightforward
+application of squeeze and excitation (SE) hurts robustness on CIFAR [ 20], we ﬁnd such a
+modiﬁcation, in fact, improves robustness on ImageNet (Sec. 4.3.1). Similarly, while previ-
+ous work suggested that parametric activation functions are more robust than non-parametric
+versions on CIFAR [ 5], we ﬁnd the reverse holds true on ImageNet (Sec. 4.3.2). The diver-
+gent observations provide strong motivation for us to seek a suite of uniﬁed generalizable
+design principles that can enhance the adversarial robustness of CNNs.
+To accomplish our goal, we survey and distill four key architectural components under-
+pinning state-of-the-art (SOTA) CNNs and Transformers that boost adversarial robustness.
+These components span a network’s macro and micro designs: depth and width , stem stage,
+SE block, and activation. Different from previous research on robust architectures that solely
+relies on the small-scale CIFAR-10, we explore the A T of all four components on the large-
+scale ImageNet and evaluate on its full validation set. Through extensive experiments over
+the wide spectrum of dataset scales , AT methods , model parameters , and network design
+spaces, we make the following key contributions:
+S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES 3
+1. A suite of generalizable robust architectural design principles for CNNs (Fig. 1):
+(a) Optimal Range for Depth and Width Conﬁgurations. Despite the popularity of 4-
+stage residual networks on ImageNet, existing exploration has been constrained to 3-stage
+designs [19, 20]. We discover a ﬂexible depth and width scaling rule that does not place a
+restriction on the total number of stages, and we verify its generalizability and optimality
+through extensive experiments. (Sec. 4.1)
+(b) Convolutional over Patchify Stem Stage. Convolutional stem and patchify stem are
+commonly used in CNNs and Transformers to downsample input images due to the redun-
+dancy inherent in natural images. Convolutional stem uses overlapped convolution kernel
+to slide the input image, while patchify stem patchiﬁes the input image into p ⇥ p non-
+overlapping patches. We discover that convolutional stem, especially with a postponed
+downsampling design, outperforms patchify stem due to its less-aggressive stride-two
+downsampling and overlapped convolution kernels. (Sec. 4.2)
+(c) Robust Residual Block Design. Our investigations on how SE block and activations
+affect robustness present new ﬁndings on ImageNet that differ from previous research
+on CIFAR. Through a hyperparameter sweep, we ﬁnd the reduction ratio r in SE block
+is negatively correlated with robustness, a new discovery not previously reported as prior
+work was based on a ﬁxed r [20]. We also conﬁrm that non-parametric smooth activations
+consistently improve robustness on CIFAR-10, CIFAR-100, and ImageNet. (Sec. 4.3)
+2. Consistent and marked improvements on adversarial robustness.
+We verify the generalization of the three design principles across a wide spectrum of
+dataset scales (CIFAR-10, CIFAR-100 [ 23], ImageNet [ 7]), AT methods (standard ad-
+versarial training (SA T) [29], TRADES [ 54], Fast-A T [46], MART [ 43], and diffusion-
+augmented A T [45]), model parameters (from 26M to 267M), and network design spaces
+(variants of WRN [ 53] and ResNet [ 15]). Our experiments demonstrate that all design
+principles consistently and markedly improve AutoAttack (AA) accuracy by 1–3 per-
+centage points (pp) on CIFAR-10 and CIFAR-100 — boosting even the SOTA diffusion-
+augmented A T [45] by such amounts — and 4–9 pp on ImageNet. In particular, our robus-
+tiﬁed WRN-70-16 boosts the AA accuracy by 1.31 pp (65.02% ! 66.33%) on CIFAR-
+10, and 0.96 pp (37.77% ! 38.73%) on CIFAR-100. On ImageNet, the AA accuracy
+is boosted by 6.48 pp (39.78% ! 46.26%) through robustiﬁed ResNet-101, and 6.94 pp
+(42.00% ! 48.94%) through robustiﬁed WRN-101-2. Our ﬁndings unify prior works’
+diverging opinions on how architectural components affect robustness and highlight the
+beneﬁts of exploring intrinsically robust architectural components.
+2 Related Work
+Adversarial training (A T). A T is an effective approach to defending against adversarial
+attacks [13]. Madry et al.[ 29] formulated SA T as a min-max optimization framework. Given
+dataset samples (xi, yi), network fq and loss function L, the optimization is formulated as:
+argmin
+q
+E(xi,yi)⇠D
+
+max
+x0
+L
+ 
+fq , x0, y
+  
+, (1)
+The inner adversarial example x0aims to ﬁnd the perturbation of a given data point x that
+achieves a high loss and is generated on the ﬂy during the training process. Since then,
+4 S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES
+multiple variants of SA T are proposed [ 1, 9, 10, 44, 48]. Our architectural research is com-
+plementary to these works on A T methods. We train on diverse A T methods, e.g., SA T [29],
+Fast-A T [46], TRADES [ 54], MART [ 43], and diffusion-augmented A T [ 45] to verify that
+our design principles unanimously improve robustness agnostic to the training recipe.
+Robust Architectures. Here we provide a brief overview of related research on robust
+architectures, and the extended version is in Sec. A in supplementary materials. Our key
+advancement over existing works is a suite of three robust architectural design principles
+veriﬁed on diverse dataset scales, A T methods, model parameters, and design spaces. A few
+research studied the impact of architectural designs on adversarial robustness [ 14, 34, 38,
+50]. For macro network design, Huang et al.[ 19] and Huang et al.[ 20] led the exploration
+of the correlations between robustness improvement and scaling depth and width, but Mok
+et al.[ 32] suggested such a relationship was unclear. For micro block design, smooth [ 2, 51]
+and parameterized [ 5] activation functions can largely improve robustness on CIFAR, but
+Huang et al.[ 20] found the performance was dependent on A T settings. There was no clear
+consensus on how architectural components affect adversarial robustness. More importantly,
+most conclusions are drawn on CIFAR with WRN’s basic block design. It was unclear
+whether such existing robust architectures generalize to large-scale datasets or other network
+design spaces. Our work provides conclusive evidence that uniﬁes prior works’ diverging
+opinions on how architectural components affect robustness.
+3 Preliminaries
+This section describes the setups for comparing CNNs and Transformers in terms of archi-
+tectural design space, training techniques, and adversarial attacks.
+Architectural Design Skeleton. Fig. 1 provides the CNN skeleton that supports modiﬁca-
+tions of different architectural components in our study. Speciﬁcally, the skeleton consists
+of a stem stage, n body stages, and a classiﬁcation head. A typical body stage has multiple
+residual blocks, and the block type is either basic (two 3 ⇥ 3 convolutions) or bottleneck
+(1 ⇥ 1, 3 ⇥ 3, and 1 ⇥ 1 convolutions). For stage i, denote depth Di as number of blocks, and
+width Wi as channels in 3 ⇥ 3 convolution. The downsampling factor is 1 in the ﬁrst block
+of stage 1, and 2 in the ﬁrst block of stage 2 to n. Unless otherwise speciﬁed, the default
+operations in each block are rectiﬁed linear unit (ReLU) and batch normalization (BN).
+Training Techniques. We use ﬁve A T recipes: Fast-A T [ 46], SA T [29], TRADES [ 54],
+MART [43], and diffusion-augmented A T [45]. The architectural exploration is conducted
+on ImageNet [7], and we apply the same training method so that the performance difference
+between models can only be attributed to the difference in architectures. Due to the size of
+ImageNet and the slow speed of A T, we use Fast-A T [46] with a cyclic learning rate [ 39] and
+mixed-precision arithmetic [30]. After ﬁnalizing the architectural design principles, we train
+all models with diverse A T methods on CIFAR-10, CIFAR-100 [ 23] and ImageNet [ 7] to
+verify that our designs can consistently improve robustness regardless of the training recipe.
+Adversarial Attacks. Projected gradient descent (PGD) [29] and AA [3] are used to evaluate
+adversarial robustness. PGD is a white-box attack with complete access to network architec-
+tures and parameters. For PGD, we provide a comprehensive investigation on the full Ima-
+geNet validation set with attack budgets e 2{ 2, 4, 8}/255 and max steps i = {10, 50, 100},
+denoted as PGD i-e. AA is an ensemble of one black-box and three white-box attacks. The
+attack budget is e = 4/255 on ImageNet [ 4], and e = 8/255 on CIFAR-10 and CIFAR-
+100 [ 19, 20] for AA. All attacks are `• bounded. When exploring individual architectural
+S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES 5
+components, we use 10-step PGD ( PGD 10-e) for fast evaluations.
+4 Robust Architectural Design Principles
+Our strategy to explore the four robust architectural components is through comparing SOTA
+CNNs and Transformers. These components span a network’s macro and micro designs:
+depth and width (Sec. 4.1), stem stage (Sec. 4.2), squeeze and excitation block (Sec. 4.3.1),
+and activation (Sec. 4.3.2), as shown in Fig. 1. To exclude the effect of model complex-
+ity [ 29] and provide a fair comparison [ 2], we focus our investigation on the regime of
+ResNet-50 with ⇠26M parameters in this section. In the next section (Sec. 5), we verify the
+generalization of these principles through extensive experiments over the wide spectrum of
+dataset scales, A T methods, parameter budgets, and network design spaces.
+4.1 Optimal Range for Depth and Width Conﬁgurations
+Macro network design involves the distribution of depth and width in each stage. Shifted
+windows Transformer (Swin Transformer) [26] regulates the stage compute ratio as 1 : 1 : 3 :
+1 or 1 : 1 : 9 : 1. On the CNN side, ConvNeXt [ 27] reshufﬂes depths in all stages according to
+Swin Transformer and ﬁnds this design improves clean accuracy. RegNet [ 36] introduces a
+linear parameterization to assign network depth and width. As network depth and width are
+competing for resources when the parameter budget is ﬁxed, it is important to study the im-
+pact of depth and width on adversarial robustness. We draw inspiration from prior robustness
+research to develop a more generalized scaling rule. Huang et al.[ 19] found reducing depth
+or width at the last stage of WRN reduces the Lipschitz constant, thus improving robustness.
+Huang et al.[ 20] proposed a ﬁxed scaling ratio for WRN [ 53] on CIFAR-10.
+Existing explorations are constrained to 3-stage networks, whereas 4-stage residual net-
+works are more commonly used on ImageNet. Thus, instead of studying a ﬁxed depth and
+width conﬁguration in each stage, we aim to provide a ﬂexible compound scaling rule of the
+relationship between robustness and total depths and widths. Deﬁne the width-depth (WD)
+ratio of a n-stage network as the average of comparing Wi to Di in stage i:
+WD ratio = 1
+n   1
+n 1
+Â
+i=1
+Wi
+Di
+(2)
+The last stage is excluded since reducing its capacity improves robustness. WD ratio has
+three parameters: total stages n, depth Di, and width Wi. To obtain valid models, we ran-
+domly sample from n 2{ 3, 4, 5, 6}, Di  60, and Wi  1000. Fig. 2a-left shows the A T results
+of all samples. All clean and PGD accuracies show negative correlations with the WD ratio.
+Note when the WD ratio is close to 0, the A T is unstable and also leads to inferior robustness.
+We intersect the WD ratio of top 10% networks from each attack budget and ﬁnd the optimal
+range of WD ratio is [7.5, 13.5]. We use error distribution function (EDF) (Fig. 2a-right)
+to provide the characteristics of models from within and outside of the optimal range. A
+marked robustness gain is achieved by simply re-distributing depths and widths to satisfy the
+optimal range. Compare to ResNet-50’s WD ratio of 32, a robust network has lower WD
+ratio, which echoes previous research that deep and narrow networks are better than shallow
+and wide networks [ 20]. Furthermore, our WD ratio is not limited to 3-stage networks as
+ResNet-50 shown here already has 4 stages. Sec. 5 shows generalization to other networks.
+6 S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES
+PGD10-2PGD10-2
+0 180840
+1
+0
+1
+0
+1
+0
+1
+92
+66 76
+56 64
+42 52
+60
+PGD10-4PGD10-4
+PGD10-8PGD10-8
+CleanClean
+Width-Depth (WD) Ratio
+Optimal Range[7.5, 13.5]
+Out-of-range
+Within-range‎robustWithin-range‎robust
+Accuracy
+Cum. Prob.
+Error
+(a) Depth and Width Conﬁgurations
+ (b) Stem Stage and Residual Block Designs
+Figure 2: (a) Clean and PGD accuracies are negatively correlated with the WD ratio. Each dot is a
+conﬁguration of #stage, depth, and width. Intersecting each attack budget’s top 10% most accurate
+conﬁgurations, we ﬁnd the optimal range of the WD ratio is [7.5, 13.5] (with color backgrounds) and
+verify the signiﬁcance by the EDFs of models within range (steeper dark lines) and outside of range
+(gentle light lines). (b) Performance of different conﬁgurations in stem stage and residual blocks.
+Differences are compared with baseline ResNet-50. All models trained with Fast-A T [46] and evaluated
+on full ImageNet validation set. Different PGD attack budgets show a similar accuracy trend, and the
+full results are shown in supplementary material Sec. B.1.
+4.2 Convolutional over Patchify stem stage
+As a preprocessor, a common stem stage “aggressively” downsamples input images due to
+the redundancy inherent in natural images. The stem stage in ResNet-50 [ 15] consists of a
+stride-two 7 ⇥ 7 convolution and a stride-two max-pooling. Built on ResNet-50, RegNet [ 36]
+replaces the max-pooling with a stride-two residual shortcut in the ﬁrst block of the ﬁrst body
+stage, dubbed postponed downsampling. On the Transformer side, the stem stage patchiﬁes
+the image into p ⇥ p non-overlapping patches. It is implemented by a stride- pp ⇥ p convolu-
+tion, with p = 14/16 in vision Transformer (ViT) [11], and p = 4 in Swin Transformer [ 26].
+Both patchify stem and ResNet-style convolutional stem are applicable to CNNs and Trans-
+formers. As a pure CNN, ConvNeXt [ 27] borrowed the patchify stem from Transformer, and
+Xiao et al.[ 49] successfully employed the convolutional stem in ViT.
+Inspired by these ﬁndings, we compare how patchify and convolutional stem affect ad-
+versarial robustness. We set p = 4 following Swin Transformer and ConvNeXt for patchify
+stem (Patch 4, Stride 4) and use postponed downsampling for convolutional stem. From the
+results in Fig. 2b, we observe both designs show better robustness than the baseline ResNet-
+50, but postponed downsampling is signiﬁcantly higher than patchify stem. There are two
+differences between these two designs: a smaller stride and the overlapping region between
+two convolution kernels in the convolutional stem. We verify whether these two distinctions
+are beneﬁcial to robustness. First, we reduce the patch size from 4 ⇥ 4 to 2 ⇥ 2, and add the
+stride-two residual shortcut as in postponed downsampling to maintain the total downsam-
+pling ratio. This modiﬁcation (Patch 2, Stride 2) improves PGD 10-4 and clean accuracies of
+4 ⇥ 4 patch by 0.23 and 0.98 pp. Next, we gradually increase the overlapping area between
+the 4 ⇥ 4 patch by decreasing the stride from 3 to 1. We observe a consistent increment while
+decreasing the stride, and the 4 ⇥ 4 patch with the largest overlapping between neighboring
+patches (Patch 4, Stride 1) performs almost on par with the postponed downsampling. Fi-
+nally, we additionally experiment on different output channel widths since it barely changes
+S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES 7
+total parameters. Decreasing the width from 64 (ResNet-50) to 32 lowers the accuracy due to
+fewer model parameters. However, increasing the width from 64 to 96 boosts PGD 10-4 and
+clean accuracies by 1.47 and 1.24 pp with a negligible 0.01M increase in total parameters. In
+summary, the convolution stem with postponed downsampling design outperforms patchify
+stem due to its less aggressive stride-two downsampling and overlapped convolution kernels.
+Besides, widening the output channels signiﬁcantly improves robustness almost at no cost.
+4.3 Robust Residual Block Design
+4.3.1 Squeeze & Excitation
+Squeeze and excitation (SE) block is a simple but effective add-on for the original residual
+block. It was proposed to adaptively recalibrate channel-wise feature responses by modeling
+interdependencies between channels [ 18]. RegNet [ 36] also veriﬁes the effectiveness of SE
+on improving clean accuracy. However, Huang et al.[ 20] found that a straightforward appli-
+cation of SE hurts robustness on CIFAR-10, and added an extra skip connection around the
+SE. Driven by the discrepancy in clean and adversarial accuracies, we examine the SE block
+with ResNet-50. Note that the SE block will introduce additional parameters. Thus, we fol-
+low RegNet that sets r = 4 and appends the SE block directly after the 3 ⇥ 3 convolutional
+layer since it possesses fewer channels. Our experiments on ImageNet show a different pic-
+ture, where the original SE block markedly increases all PGD and clean accuracies compared
+to ResNet-50 (Fig. 2b). We hypothesize that the different effects on CIFAR and ImageNet
+are caused by the reduction ratio r since Huang et al. only tested on r = 16. To provide a fair
+comparison, we train WRN with a sweep of hyperparameter r = {2, 4, 8, 16, 32, 64}. Our ex-
+periments show that adversarial robustness is negatively correlated with r, and when r   32,
+the accuracy is inferior to the baseline WRN. More details are in supplementary material
+Sec. B.2. Therefore, SE block is a uniﬁed architecture component that improves both clean
+and adversarial accuracies, and we set r = 4 in all designs that include the SE block.
+4.3.2 Non-parametric Smooth Activation Functions
+Both the number and the function of activation layers are different between natural language
+processing (NLP) and vision architectures. In terms of the number, Transformer [ 11] only
+has one activation in the multilayer perceptron (MLP) block. In comparison, the activation
+is normally appended to all convolutions in a CNN block [ 15, 16]. ConvNeXt [ 27] ﬁrst
+observed this phenomenon and reduced the total activations from three to one in all blocks,
+which leads to higher clean accuracy. Inspired by ConvNeXt, We combinatorially analyzed
+all possible locations of the activation in a single block. The average PGD 10-4 accuracies
+are 30.43%, 29.00%, and 24.84% when total activations are set to 3, 2, and 1, which are
+all inferior to ResNet-50. Thus, reducing activation layers is not beneﬁcial to adversarial
+robustness, and we preserve the activation along with all convolutions.
+In terms of the activation function, it is common practice to use ReLU in CNNs [ 15]
+due to its efﬁciency and simplicity. However, advanced Transformers, e.g., BERT [8], GPT-
+2[ 35], and hierarchical Transformers [25] adopted smoother variants of ReLU, e.g., gaussian
+error linear unit (GELU) [ 17] and sigmoid linear unit (SiLU) [ 12]. Recent research shows
+replacing ReLU with its smooth approximations facilitates better gradient updates and leads
+to higher robustness [51]. For example, solely replacing all ReLUs with GELUs signiﬁcantly
+improves the PGD accuracy of a standard ResNet-50 [ 2]. Dai et al.[ 5] proposed paramet-
+8 S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES
+ric activation functions by adding learnable parameters to non-parametric versions, which
+showed mixed performance on CIFAR-10 for different design spaces. Compared to SiLU,
+parametric SiLU (PSiLU) and parametric shifted SiLU (PSSiLU) show higher robustness
+when applied to WRN-28-10, but show degraded performance when applied to ResNet-18.
+Therefore, we examine and compare the robustness gain brought by GELU, SiLU, paramet-
+ric ReLU (PReLU), PSiLU, and PSSiLU. We ﬁnd that: (1) non-parametric smooth activa-
+tions, e.g., SiLU and GELU are signiﬁcantly higher than ReLU (ResNet-50); and (2) for
+parametric activations, PReLU performs on par with ReLU, and both PSiLU and PSSiLU
+are inferior to SiLU. Synthesizing all the above ﬁndings, we recommend non-parametric
+smooth activations due to consistency and simplicity, thus replacing all ReLUs with SiLUs.
+Table 1: A roadmap to robustify ResNet-50 by cumulatively applying our three design principles. We
+label the robustiﬁed version as Ra . Ra ResNet-50 signiﬁcantly boosts the clean and adversarial
+accuracies of ResNet-50. Cumulative gains and robustiﬁed accuracies highlighted in bold. All models
+are trained with Fast-A T [ 46] and evaluated on full ImageNet validation set. Each conﬁguration is
+trained thrice and evaluated thrice with different seeds (9 values in total). The standard deviations are
+shown in parentheses.
+ResNet-50! RaResNet-50 #Param. Clean (%) PGD 10-2 (%) PGD 10-4 (%) PGD 10-8 (%)
+ResNet-50 (starting point) 25.7M 56.05 (0.10) 42.81(0.22) 30.59(0.15) 12.62(0.12)
++ Depth & Width Conﬁg (Sec.4.1) 25.8M 57.85 (0.16)+1.8045.90(0.26)+3.0933.87(0.10)+3.2815.27(0.05)+2.65
++ Convolutional Stem Stage (Sec.4.2) 25.9M 58.00(0.45)+0.1546.59(0.52)+0.6934.90(0.31)+1.0315.85(0.28)+0.58
++ Squeeze and Excitation (Sec.4.3.1) 26.2M 60.22(0.28)+2.2248.95(0.08)+2.3636.43(0.17)+1.5316.43(0.05)+0.58
++ Smoother Activation (Sec.4.3.2) 26.2M 62.02(0.03)+1.8051.47(0.22)+2.5239.65(0.27)+3.2218.97(0.14)+2.54
+Total:+5.97 +8.66 +9.06 +6.35
+5 Adversarial Robustness Evaluation
+We have completed the exploration of how individual architectural components affect adver-
+sarial robustness. It is encouraging to uncover how these components affect robustness, but it
+is not completely convincing unless the following two questions are addressed: 1) Can these
+components consistently improve robustness when grouped together? 2) Are these design
+principles generalizable? Sec. 5.1 provides a roadmap that robustiﬁes a CNN with all three
+design principles, dubbed Robust architecture (Ra). For a model robustiﬁed with our design
+principles, we tag it with Ra . Then, we scale model architectures under diverse parameter
+budgets, extrapolate to the design spaces of ResNet [15] and WRN [53], train all models with
+various A T methods, and evaluate on CIFAR (Sec. 5.2) and ImageNet (Sec. 5.3) to verify
+the generalization of our design principles. Full comparisons with CNNs, Transformers, and
+NAS-based architectures are provided in supplementary materials Sec. C and D.
+5.1 Combining the Three Design Principles
+We robustify a CNN by applying our three architectural design principles. Speciﬁcally, we
+train ResNet-50 with Fast-A T [ 46] and use its evaluation results on ImageNet as the start-
+ing point. Table 1 outlines the path we take to robustify ResNet-50, and total parameters
+are generally controlled over the course of exploration. For the four body stages, we set
+S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES 9
+Table 2: Adversarial robustness on CIFAR-10 and CIFAR-100 against AA and 20-step PGD (PGD 20)
+with the same maximum perturbation `•, e = 8/255. Applying our principles leads to a consistent 1–3
+pp robustness gain across A T methods, parameter budgets, and design spaces, boosting even the SOTA
+“Diff. 1M” and “Diff. 50M” A T methods proposed by Wang et al .[ 45]. Sec. C in supplementary
+materials provides a systematic comparison with Transformers and neural architecture search (NAS)-
+based architectures.
+#Param. Method Model CIFAR-10 CIFAR-100Clean (%) AA (%) PGD20(%) Clean (%) AA (%) PGD 20(%)
+26M
+SA T ResNet-50 84.05 49.97 54.37 55.86 23.78 27.48RaResNet-5084.91+0.8650.94+0.9755.19+0.82 56.38+0.5224.99+1.2128.84+1.36
+TRADESResNet-50 82.26 49.91 54.50 56.00 25.05 29.91RaResNet-5082.80+0.5451.23+1.3255.44+0.94 56.29+0.2925.83+0.7831.87+1.96
+MART ResNet-50 77.98 47.17 52.70 53.18 25.35 30.79RaResNet-5079.60+1.6249.19+2.0256.47+3.77 53.68+0.5026.97+1.6232.81+2.02
+37M
+SA T WRN-28-10 85.44 48.45 53.13 60.49 23.64 27.47RaWRN-28-1085.52+0.0851.96+3.5156.22+3.09 59.09-1.4025.14+1.5029.27+1.80
+TRADESWRN-28-10 83.86 51.79 55.69 55.21 25.47 29.34RaWRN-28-1083.29-0.5752.10+0.3156.31+0.62 55.38+0.7125.68+0.2129.41+0.07
+MART WRN-28-10 82.83 50.30 57.00 51.31 25.78 30.06RaWRN-28-1082.85+0.0250.81+0.5157.35+0.35 51.61+0.3026.11+0.3330.82+0.76
+Diff. 1MWRN-28-10 90.61 61.66 66.43 67.26 34.26 39.29RaWRN-28-1091.32+0.7165.11+3.4568.93+2.50 69.03+1.7737.24+2.9841.59+2.30
+67M SA T WRN-34-12 85.92 49.35 53.05 59.08 23.69 27.05RaWRN-34-1286.50+0.5851.78+2.4356.04+2.99 59.46+0.3825.18+1.4929.49+2.44
+Diff. 1MWRN-34-12 91.11 62.83 67.53 68.40 35.67 40.33RaWRN-34-1291.75+0.6465.71+2.8869.67+2.14 69.75+1.3537.73+2.0642.16+1.83
+267M
+SA T WRN-70-16 86.26 50.19 53.74 60.26 23.99 27.05RaWRN-70-1686.72+0.4652.13+1.9456.49+2.75 60.42+0.1625.17+1.1829.46+2.41
+Diff. 1MWRN-70-16 91.82 65.02 69.10 70.10 37.77 41.95RaWRN-70-1692.16+0.3466.33+1.3170.37+1.27 70.25+0.1538.73+0.9642.61+0.66
+Diff. 50MWRN-70-16 93.25 70.69 73.89 ---RaWRN-70-1693.27+0.0271.07+0.3875.28+1.39 ---
+D1,2,3,4 = 5, 8, 13, 1 and W1,2,3,4 = 36, 72, 140, 270 to control the WD ratio within the opti-
+mal range. The convolutional stem stage incorporates the postponed downsampling opera-
+tion and widens the output channels to 96. Finally, we append the SE block ( r = 4) to the
+3 ⇥ 3 convolution layer and replace ReLU with SiLU. The clean and PGD accuracies of
+Ra ResNet-50 consistently improve for each modiﬁcation, which veriﬁes that our design
+principles work well both individually and collectively.
+5.2 Evaluations on CIFAR-10 & CIFAR-100
+We apply all three principles to models within the design spaces of ResNet and WRN. De-
+tail speciﬁcations of each robustiﬁed architecture are in Sec. E in supplementary materials.
+Table 2 presents the comprehensive evalution results on CIFAR-10 and CIFAR-100 against
+AA and 20-step PGD (PGD 20) attacks with the same maximum perturbation `•, e = 8/255.
+The training methods are SA T [ 29], TRADES [ 54], MART [ 43], and diffusion-augmented
+AT [45]. The diffusion-augmented A T is the SOTA training recipe proposed by Wang et
+al.[ 45], which augments the original CIFAR only with images generated by elucidating
+diffusion model (EDM) [ 22], so that no external datasets are needed. Since this training
+recipe incurs extreme computational costs [ 45], we train on the 1M generated dataset us-
+ing batch size 512 and epoch 400, abbreviated as “Diff. 1M” in Table 2. In general, the
+gains are consistent across A T methods, parameter budgets, and design spaces on CIFAR-10
+and CIFAR-100. Importantly, our design principles augment the improvements in network
+robustness achieved through better training schemes, boosting even the robustness of the
+10 S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES
+SOTA Diff. 1M method by 1–3 pp. Our best model, Ra WRN-70-16, achieves 66.33% and
+38.73% AA accuracy on CIFAR-10 and CIFAR-100, respectively. Due to limited computa-
+tional resources, we only train “Diff. 50M” on CIFAR-10. Our Ra WRN-70-16 consistently
+outperforms WRN-70-16 and achieves the best performance on RobustBench [ 4].
+5.3 Evaluations on ImageNet
+Similarly, we also apply all three principles to models within the design spaces of ResNet and
+WRN. The training methods are Fast-A T [ 46] and SA T [29]. Table 3 presents the compre-
+hensive SA T evaluation results on ImageNet against AA and 100-step PGD (PGD 100). The
+maximum perturbation for AA is `•, e = 4/255, and for PGD are `•, e = {2, 4, 8}/255. We
+observe a consistent 4–9 pp robustness gain across different model parameters and design
+spaces. Speciﬁcally, our Ra WRN-101-2, even with fewer parameters than WRN-101-2,
+improves the AA accuracy by 6.94 pp when trained from scratch with SA T.
+Table 3: Adversarial robustness on ImageNet against AA and 100-step PGD (PGD 100). The maximum
+perturbation for AA is `•, e = 4/255, and for PGD are `•, e = {2, 4, 8}/255. All models trained
+from random initializations with SA T [ 29]. We observe a consistent 4–9 pp robustness gain. Full
+comparisons including Transformers and Fast-A T results are in supplementary materials Sec. D.
+Model #Param. Clean (%) AA (%) PGD 100-2 (%) PGD100-4 (%) PGD100-8 (%)
+ResNet-50 26M 63.87 34.96 52.15 38.96 15.83
+RaResNet-50 26M 70.17+6.30 44.14+9.18 60.06+7.91 47.77+8.81 21.77+5.94
+ResNet-101 45M 67.06 39.78 56.26 43.17 18.31
+RaResNet-101 46M 71.88+4.82 46.26+6.48 61.89+5.63 49.30+6.13 23.01+4.70
+WRN-101-2 127M 69.30 42.00 58.71 45.27 19.95
+RaWRN-101-2 104M 73.44+4.14 48.94+6.94 63.49+4.78 51.03+5.76 25.31+5.36
+6 Conclusion
+We synthesize a suite of three generalizable robust architectural design principles: (a) opti-
+mal range for depth and width conﬁgurations, (b) preferring convolutional over patchify stem
+stage, and (c) robust residual block design through adopting squeeze and excitation blocks
+and non-parametric smooth activation functions. Through extensive experiments across a
+wide spectrum of dataset scales, adversarial training methods , model parameters, and net-
+work design spaces, our principles consistently and markedly improve adversarial robustness
+on CIFAR-10, CIFAR-100, and ImageNet.
+7 Acknowledgement
+This work was supported in part by the Defense Advanced Research Projects Agency (DARPA).
+Use, duplication, or disclosure is subject to the restrictions as stated in Agreement number
+HR00112030001 between the Government and the Performer. This work was also supported
+in part by gifts from Avast, Fiddler Labs, Bosch, Facebook, Intel, NVIDIA, Google, Syman-
+tec, and Amazon.
+S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES 11
+References
+[1] Y ang Bai, Y uyuan Zeng, Y ong Jiang, Shu-Tao Xia, Xingjun Ma, and Yisen Wang. Im-
+proving adversarial robustness via channel-wise activation suppressing. arXiv preprint
+arXiv:2103.08307, 2021.
+[2] Y utong Bai, Jieru Mei, Alan L Y uille, and Cihang Xie. Are transformers more robust
+than cnns? Advances in Neural Information Processing Systems , 34:26831–26843,
+2021.
+[3] Francesco Croce and Matthias Hein. Reliable evaluation of adversarial robustness with
+an ensemble of diverse parameter-free attacks. In International conference on machine
+learning, pages 2206–2216. PMLR, 2020.
+[4] Francesco Croce, Maksym Andriushchenko, Vikash Sehwag, Edoardo Debenedetti,
+Nicolas Flammarion, Mung Chiang, Prateek Mittal, and Matthias Hein. Robustbench:
+a standardized adversarial robustness benchmark. arXiv preprint arXiv:2010.09670 ,
+2020.
+[5] Sihui Dai, Saeed Mahloujifar, and Prateek Mittal. Parameterizing activation functions
+for adversarial robustness. In 2022 IEEE Security and Privacy Workshops (SPW), pages
+80–87. IEEE, 2022.
+[6] Edoardo Debenedetti, Vikash Sehwag, and Prateek Mittal. A light recipe to train robust
+vision transformers. arXiv preprint arXiv:2209.07399, 2022.
+[7] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. Imagenet: A
+large-scale hierarchical image database. In 2009 IEEE conference on computer vision
+and pattern recognition, pages 248–255. Ieee, 2009.
+[8] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-
+training of deep bidirectional transformers for language understanding. arXiv preprint
+arXiv:1810.04805, 2018.
+[9] Gavin Weiguang Ding, Y ash Sharma, Kry Yik Chau Lui, and Ruitong Huang. Mma
+training: Direct input space margin maximization through adversarial training. arXiv
+preprint arXiv:1812.02637, 2018.
+[10] Yinpeng Dong, Zhijie Deng, Tianyu Pang, Jun Zhu, and Hang Su. Adversarial distri-
+butional training for robust deep learning. Advances in Neural Information Processing
+Systems, 33:8270–8283, 2020.
+[11] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua
+Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Syl-
+vain Gelly, et al. An image is worth 16x16 words: Transformers for image recognition
+at scale. arXiv preprint arXiv:2010.11929, 2020.
+[12] Stefan Elfwing, Eiji Uchibe, and Kenji Doya. Sigmoid-weighted linear units for neural
+network function approximation in reinforcement learning. Neural Networks, 107:3–
+11, 2018.
+[13] Ian J Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing
+adversarial examples. arXiv preprint arXiv:1412.6572, 2014.
+12 S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES
+[14] Minghao Guo, Y uzhe Y ang, Rui Xu, Ziwei Liu, and Dahua Lin. When nas meets
+robustness: In search of robust architectures against adversarial attacks. In Proceedings
+of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 631–
+640, 2020.
+[15] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning
+for image recognition. In Proceedings of the IEEE conference on computer vision and
+pattern recognition, pages 770–778, 2016.
+[16] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Identity mappings in
+deep residual networks. In European conference on computer vision , pages 630–645.
+Springer, 2016.
+[17] Dan Hendrycks and Kevin Gimpel. Gaussian error linear units (gelus). arXiv preprint
+arXiv:1606.08415, 2016.
+[18] Jie Hu, Li Shen, and Gang Sun. Squeeze-and-excitation networks. In Proceedings of
+the IEEE conference on computer vision and pattern recognition , pages 7132–7141,
+2018.
+[19] Hanxun Huang, Yisen Wang, Sarah Erfani, Quanquan Gu, James Bailey, and Xingjun
+Ma. Exploring architectural ingredients of adversarially robust deep neural networks.
+Advances in Neural Information Processing Systems , 34:5545–5559, 2021.
+[20] Shihua Huang, Zhichao Lu, Kalyanmoy Deb, and Vishnu Naresh Boddeti. Revisit-
+ing residual networks for adversarial robustness: An architectural perspective. arXiv
+preprint arXiv:2212.11005, 2022.
+[21] Steffen Jung, Jovita Lukasik, and Margret Keuper. Neural architecture design and
+robustness: A dataset. arXiv preprint arXiv:2306.06712, 2023.
+[22] Tero Karras, Miika Aittala, Timo Aila, and Samuli Laine. Elucidating the design space
+of diffusion-based generative models. arXiv preprint arXiv:2206.00364, 2022.
+[23] Alex Krizhevsky, Geoffrey Hinton, et al. Learning multiple layers of features from tiny
+images. 2009.
+[24] Hayeon Lee, Eunyoung Hyung, and Sung Ju Hwang. Rapid neural architecture search
+by learning to generate graphs from datasets. arXiv preprint arXiv:2107.00860, 2021.
+[25] Y un Liu, Y u-Huan Wu, Guolei Sun, Le Zhang, Ajad Chhatkuli, and Luc V an Gool. Vi-
+sion transformers with hierarchical attention. arXiv preprint arXiv:2106.03180, 2021.
+[26] Ze Liu, Y utong Lin, Y ue Cao, Han Hu, Yixuan Wei, Zheng Zhang, Stephen Lin, and
+Baining Guo. Swin transformer: Hierarchical vision transformer using shifted win-
+dows. In Proceedings of the IEEE/CVF International Conference on Computer Vision ,
+pages 10012–10022, 2021.
+[27] Zhuang Liu, Hanzi Mao, Chao-Y uan Wu, Christoph Feichtenhofer, Trevor Darrell, and
+Saining Xie. A convnet for the 2020s. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, pages 11976–11986, 2022.
+S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES 13
+[28] Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv
+preprint arXiv:1711.05101, 2017.
+[29] Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, and
+Adrian Vladu. Towards deep learning models resistant to adversarial attacks. In In-
+ternational Conference on Learning Representations , 2018.
+[30] Paulius Micikevicius, Sharan Narang, Jonah Alben, Gregory Diamos, Erich Elsen,
+David Garcia, Boris Ginsburg, Michael Houston, Oleksii Kuchaiev, Ganesh V enkatesh,
+et al. Mixed precision training. arXiv preprint arXiv:1710.03740, 2017.
+[31] Yichuan Mo, Dongxian Wu, Yifei Wang, Yiwen Guo, and Yisen Wang. When adver-
+sarial training meets vision transformers: Recipes from training to architecture. arXiv
+preprint arXiv:2210.07540, 2022.
+[32] Jisoo Mok, Byunggook Na, Hyeokjun Choe, and Sungroh Y oon. Advrush: Searching
+for adversarially robust neural architectures. In Proceedings of the IEEE/CVF Interna-
+tional Conference on Computer Vision, pages 12322–12332, 2021.
+[33] Weili Nie, Brandon Guo, Y ujia Huang, Chaowei Xiao, Arash V ahdat, and An-
+ima Anandkumar. Diffusion models for adversarial puriﬁcation. arXiv preprint
+arXiv:2205.07460, 2022.
+[34] ShengY un Peng, Weilin Xu, Cory Cornelius, Kevin Li, Rahul Duggal, Duen Horng
+Chau, and Jason Martin. Robarch: Designing robust architectures against adversarial
+attacks. arXiv preprint arXiv:2301.03110, 2023.
+[35] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever,
+et al. Language models are unsupervised multitask learners. OpenAI blog, 1(8):9, 2019.
+[36] Ilija Radosavovic, Raj Prateek Kosaraju, Ross Girshick, Kaiming He, and Piotr Dollár.
+Designing network design spaces. In Proceedings of the IEEE/CVF conference on
+computer vision and pattern recognition , pages 10428–10436, 2020.
+[37] Hadi Salman, Andrew Ilyas, Logan Engstrom, Ashish Kapoor, and Aleksander Madry.
+Do adversarially robust imagenet models transfer better? Advances in Neural Informa-
+tion Processing Systems, 33:3533–3545, 2020.
+[38] Naman D Singh, Francesco Croce, and Matthias Hein. Revisiting adversarial training
+for imagenet: Architectures, training and generalization across threat models. arXiv
+preprint arXiv:2303.01870, 2023.
+[39] Leslie N Smith. Cyclical learning rates for training neural networks. In 2017 IEEE
+winter conference on applications of computer vision (WACV) , pages 464–472. IEEE,
+2017.
+[40] Christian Szegedy, Wojciech Zaremba, Ilya Sutskever, Joan Bruna, Dumitru Erhan, Ian
+Goodfellow, and Rob Fergus. Intriguing properties of neural networks. arXiv preprint
+arXiv:1312.6199, 2013.
+14 S. PENG ET AL.: ROBUST ARCHITECTURAL DESIGN PRINCIPLES
+[41] Shiyu Tang, Ruihao Gong, Y an Wang, Aishan Liu, Jiakai Wang, Xinyun Chen, Fengwei
+Y u, Xianglong Liu, Dawn Song, Alan Y uille, et al. Robustart: Benchmarking robust-
+ness on architecture design and training techniques. arXiv preprint arXiv:2109.05211,
+2021.
+[42] Twan V an Laarhoven. L2 regularization versus batch and weight normalization. arXiv
+preprint arXiv:1706.05350, 2017.
+[43] Yisen Wang, Difan Zou, Jinfeng Yi, James Bailey, Xingjun Ma, and Quanquan Gu.
+Improving adversarial robustness requires revisiting misclassiﬁed examples. In Inter-
+national Conference on Learning Representations , 2020.
+[44] Yisen Wang, Xingjun Ma, James Bailey, Jinfeng Yi, Bowen Zhou, and Quanquan
+Gu. On the convergence and robustness of adversarial training. arXiv preprint
+arXiv:2112.08304, 2021.
+[45] Zekai Wang, Tianyu Pang, Chao Du, Min Lin, Weiwei Liu, and Shuicheng
+Y an. Better diffusion models further improve adversarial training. arXiv preprint
+arXiv:2302.04638, 2023.
+[46] Eric Wong, Leslie Rice, and J Zico Kolter. Fast is better than free: Revisiting adversar-
+ial training. arXiv preprint arXiv:2001.03994, 2020.
+[47] Sanghyun Woo, Shoubhik Debnath, Ronghang Hu, Xinlei Chen, Zhuang Liu, In So
+Kweon, and Saining Xie. Convnext v2: Co-designing and scaling convnets with
+masked autoencoders. arXiv preprint arXiv:2301.00808, 2023.
+[48] Dongxian Wu, Shu-Tao Xia, and Yisen Wang. Adversarial weight perturbation helps
+robust generalization. Advances in Neural Information Processing Systems , 33:2958–
+2969, 2020.
+[49] Tete Xiao, Mannat Singh, Eric Mintun, Trevor Darrell, Piotr Dollár, and Ross Girshick.
+Early convolutions help transformers see better. Advances in Neural Information Pro-
+cessing Systems, 34:30392–30400, 2021.
+[50] Cihang Xie and Alan Y uille. Intriguing properties of adversarial training at scale. In
+International Conference on Learning Representations , 2019.
+[51] Cihang Xie, Mingxing Tan, Boqing Gong, Alan Y uille, and Quoc V Le. Smooth adver-
+sarial training. arXiv preprint arXiv:2006.14536, 2020.
+[52] Saining Xie, Ross Girshick, Piotr Dollár, Zhuowen Tu, and Kaiming He. Aggregated
+residual transformations for deep neural networks. In Proceedings of the IEEE confer-
+ence on computer vision and pattern recognition , pages 1492–1500, 2017.
+[53] Sergey Zagoruyko and Nikos Komodakis. Wide residual networks. arXiv preprint
+arXiv:1605.07146, 2016.
+[54] Hongyang Zhang, Y aodong Y u, Jiantao Jiao, Eric Xing, Laurent El Ghaoui, and
+Michael Jordan. Theoretically principled trade-off between robustness and accuracy.
+In International conference on machine learning , pages 7472–7482. PMLR, 2019.

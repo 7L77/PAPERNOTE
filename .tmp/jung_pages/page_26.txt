@@ -1,0 +1,170 @@
+Published as a conference paper at ICLR 2023
+A.9.4 CIFAR-100-C C OMMON CORRUPTION ACCURACIES (FIGURE 4)
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 brightness accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 contrast accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 defocus_blur accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 elastic_transform accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 fog accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 frost accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 gaussian_noise accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 glass_blur accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 impulse_noise accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 jpeg_compression accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 motion_blur accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 pixelate accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 shot_noise accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 snow accuracy
+0 1 2 3 4 5
+severity
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 zoom_blur accuracy
+Figure 22: Accuracy boxplots over all unique architectures in NAS-Bench-201 for different corrup-
+tion types at different severity levels, evaluated onCIFAR-100-C. Red line corresponds to guessing.
+26

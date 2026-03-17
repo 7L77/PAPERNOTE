@@ -1,0 +1,50 @@
+Published as a conference paper at ICLR 2023
+NEURAL ARCHITECTURE DESIGN AND ROBUSTNESS :
+A DATASET
+Steffen Jung1,2,*, Jovita Lukasik 1*, Margret Keuper1,2
+1 Max Planck Institute for Informatics, Saarland Informatics Campus
+{steffen.jung,jlukasik,keuper}@mpi-inf.mpg.de
+2 University of Siegen
+ABSTRACT
+Deep learning models have proven to be successful in a wide range of machine
+learning tasks. Yet, they are often highly sensitive to perturbations on the input
+data which can lead to incorrect decisions with high confidence, hampering their
+deployment for practical use-cases. Thus, finding architectures that are (more)
+robust against perturbations has received much attention in recent years. Just
+like the search for well-performing architectures in terms of clean accuracy, this
+usually involves a tedious trial-and-error process with one additional challenge:
+the evaluation of a network’s robustness is significantly more expensive than its
+evaluation for clean accuracy. Thus, the aim of this paper is to facilitate better
+streamlined research on architectural design choices with respect to their impact
+on robustness as well as, for example, the evaluation of surrogate measures for
+robustness. We therefore borrow one of the most commonly considered search
+spaces for neural architecture search for image classification, NAS-Bench-201,
+which contains a manageable size of 6 466 non-isomorphic network designs. We
+evaluate all these networks on a range of common adversarial attacks and corruption
+types and introduce a database on neural architecture design and robustness evalua-
+tions. We further present three exemplary use cases of this dataset, in which we
+(i) benchmark robustness measurements based on Jacobian and Hessian matrices
+for their robustness predictability, (ii) perform neural architecture search on robust
+accuracies, and (iii) provide an initial analysis of how architectural design choices
+affect robustness. We find that carefully crafting the topology of a network can
+have substantial impact on its robustness, where networks with the same parameter
+count range in mean adversarial robust accuracy from 20% − 41%. Code and data
+is available at http://robustness.vision/.
+1 I NTRODUCTION
+One factor in the ever-improving performance of deep neural networks is based on innovations in
+architecture design. The starting point was the unprecedented result of AlexNet (Krizhevsky et al.,
+2012) on the visual recognition challenge ImageNet (Deng et al., 2009). Since then, the goal is to
+find better performing models, surpassing human performance. However, human design of new better
+performing architectures requires a huge amount of trial-and-error and a good intuition, such that the
+automated search for new architectures (NAS) receives rapid and growing interest (Zoph & Le, 2017;
+Real et al., 2017; Ying et al., 2019; Dong & Yang, 2020). The release of tabular benchmarks (Ying
+et al., 2019; Dong & Yang, 2020) led to a research change; new NAS methods can be evaluated in a
+transparent and reproducible manner for better comparison.
+The rapid growth in NAS research with the main focus on finding new architecture designs with
+ever-better performance is recently accompanied by the search for architectures that are robust against
+adversarial attacks and corruptions. This is important, since image classification networks can be
+easily fooled by adversarial attacks crafted by already light perturbations on the image data, which
+are invisible for humans. This leads to false predictions of the neural network with high confidence.
+Robustness in NAS research combines the objective of high performing and robust architectures
+(Dong & Yang, 2019; Devaguptapu et al., 2021; Dong et al., 2020a; Hosseini et al., 2021; Mok
+1

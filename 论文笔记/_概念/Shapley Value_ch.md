@@ -23,9 +23,9 @@ Shapley Value 关心的是：在所有可能的“加入顺序”里，一个组
 
 对参与者集合 `N` 中的成员 `i`，若联盟收益函数为 `v(S)`，则：
 
-\[
+$$
 \phi_i(v)=\sum_{S \subseteq N\setminus\{i\}} \frac{|S|!(|N|-|S|-1)!}{|N|!}\big(v(S\cup\{i\})-v(S)\big)
-\]
+$$
 
 即：`i` 在所有排列上的期望边际贡献。
 

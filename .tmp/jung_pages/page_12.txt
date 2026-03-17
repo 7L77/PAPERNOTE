@@ -1,0 +1,49 @@
+Published as a conference paper at ICLR 2023
+Tianyu Pang, Xiao Yang, Yinpeng Dong, Hang Su, and Jun Zhu. Bag of tricks for adversarial
+training. In 9th International Conference on Learning Representations, ICLR 2021, Virtual Event,
+Austria, May 3-7, 2021. OpenReview.net, 2021. URL https://openreview.net/forum?
+id=Xb8xvrtB8Ce.
+Hieu Pham, Melody Y . Guan, Barret Zoph, Quoc V . Le, and Jeff Dean. Efficient neural architecture
+search via parameter sharing. In ICML, 2018.
+Jonas Rauber, Wieland Brendel, and Matthias Bethge. Foolbox: A python toolbox to benchmark
+the robustness of machine learning models. In Reliable Machine Learning in the Wild Workshop,
+34th International Conference on Machine Learning, 2017. URL http://arxiv.org/abs/
+1707.04131.
+Esteban Real, Sherry Moore, Andrew Selle, Saurabh Saxena, Yutaka Leon Suematsu, Jie Tan, Quoc V .
+Le, and Alexey Kurakin. Large-scale evolution of image classifiers. In ICML, 2017.
+Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc V . Le. Regularized evolution for image
+classifier architecture search. In AAAI, 2019.
+Seyed Saeed Changiz Rezaei, Fred X. Han, Di Niu, Mohammad Salameh, Keith G. Mills, Shuo Lian,
+Wei Lu, and Shangling Jui. Generative adversarial neural architecture search. In Proceedings of
+the Thirtieth International Joint Conference on Artificial Intelligence, IJCAI 2021, Virtual Event /
+Montreal, Canada, 19-27 August 2021, pp. 2227–2234. ijcai.org, 2021.
+Binxin Ru, Xingchen Wan, Xiaowen Dong, and Michael Osborne. Interpretable neural architecture
+search via bayesian optimisation with weisfeiler-lehman kernels. In ICLR, 2021.
+Dong Su, Huan Zhang, Hongge Chen, Jinfeng Yi, Pin-Yu Chen, and Yupeng Gao. Is robustness
+the cost of accuracy? - a comprehensive study on the robustness of 18 deep image classification
+models. In ECCV, 2018.
+Christian Szegedy, Wojciech Zaremba, Ilya Sutskever, Joan Bruna, Dumitru Erhan, Ian Goodfellow,
+and Rob Fergus. Intriguing properties of neural networks. In International Conference on Learning
+Representations, 2014. URL http://arxiv.org/abs/1312.6199.
+Shiyu Tang, Ruihao Gong, Yan Wang, Aishan Liu, Jiakai Wang, Xinyun Chen, Fengwei Yu, Xi-
+anglong Liu, Dawn Xiaodong Song, Alan Loddon Yuille, Philip H. S. Torr, and Dacheng Tao.
+Robustart: Benchmarking robustness on architecture design and training techniques. ArXiv,
+abs/2109.05211, 2021.
+Colin White, Willie Neiswanger, and Yash Savani. Bananas: Bayesian optimization with neural
+architectures for neural architecture search. In AAAI, 2021a.
+Colin White, Sam Nolen, and Yash Savani. Exploring the loss landscape in neural architecture search.
+In UAI, 2021b.
+Cihang Xie, Yuxin Wu, Laurens van der Maaten, Alan Loddon Yuille, and Kaiming He. Feature
+denoising for improving adversarial robustness. 2019 IEEE/CVF Conference on Computer Vision
+and Pattern Recognition (CVPR), pp. 501–509, 2019a.
+Cihang Xie, Mingxing Tan, Boqing Gong, Alan Loddon Yuille, and Quoc V . Le. Smooth adversarial
+training. ArXiv, abs/2006.14536, 2020.
+Sirui Xie, Hehui Zheng, Chunxiao Liu, and Liang Lin. SNAS: stochastic neural architecture search.
+In ICLR, 2019b.
+Yuhui Xu, Lingxi Xie, Xiaopeng Zhang, Xin Chen, Guo-Jun Qi, Qi Tian, and Hongkai Xiong.
+PC-DARTS: partial channel connections for memory-efficient architecture search. In ICLR, 2020.
+Chris Ying, Aaron Klein, Eric Christiansen, Esteban Real, Kevin Murphy, and Frank Hutter. Nas-
+bench-101: Towards reproducible neural architecture search. In ICML, 2019.
+Arber Zela, Thomas Elsken, Tonmoy Saikia, Yassine Marrakchi, Thomas Brox, and Frank Hutter.
+Understanding and robustifying differentiable architecture search. In ICLR, 2020.
+12

@@ -1,0 +1,81 @@
+Published as a conference paper at ICLR 2023
+A.9.6 I MAGE NET16-120 A DVERSARIAL ATTACK CORRELATIONS (FIGURE 3)
+clean, e=0
+fgsm, e=0.1
+fgsm, e=0.5
+fgsm, e=1
+fgsm, e=2
+fgsm, e=3
+fgsm, e=4
+fgsm, e=5
+fgsm, e=6
+fgsm, e=7
+fgsm, e=8
+fgsm, e=255
+pgd, e=0.1
+pgd, e=0.5
+pgd, e=1
+pgd, e=2
+pgd, e=3
+pgd, e=4
+pgd, e=8
+aa_apgd-ce, e=0.1
+aa_apgd-ce, e=0.5
+aa_apgd-ce, e=1
+aa_apgd-ce, e=2
+aa_apgd-ce, e=3
+aa_apgd-ce, e=4
+aa_apgd-ce, e=8
+aa_square, e=0.1
+aa_square, e=0.5
+aa_square, e=1
+aa_square, e=2
+aa_square, e=3
+aa_square, e=4
+aa_square, e=8
+clean, e=0
+fgsm, e=0.1
+fgsm, e=0.5
+fgsm, e=1
+fgsm, e=2
+fgsm, e=3
+fgsm, e=4
+fgsm, e=5
+fgsm, e=6
+fgsm, e=7
+fgsm, e=8
+fgsm, e=255
+pgd, e=0.1
+pgd, e=0.5
+pgd, e=1
+pgd, e=2
+pgd, e=3
+pgd, e=4
+pgd, e=8
+aa_apgd-ce, e=0.1
+aa_apgd-ce, e=0.5
+aa_apgd-ce, e=1
+aa_apgd-ce, e=2
+aa_apgd-ce, e=3
+aa_apgd-ce, e=4
+aa_apgd-ce, e=8
+aa_square, e=0.1
+aa_square, e=0.5
+aa_square, e=1
+aa_square, e=2
+aa_square, e=3
+aa_square, e=4
+aa_square, e=8
+ 1.00
+0.75
+0.50
+0.25
+0.00
+0.25
+0.50
+0.75
+1.00
+Figure 24: Kendall rank correlation coefficient between clean accuracies and robust accuracies
+on different attacks and magnitude values ϵ on ImageNet16-120 for all unique architectures in
+NAS-Bench-201.
+28

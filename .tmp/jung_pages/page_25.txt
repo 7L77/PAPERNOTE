@@ -1,0 +1,110 @@
+Published as a conference paper at ICLR 2023
+A.9.3 CIFAR-10-C C OMMON CORRUPTION ACCURACIES (FIGURE 4)
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 brightness accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 contrast accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 defocus_blur accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 elastic_transform accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 fog accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 frost accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 gaussian_noise accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 glass_blur accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 impulse_noise accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 jpeg_compression accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 motion_blur accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 pixelate accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 shot_noise accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 snow accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 zoom_blur accuracy
+Figure 21: Accuracy boxplots over all unique architectures in NAS-Bench-201 for different corruption
+types at different severity levels, evaluated on CIFAR-10-C. Red line corresponds to guessing.
+25

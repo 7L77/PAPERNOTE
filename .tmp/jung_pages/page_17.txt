@@ -1,0 +1,66 @@
+Published as a conference paper at ICLR 2023
+{
+" i d s " : {
+. . . ,
+" 21 " : {
+" nb201 − s t r i n g " : " | nor_conv_1x1 ~ 0 | + | none ~ 0 | none ~ 1 | + | nor_conv_1x1 ~ 0 | nor_conv_3x3 ~ 1 | none ~ 2 | " ,
+" isomorph " : " 21 "
+} ,
+. . . ,
+" 1832 " : {
+" nb201 − s t r i n g " : " | nor_conv_1x1 ~ 0 | + | nor_conv_1x1 ~ 0 | none ~ 1 | + | nor_conv_1x1 ~ 0 | s k i p _ c o n n e c t ~ 1 | none ~ 2 | " ,
+" isomorph " : " 309 "
+} ,
+. . .
+} ,
+" e p s i l o n s " : {
+" aa_apgd − ce " : [ 0 . 1 , 0 . 5 , 1 . 0 , 2 . 0 , 3 . 0 , 4 . 0 , 8 . 0 ] ,
+" a a _ s q u a r e " : [ 0 . 1 , 0 . 5 , 1 . 0 , 2 . 0 , 3 . 0 , 4 . 0 , 8 . 0 ] ,
+" fgsm " : [ 0 . 1 , 0 . 5 , 1 . 0 , 2 . 0 , 3 . 0 , 4 . 0 , 5 . 0 , 6 . 0 , 7 . 0 , 8 . 0 , 2 5 5 . 0 ] ,
+" pgd " : [ 0 . 1 , 0 . 5 , 1 . 0 , 2 . 0 , 3 . 0 , 4 . 0 , 8 . 0 ]
+}
+}
+Figure 10: Excerpt of meta.json showing meta information of architectures # 21 and #1832,
+as well as ϵ values for each attack. Architecture #21 is non-isomorphic and points to itself, while
+architecture #1832 is an isomorphic instance of #309.
+{
+" c i f a r 1 0 " : {
+" c l e a n " : {
+" a c c u r a c y " : {
+" 0 " : 0 . 8 5 6 ,
+. . .
+}
+}
+}
+{
+" c i f a r 1 0 " : {
+" pgd " : {
+" a c c u r a c y " : {
+" 0 " : [ 0 . 8 1 2 , 0 . 5 8 2 , 0 . 2 9 5 , 0 . 0 3 4 , 0 . 0 0 2 , 0 . 0 , 0 . 0 ] ,
+. . .
+}
+}
+}
+Figure 11: Excerpt of (left) clean_accuracy.json and (right) pgd_accuracy.json for
+dataset cifar10 for the architecture #0. Numbers are rounded to improve readability.
+Table 4: Files and their possible content.
+File Description
+clean_accuracy one accuracy value for each evaluated network
+clean_confidence one confidence matrix for each evaluated network
+and collection scheme
+clean_cm one confusion matrix for each evaluated network
+{attack}_accuracy list of accuracies, where each element corresponds
+to the respective ϵ value
+{attack}_confidence list of confidence matrices, where each element
+corresponds to the respective ϵ value
+{attack}_cm list of confusion matrices, where each element cor-
+responds to the respective ϵ value
+{corruption}_accuracy list of accuracies, where each element corresponds
+to the respective corruption severity
+{corruption}_confidence list of confidence matrices, where each element
+corresponds to the respective corruption severity
+{corruption}_cm list of confusion matrices, where each element cor-
+responds to the respective corruption severity
+We showed some analysis and possible use-cases on accuracies in the main paper. In the following,
+we elaborate on and show confidence and confusion matrix (cm) measurements.
+17

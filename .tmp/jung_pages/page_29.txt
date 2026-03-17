@@ -1,0 +1,46 @@
+Published as a conference paper at ICLR 2023
+A.9.7 CIFAR-100-C C OMMON CORRUPTION CORRELATIONS (FIGURE 5)
+clean
+brightness, s=3
+contrast, s=3
+defocus_blur, s=3
+elastic_transform, s=3
+fog, s=3
+frost, s=3
+gaussian_noise, s=3
+glass_blur, s=3
+impulse_noise, s=3
+jpeg_compression, s=3
+motion_blur, s=3
+pixelate, s=3
+shot_noise, s=3
+snow, s=3
+zoom_blur, s=3
+clean
+brightness, s=3
+contrast, s=3
+defocus_blur, s=3
+elastic_transform, s=3
+fog, s=3
+frost, s=3
+gaussian_noise, s=3
+glass_blur, s=3
+impulse_noise, s=3
+jpeg_compression, s=3
+motion_blur, s=3
+pixelate, s=3
+shot_noise, s=3
+snow, s=3
+zoom_blur, s=3
+ 1.00
+0.75
+0.50
+0.25
+0.00
+0.25
+0.50
+0.75
+1.00
+Figure 25: Kendall rank correlation coefficient between clean accuracies and accuracies on different
+corruptions at severity level 4 on CIFAR-100-C for all unique architectures in NAS-Bench-201.
+29

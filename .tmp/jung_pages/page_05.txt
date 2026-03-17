@@ -1,0 +1,57 @@
+Published as a conference paper at ICLR 2023
+where ˜x is the adversarial example, x is the input image, y the corresponding label, ϵ the magnitude
+of the perturbation, and θ the network parameters. J(θ, x, y) is the loss function used to train the
+attacked network. In the case of architectures trained for NAS-Bench-201, this is cross entropy
+(CE). Since attacks via FGSM can be evaluated fairly efficiently, we evaluate all architectures
+for ϵ ∈ EF GSM = {.1, .5, 1, 2, . . . ,8, 255}/255, so for a total of |EF GSM | = 11 times for each
+architecture. We use Foolbox (Rauber et al., 2017) to perform the attacks, and collect (a) accuracy, (b)
+average prediction confidences, as well as (c) confusion matrices for each network andϵ combination.
+PGD While FGSM perturbs the image in a single step of sizeϵ, PGD (Kurakin et al., 2017) iteratively
+perturbs the image via
+˜xn+1 = clipϵ,x(˜xn − αsign(∆xJ(θ, ˜xn, ˜y))), ˜x0 = x, (2)
+where ˜y is the least likely predicted class of the network, and clipϵ,x(·) is a function clipping
+to range [x − ϵ, x + ϵ]. Due to its iterative nature, PGD is more efficient in finding adversarial
+examples, but requires more computation time. Therefore, we find it sufficient to evaluate PGD for
+ϵ ∈ EP GD = {.1, .5, 1, 2, 3, 4, 8}/255, so for a total of |EP GD| = 7 times for each architecture.
+As for FGSM, we use Foolbox (Rauber et al., 2017) to perform the attacks using their L∞ PGD
+implementation and keep the default settings, which are α = 0.01/0.3 for 40 attack iterations. We
+collect (a) accuracy, (b) average prediction confidences, and (c) confusion matrices for each network
+and ϵ combination.
+APGD AutoAttack (Croce & Hein, 2020) offers an adaptive version of PGD that reduces its step size
+over time without the need for hyperparameters. We perform this attack using theL∞ implementation
+provided by (Croce & Hein, 2020) on CE and choose EAP GD = EP GD. We kept the default number
+of attack iterations that is 100. We collect (a) accuracy, (b) average prediction confidences, and (c)
+confusion matrices for each network and ϵ combination.
+Square Attack In contrast to the before-mentioned attacks, Square Attack is a blackbox attack that
+has no access to the networks’ gradients. It solves the following optimization problem using random
+search:
+min
+˜x
+{fy,θ(˜x) − maxk̸=yfk,θ(˜x)}, s.t. ∥˜x − x∥p ≤ ϵ, (3)
+where fk,θ(·) are the network predictions for class k given an image. We perform this attack using
+the L∞ implementation provided by (Croce & Hein, 2020) and choose ESquare = EP GD. We kept
+the default number of search iterations at 5 000. We collect (a) accuracy, (b) average prediction
+confidences, and (c) confusion matrices for each network and ϵ combination.
+Summary Figure 2 shows aggregated evaluation results on the before-mentioned attacks on
+CIFAR-10 w.r.t. accuracy. Growing gaps between mean and max accuracies indicate that the ar-
+chitecture has an impact on robust performances. Figure 3 depicts the correlation of ranking all
+architectures based on different attack scenarios. While there is larger correlation within the same
+adversarial attack and different values ofϵ, there seem to be architectural distinctions for susceptibility
+to different attacks.
+3.3 R OBUSTNESS TO COMMON CORRUPTIONS
+To evaluate all unique NAS-Bench-201 Dong & Yang (2020) architectures on common corruptions,
+we evaluate them on the benchmark data provided by (Hendrycks & Dietterich, 2019). Two datasets
+are available: CIFAR10-C, which is a corrupted version of CIFAR-10 and CIFAR-100-C, which
+is a corrupted version of CIFAR-100. Both datasets are perturbed with a total of 15 corruptions
+at 5 severity levels (see Figure 18 in the Appendix for an example). The training procedure of
+NAS-Bench-201 only augments the training data with random flipping and random cropping. Hence,
+no influence should be expected of the training augmentation pipeline on the performance of the
+networks to those corruptions. We evaluate each of the 15 · 5 = 75 datasets individually for each
+network and collect (a) accuracy, (b) average prediction confidences, and (c) confusion matrices.
+Summary Figure 4 depicts mean accuracies for different corruptions at increasing severity levels.
+Similar to Figure 2, a growing gap between mean and max accuracies for most of the corruptions can
+be observed, which indicates towards architectural influences on robustness to common corruptions.
+Figure 5 depicts the ranking correlation for all architectures between clean and corrupted accuracies.
+Ranking architectures based on accuracy on different kinds of corruption is mostly uncorrelated. This
+indicates a high diversity of sensitivity to different kinds of corruption based on architectural design.
+5

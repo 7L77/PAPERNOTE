@@ -1,0 +1,44 @@
+Published as a conference paper at ICLR 2023
+A.3 D ATASET STRUCTURE , D ISTRIBUTION , AND LICENSE
+Files are provided in json format to ensure platform-independence and to reduce the dependency on
+external libraries (e.g. Python has built-in json-support).
+We will publish code that accompanies our dataset on GitHub. The dataset itself will be linked from
+GitHub and is hosted on an institutional cloud service. This ensures longtime availability and the
+possibility to version the dataset. Dataset and code will be published at the notification date under
+GNU GPLv3.
+A.4 S TRUCTURE
+The dataset consists of 3 folders, one for each dataset evaluated ( cifar10, cifar100,
+ImageNet16-120). Each folder contains one json file for each combination of key and measure-
+ment. Keys refer to the sort of attack or corruption used (Table 3 lists all keys). Measurements refer
+to the collected evaluation type (accuracy, confidence, cm). Clean and adversarial evaluations
+are performed on all datasets, while common corruptions are evaluated oncifar10 and cifar100.
+Additionally, the dataset contains one metadata file (meta.json).
+Table 3: Keys for attacks and corruptions evaluated.
+Clean Adversarial Common Corruptions
+clean aa_apgd-ce brightness
+aa_square contrast
+fgsm defocus_blur
+pgd elastic_transform
+fog
+frost
+gaussian_noise
+glass_blur
+impulse_noise
+jpeg_compression
+motion_blur
+pixelate
+shot_noise
+snow
+zoom_blur
+Metadata The meta.json file contains information about each architecture in NAS-Bench-201.
+This includes, for each architecture identifier, the corresponding string defining the network design (as
+per (Dong & Yang, 2020)) as well as the identifier of the corresponding non-isomorphic architecture
+from (Dong & Yang, 2020) that we evaluated. The file also contains all ϵ values that we evaluated for
+each adversarial attack. An excerpt of this file is shown in Figure 10.
+Files All files are named according to "{key}_{measurement}.json". Hence, the path to
+all clean accuracies on cifar10 is "./cifar10/clean_accuracy.json". An excerpt of
+this file is shown in Figure 11. Each file contains nested dictionaries stating the dataset, evaluation key
+and measurement type. For evaluations with multiple measurements, e.g. in the case of adversarial
+attacks for multiple ϵ values, the results are concatenated into a list. Files and their possible contents
+are described in Table 4.
+16

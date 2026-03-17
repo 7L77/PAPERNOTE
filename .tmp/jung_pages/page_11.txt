@@ -1,0 +1,48 @@
+Published as a conference paper at ICLR 2023
+Yinpeng Dong, Qi-An Fu, Xiao Yang, Tianyu Pang, Hang Su, Zihao Xiao, and Jun Zhu. Benchmark-
+ing adversarial robustness on image classification. In 2020 IEEE/CVF Conference on Computer Vi-
+sion and Pattern Recognition (CVPR), pp. 318–328, 2020b. doi: 10.1109/CVPR42600.2020.00040.
+Yawen Duan, Xin Chen, Hang Xu, Zewei Chen, Xiaodan Liang, Tong Zhang, and Zhenguo Li.
+Transnas-bench-101: Improving transferability and generalizability of cross-task neural architec-
+ture search. In CVPR, 2021.
+Ian J. Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing adversarial
+examples. In Yoshua Bengio and Yann LeCun (eds.),3rd International Conference on Learning
+Representations, ICLR 2015, San Diego, CA, USA, May 7-9, 2015, Conference Track Proceedings,
+2015. URL http://arxiv.org/abs/1412.6572.
+Minghao Guo, Yuzhe Yang, Rui Xu, Ziwei Liu, and Dahua Lin. When NAS meets robustness: In
+search of robust architectures against adversarial attacks. In CVPR, 2020.
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Delving deep into rectifiers: Surpassing
+human-level performance on imagenet classification. In 2015 IEEE International Conference on
+Computer Vision (ICCV), pp. 1026–1034, 2015. doi: 10.1109/ICCV .2015.123.
+Dan Hendrycks and Thomas Dietterich. Benchmarking neural network robustness to common corrup-
+tions and perturbations. Proceedings of the International Conference on Learning Representations,
+2019.
+Judy Hoffman, Daniel A. Roberts, and Sho Yaida. Robust learning with jacobian regularization.
+CoRR, abs/1908.02729, 2019.
+Ramtin Hosseini, Xingyi Yang, and Pengtao Xie. DSRNA: differentiable search of robust neural
+architectures. In CVPR, 2021.
+Kirthevasan Kandasamy, Willie Neiswanger, Jeff Schneider, Barnabás Póczos, and Eric P. Xing.
+Neural architecture search with bayesian optimisation and optimal transport. In NIPS, 2018.
+Alex Krizhevsky. Learning multiple layers of features from tiny images. In Technical report, 2009.
+Alex Krizhevsky, Ilya Sutskever, and Geoffrey E. Hinton. Imagenet classification with deep convolu-
+tional neural networks. In NIPS, 2012.
+Alexey Kurakin, Ian Goodfellow, and Samy Bengio. Adversarial machine learning at scale, 2017.
+Liam Li and Ameet Talwalkar. Random search and reproducibility for neural architecture search. In
+UAI, 2019.
+Yujia Li, Oriol Vinyals, Chris Dyer, Razvan Pascanu, and Peter W. Battaglia. Learning deep generative
+models of graphs. CoRR, abs/1803.03324, 2018.
+Xiang Ling, Shouling Ji, Jiaxu Zou, Jiannan Wang, Chunming Wu, Bo Li, and Ting Wang. Deepsec:
+A uniform platform for security analysis of deep learning model. In 2019 IEEE Symposium on
+Security and Privacy (SP), pp. 673–690, 2019. doi: 10.1109/SP.2019.00023.
+Hanxiao Liu, Karen Simonyan, and Yiming Yang. DARTS: differentiable architecture search. In
+ICLR, 2019.
+Jovita Lukasik, David Friede, Arber Zela, Frank Hutter, and Margret Keuper. Smooth variational
+graph embeddings for efficient neural architecture search. In International Joint Conference on
+Neural Networks, IJCNN 2021, Shenzhen, China, July 18-22, 2021, pp. 1–8. IEEE, 2021.
+Jovita Lukasik, Steffen Jung, and Margret Keuper. Learning where to look - generative NAS is
+surprisingly efficient. In Computer Vision - ECCV 2022 - 17th European Conference, Tel Aviv,
+Israel, October 23-27, 2022, Proceedings, Part XXIII, volume 13683 of Lecture Notes in Computer
+Science, pp. 257–273. Springer, 2022.
+Jisoo Mok, Byunggook Na, Hyeokjun Choe, and Sungroh Yoon. Advrush: Searching for adversarially
+robust neural architectures. In ICCV, 2021.
+11

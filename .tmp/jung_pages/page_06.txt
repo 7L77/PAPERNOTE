@@ -1,0 +1,114 @@
+Published as a conference paper at ICLR 2023
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 brightness accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 contrast accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 defocus_blur accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 elastic_transform accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 fog accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 frost accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 gaussian_noise accuracy
+0 1 2 3 4 5
+severity
+0.2
+0.4
+0.6
+0.8accuracy
+cifar10 glass_blur accuracy
+Figure 4: Accuracy boxplots over all unique architectures in NAS-Bench-201 for different corruption
+types at different severity levels, evaluated onCIFAR-10-C. Red line corresponds to guessing. All
+corruptions can be found in Figure 21. The large spread indicates towards architectural influence on
+robust performance.
+clean
+brightness, s=3
+contrast, s=3
+defocus_blur, s=3
+elastic_transform, s=3
+fog, s=3
+frost, s=3
+gaussian_noise, s=3
+glass_blur, s=3
+impulse_noise, s=3
+jpeg_compression, s=3
+motion_blur, s=3
+pixelate, s=3
+shot_noise, s=3
+snow, s=3
+zoom_blur, s=3
+clean
+brightness, s=3
+contrast, s=3
+defocus_blur, s=3
+elastic_transform, s=3
+fog, s=3
+frost, s=3
+gaussian_noise, s=3
+glass_blur, s=3
+impulse_noise, s=3
+jpeg_compression, s=3
+motion_blur, s=3
+pixelate, s=3
+shot_noise, s=3
+snow, s=3
+zoom_blur, s=3
+ 1.00
+0.75
+0.50
+0.25
+0.00
+0.25
+0.50
+0.75
+1.00
+Figure 5: Kendall rank correlation coefficient between clean accuracies and accuracies on different
+corruptions at severity level 3 on CIFAR-10-C for all unique architectures in NAS-Bench-201. The
+mostly uncorrelated ranking indicates towards high diversity of sensitivity to different kinds of
+corruption based on architectural design.
+4 U SE CASES
+4.1 T RAINING -FREE MEASUREMENTS FOR ROBUSTNESS
+Recently, a new research focus in differentiable NAS shifted towards finding not only high-scoring
+architectures but also finding adversarially robust architectures against several adversarial attacks
+(Hosseini et al., 2021; Mok et al., 2021) using training characteristics of neural networks. On the
+one hand, (Hosseini et al., 2021) uses Jacobian-based differentiable metrics to measure robustness.
+On the other hand, (Mok et al., 2021) improves the search for robust architectures by including the
+6

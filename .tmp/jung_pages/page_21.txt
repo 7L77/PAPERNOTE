@@ -1,0 +1,153 @@
+Published as a conference paper at ICLR 2023
+0.84 0.86 0.88 0.90 0.92 0.94 0.96
+Correct Classification Confidence
+0.80
+0.82
+0.84
+0.86
+0.88
+0.90Incorrect Classification Confidence
+0
+0.1
+0.5
+1
+23
+4
+5
+6
+7
+8
+255
+Figure 15: Mean prediction confidence scores on FGSM-attacked CIFAR-10 images for
+different ϵ (on top of points) for all non-isomorphic networks in NAS-Bench-201. Networks become
+less confident in their prediction if their prediction is correct when ϵ increases. Networks become
+more confident in their prediction if their prediction is incorrect, however, only up to a certainϵ value.
+When ϵ further increases, confidence drops again.
+A.6 C ONFUSION MATRIX
+For each evaluated network, we collect the confusion matrix (key: cm) for the corresponding
+(attacked) test dataset. The result is a 10 × 10 matrix in case of cifar10, a 100 × 100 matrix in
+case of cifar100, and a 120 × 120 matrix in case of ImageNet16-120. See Figure 16 for an
+example, where we summed up confusion matrices for all networks on cifar10.
+0 1 2 3 4 5 6 7 8 9
+True Class
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9 Predicted Class
+6e+6
+4e+4
+1e+5
+6e+4
+4e+4
+9e+3
+2e+4
+3e+4
+2e+5
+7e+4
+4e+4
+6e+6
+6e+3
+1e+4
+4e+3
+4e+3
+9e+3
+7e+3
+4e+4
+2e+5
+1e+5
+4e+3
+6e+6
+2e+5
+2e+5
+1e+5
+2e+5
+5e+4
+3e+4
+2e+4
+6e+4
+2e+4
+2e+5
+5e+6
+2e+5
+6e+5
+2e+5
+9e+4
+4e+4
+4e+4
+4e+4
+6e+3
+1e+5
+1e+5
+6e+6
+9e+4
+1e+5
+1e+5
+1e+4
+8e+3
+3e+4
+7e+3
+1e+5
+5e+5
+1e+5
+5e+6
+5e+4
+1e+5
+1e+4
+1e+4
+3e+4
+9e+3
+1e+5
+2e+5
+6e+4
+5e+4
+6e+6
+2e+4
+9e+3
+1e+4
+5e+4
+4e+3
+6e+4
+1e+5
+1e+5
+1e+5
+1e+4
+6e+6
+9e+3
+2e+4
+2e+5
+5e+4
+3e+4
+3e+4
+9e+3
+7e+3
+1e+4
+8e+3
+6e+6
+6e+4
+8e+4
+2e+5
+1e+4
+2e+4
+6e+3
+5e+3
+1e+4
+1e+4
+7e+4
+6e+6
+0
+1
+2
+3
+4
+5
+6
+1e6
+Figure 16: Aggregated confusion matrices on clean CIFAR-10 images for all non-isomorphic
+networks in NAS-Bench-201.
+21

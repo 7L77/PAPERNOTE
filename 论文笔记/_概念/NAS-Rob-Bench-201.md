@@ -6,31 +6,31 @@ aliases: [NASRobBench201, Robust NAS-Bench-201]
 # NAS-Rob-Bench-201
 
 ## Intuition
-NAS-Rob-Bench-201 is a robust NAS benchmark that precomputes adversarially trained performance for a complete architecture set, so search methods can be compared quickly.
+NAS-Rob-Bench-201 is a robust NAS benchmark that precomputes adversarially trained performance for a large architecture set, so robust search methods can be compared by lookup instead of repeated expensive retraining.
 
 ## Why It Matters
-It provides a controlled testbed for robust architecture search, reducing repeated adversarial training cost and helping isolate search strategy quality.
+It provides a controlled testbed for robust architecture search, reducing repeated adversarial training cost and helping isolate the quality of search strategies.
 
 ## Tiny Example
-In TRNAS supplementary experiments, all compared NAS methods are transferred to NAS-Rob-Bench-201 with the same evaluation budget, enabling direct efficiency and performance comparison.
+In robust NAS studies, different search algorithms can be run with the same query budget on NAS-Rob-Bench-201 and compared directly on PGD/FGSM robustness metrics.
 
 ## Definition
-NAS-Rob-Bench-201 contains 15,625 fully adversarially trained architectures in a NAS-Bench-201-style space and reports clean/robust metrics under several attack settings.
+NAS-Rob-Bench-201 is built on NAS-Bench-201 search space and reports adversarially trained performance for 6466 non-isomorphic architectures, including clean and robust metrics (e.g., FGSM/PGD/APGD variants).
 
 ## Key Points
-1. It is architecture-complete for its defined search space.
-2. It supports robust NAS algorithm transfer and fair budgeted comparisons.
-3. Minor random-seed effects can slightly change the observed best architecture performance.
+1. It is a tabular robust benchmark over a fixed NAS search space.
+2. It supports fair, budget-controlled robust NAS comparisons.
+3. It is designed for reproducibility and efficient algorithm assessment.
 
 ## How This Paper Uses It
-- [[TRNAS]] uses NAS-Rob-Bench-201 for direct comparison against standard and robust NAS methods under a fixed 1000-evaluation budget.
+- [[NAS-RobBench-201]] introduces and analyzes this benchmark.
+- [[TRNAS]] uses NAS-Rob-Bench-201 for direct comparison against standard and robust NAS methods under fixed evaluation budgets.
 
 ## Representative Papers
-- Robust NAS under adversarial training benchmark paper (ICLR 2024) defines this benchmark.
+- [[NAS-RobBench-201]] defines this benchmark.
 - [[TRNAS]] uses it to validate robust-search efficiency and effectiveness.
 
 ## Related Concepts
 - [[RobustBench]]
 - [[Adversarial Robustness]]
 - [[Neural Architecture Search]]
-

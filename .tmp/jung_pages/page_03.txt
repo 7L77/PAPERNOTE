@@ -1,0 +1,67 @@
+Published as a conference paper at ICLR 2023
+image conv residual
+block cell x N residual
+block cell x N global
+avg poolcell x N
+in
+1
+2 out
+Cell Operations
+1x1 convolution
+3x3 convolution
+3x3 avg. pooling
+skip connect
+zeroize
+1x1
+3x3
+avg
+1
+2
+3
+4
+5
+6
+Figure 1: (top) Macro architecture. Gray highlighted cells differ between architectures, while the
+other components stay fixed. (bottom) Cell structure and the set of possible, predefined operations.
+(Figure adapted from (Dong & Yang, 2020))
+2021a). Recently, several NAS approaches use generative models to search within a continuous latent
+space of architectures (Lukasik et al., 2021; Rezaei et al., 2021; Lukasik et al., 2022). To further
+improve the search strategy efficiency, the research focus shift from discrete optimization methods to
+faster differentiable search methods, using weight-sharing approaches (Pham et al., 2018; Liu et al.,
+2019; Bender et al., 2018; Cai et al., 2019; Xie et al., 2019b; Zela et al., 2020). In order to compare
+NAS approaches properly, NAS benchmarks were introduced and opened the path for fast evaluations.
+The tabular benchmarks NAS-Bench-101 (Ying et al., 2019) and NAS-Bench-201 (Dong & Yang,
+2020) provide exhaustive evaluations of performances and metrics within their predefined search
+space on image classification tasks. TransNAS-Bench-101 (Duan et al., 2021) introduces a benchmark
+containing performance and metric information across different vision tasks. We will give a more
+detailed overview about the NAS-Bench-201 (Dong & Yang, 2020) benchmark in subsection 3.1.
+Robustness in NAS With the increasing interest in NAS in general, the aspect of robustness of the
+optimized architectures has become more and more relevant. Devaguptapu et al. (2021) provide a
+large-scale study that investigates how robust architectures, found by several NAS methods such
+as (Liu et al., 2019; Cai et al., 2019; Xu et al., 2020), are against several adversarial attacks. They
+show that these architectures are vulnerable to various different adversarial attacks. Guo et al. (2020)
+first search directly for a robust neural architecture using one-shot NAS and discover a family of
+robust architectures. Dong et al. (2020a) constrain the architectures’ parameters within a supernet to
+reduce the Lipschitz constant and therefore increase the resulting networks’ robustness. Few prior
+works such as (Carlini et al., 2019; Xie et al., 2019a; Pang et al., 2021; Xie et al., 2020) propose
+more in-depth statistical analyses. In particular, Su et al. (2018) evaluate 18 ImageNet models with
+respect to their adversarial robustness. Ling et al. (2019); Dong et al. (2020b) provide platforms to
+evaluate adversarial attacks. Tang et al. (2021) provide a robustness investigation benchmark based
+on different architectures and training techniques on ImageNet. Recently a new line of differentiable
+robust NAS arose, namely including differentiable network measurements to the one-shot loss target
+to increase the robustness (Hosseini et al., 2021; Mok et al., 2021). Hosseini et al. (2021) define
+two differentiable metrics to measure the robustness of the architecture, certified lower bound and
+Jacobian norm bound, and searches for architectures by maximizing these metrics, respectively. Mok
+et al. (2021) propose a search algorithm using the intrinsic robustness of a neural network being
+represented by the smoothness of the network’s input loss landscape, i.e. the Hessian matrix.
+3 D ATASET GENERATION
+3.1 A RCHITECTURES IN NAS-B ENCH -201
+NAS-Bench-201 (Dong & Yang, 2020) is a cell-based architecture search space. Each cell has in
+total 4 nodes and 6 edges. The nodes in this search space correspond to the architecture’s feature
+maps and the edges represent the architectures operation, which are chosen from the operation set
+O = {1 × 1 conv. , 3 × 3 conv. , 3 × 3 avg. pooling , skip , zero} (see Figure 1). This search space
+contains in total 56 = 15 625 architectures, from which only 6 466 are unique, since the operations
+skip and zero can cause isomorphic cells (see Figure 8, appendix), where the latter operation zero
+stands for dropping the edge. Each architecture is trained on three different image datasets for
+200 epochs: CIFAR-10 (Krizhevsky, 2009), CIFAR-100 (Krizhevsky, 2009) and ImageNet16-120
+3

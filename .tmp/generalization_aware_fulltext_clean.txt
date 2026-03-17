@@ -1,0 +1,816 @@
+PAGES: 8
+METADATA:
+/Meeting Starting Date: 30 June 2025
+/Creator: Certified by IEEE PDFExpress at May 3, 2025 06:20:10
+/ModDate: D:20251110002344-05'00'
+/IEEE Article ID: 11229357
+/Trapped: False
+/CreationDate: D:20250503061253Z
+/IEEE Issue ID: 11227148
+/Subject: 2025 International Joint Conference on Neural Networks (IJCNN);2025; ; ;10.1109/IJCNN64981.2025.11229357
+/IEEE Publication ID: 11227166
+/Title: Generalization-Aware Zero-Shot Neural Architecture Search for Self-Supervised Transformers
+/Meeting Ending Date: 5 July 2025
+/Producer: pdfTeX-1.40.26; modified using iText® Core 7.2.4 (AGPL version) ©2000-2022 iText Group NV
+/PTEX.Fullbanner: This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) kpathsea version 6.4.0
+
+===== PAGE 1 =====
+
+Generalization-Aware Zero-Shot Neural Architecture
+Search for Self-Supervised Transformers
+Jun-Hua Ko
+National Taiwan University
+Taipei, Taiwan
+r12943007@ntu.edu.tw
+Tzi-Dar Chiueh
+National Taiwan University
+Taipei, Taiwan
+chiueh@ntu.edu.tw
+Abstract—Neural Architecture Search (NAS) aims to automate
+the design of neural networks, enabling the discovery of highly
+effective architectures. Recent advancements in NAS have shown
+significant success in identifying high-performing Transformer
+architectures for computer vision and natural language process-
+ing tasks. However, most NAS research has focused on supervised
+learning frameworks, which rely heavily on labeled data. This
+dependence on labeled data makes deploying these methods in
+real-world applications challenging due to the high cost of data
+annotation. Additionally, previous studies often prioritize model
+performance while neglecting generalization ability, particularly
+in scenarios with limited labeled data. To address these chal-
+lenges, this study introduces a generalization-aware zero-shot
+proxy based on self-supervised learning. By combining this proxy
+with a complementary zero-shot proxy, we identify architectures
+that balance generalization ability and expressivity. Experimental
+results demonstrate that the architectures discovered using the
+proposed approach achieve competitive performance on the
+ImageNet and Wikitext-2 datasets while significantly reducing
+the required labeled data by up to 75% and 99%, respectively.
+Index Terms —Neural Architecture Search, Self-Supervised
+Learning, Computer Vision, Natural Language Processing
+I. I NTRODUCTION
+Transformer networks [1] have attracted significant attention
+in recent years due to their effectiveness in processing long-
+range dependencies within data and their superior performance
+across a wide range of tasks such as Computer Vision (CV)
+and Natural Language Processing (NLP). Despite their empiri-
+cal success, Transformer architectures rely heavily on manual
+design by human experts, requiring extensive trial-and-error
+experiments to determine optimal design choices.
+Neural Architecture Search (NAS) [2] has emerged as a
+promising approach to automate the design of neural networks.
+Among various NAS methods, zero-shot approaches [3] [4]
+have gained substantial attention. These methods employ zero-
+shot proxies to estimate a network’s performance at the
+initialization stage, enabling rapid evaluation within seconds
+by computing statistics derived from a single forward or
+backward propagation pass using a mini-batch of data [5].
+By leveraging automated network design, such methods can
+uncover custom architectures that match or exceed the per-
+formance of manually designed Transformers in CV and NLP
+tasks. However, most recent NAS research has been conducted
+within fully supervised learning paradigms, where optimal
+Transformer architectures are trained using both input data
+Fig. 1. Overview of the search space and search proxies in the proposed
+GEN-TPC-NAS.
+and their corresponding labels. This reliance on labeled data
+introduces significant limitations, as it substantially increases
+the cost and effort associated with data annotation, thereby re-
+stricting the practical applicability of current NAS techniques.
+For instance, the annotation of the widely-used ImageNet [6]
+dataset required the efforts of 49,000 Amazon Mechanical
+Turk workers for three years. Furthermore, domain expertise
+is essential for specialized tasks such as medical imaging,
+requiring professionals like radiologists to accurately label
+datasets. These challenges underscore the urgent need for NAS
+methods that can reduce or eliminate dependence on large
+quantities of labeled data, paving the way for more scalable
+and cost-effective solutions. As a potential solution, self-
+supervised learning (SSL), which derives supervisory signals
+directly from the input data itself, has demonstrated consider-
+able success in mitigating the dependence on labeled data [7]
+[8]. Despite its promise, there has been limited research on
+integrating zero-shot NAS with SSL.
+In this paper, we propose GEN-TPC-NAS, a generalization-
+aware Entropy and TPC based zero-shot NAS. Figure 1 is
+the overview of GEN-TPC-NAS. First, we utilize the TPC
+score [9], an efficient and fast zero-shot proxy that assesses
+network expressivity [10] based on the concept of Total Path
+Count (TPC). Second, we introduce the Entropy score, a zero-
+shot proxy based on the concept of SSL. This proxy evaluates
+the generalization ability of neural networks by analyzing the
+eigenvalues corresponding to feature matrixs, which reflect
+2025 International Joint Conference on Neural Networks (IJCNN) | 979-8-3315-1042-8/25/$31.00 ©2025 IEEE | DOI: 10.1109/IJCNN64981.2025.11229357
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 2 =====
+
+feature diversity. By optimizing the search strategy, we com-
+bine these two proxies to identify efficient neural architectures
+that balance expressivity and generalization ability. Finally, we
+pre-train the searched architectures in SSL manner and fine-
+tune the models on low-labeled data scenarios to evaluate the
+effectiveness. The contributions of this paper are summarized
+as follows:
+• We propose the Entropy score, a zero-shot proxy inspired
+by SSL concept, to measure the generalization ability of
+neural networks.
+• We propose a search algorithm that combines the TPC
+and Entropy scores to identify architectures balancing
+expressivity and generalization ability.
+• To the best of our knowledge, this is the first work to in-
+tegrate zero-shot NAS with SSL while explicitly consid-
+ering network generalization ability. On the ImageNet-1k
+and Wikitext-2 datasets, our method maintains baseline-
+level performance while reducing the need for labeled
+data by up to 75% and 99%, respectively.
+II. R ELATED WORK
+A. Neural Architecture Search
+The earliest neural architecture search algorithms adopt
+Reinforcement Learning [11] that evaluates the performance
+of the models obtained through training. A complete search
+process typically requires training hundreds or even thousands
+of architectures, resulting in overall search times reaching
+several thousand hours or more, which is extremely resource-
+intensive and economically inefficient.
+To address this problem, one-shot NAS [12] [13] uses the
+concept of parameter sharing by training a large network.
+During training, one-shot NAS selects and trains only one
+subnet at a time from the large network. After training, the
+weight parameters are placed back into the large network.
+Although one-shot NAS reduces training computational load
+and memory usage, the shared weight parameters among
+subnets can cause mutual interference, making it challenging
+to ensure that each subnet is fully trained, which can affect
+model performance.
+Zero-Shot NAS [3] [14] [15] [16] does not involve any train-
+ing of architectures. Instead, it uses a performance predictor
+to estimate the quality of the searched architectures, signifi-
+cantly reducing search time and computational load. However,
+earlier zero-shot NAS approaches face several issues. Firstly,
+many zero-shot NAS performance predictors are typically
+accurate only for a specific type of neural network [16]
+[17]. Furthermore, many studies are applied to single tasks
+like image classification and do not achieve cross-model or
+cross-application generalization. Lastly, most zero-shot NAS
+methods focus on the supervised learning framework, limiting
+the potential to deploy these methods in real applications.
+B. Self-Supervised Learning
+Self-supervised learning (SSL) uses unlabeled data to learn
+meaningful representations. SSL relies on pretext tasks that
+create pseudo-labels from the data itself, helping models
+generalize effectively to various downstream tasks. GPT-2 [18]
+uses an autoregressive language modeling objective, predicting
+the next token in a sequence based on the context. By training
+on large text datasets, GPT-2 achieves excellent results on
+various NLP tasks after fine-tuning on small labeled datasets.
+With the development of vision transformers (ViTs) [19]
+[20] [21], Masked Image Modeling (MIM) gradually replaces
+the dominant position of contrastive learning [22] [23] in
+visual self-supervised representation learning due to its su-
+perior fine-tuning performance in various visual downstream
+tasks. MAE [8] masks patches of an input image and trains
+a vision transformer to reconstruct the missing pixel val-
+ues. MCMAE [24] proposes a hybrid convolution-transformer
+to learn more discriminative representations via the mask
+auto-encoding scheme. MaskTAS [25] introduces a MIM-
+based self-supervised one-shot NAS framework incorporating
+knowledge distillation. However, the proposed method is not
+evaluated in limited labeled data scenarios.
+III. M ETHODOLOGY
+A. Entropy Score
+Generalization ability [26] refers to generalizing from the
+training data to limited unseen data. A network with strong
+generalization capability should achieve comparable perfor-
+mance using fewer labeled data, indicating that it has learned
+meaningful and transferable representations. Given the random
+initialized weights and inputs, we evaluate the generalization
+ability of a self-supervised network by the uniformity of
+feature space. The isotropy of the feature space [27] refers
+to how uniformly a model’s features are distributed across
+different directions. Studies have shown that networks with
+higher isotropy at initialization tend to demonstrate better
+generalization ability [28]. To measure the isotropy of the
+feature space, we analyze the eigenvalues of the feature matrix.
+Let fk ∈ Rc×n be the self-attention feature matrix of the p-th
+layer in a Transformer with H number of heads, where c is
+the number of channels, n is the number of tokens. We use
+singular value decomposition and square each singular value
+to obtain c eigenvalues λ1 to λc of the feature matrix. If the
+different orientations in the feature space are distributed more
+isotropically, the magnitudes of the c eigenvalues become more
+similar. Consequently, we use the entropy of the c eigenvalues
+as a metric to evaluate the model’s generalization ability:
+Eh =
+cX
+i=1
+−¯λi log
+¯λi
+
+, (1)
+where ¯λi is the normalized eigenvalue. The overall Entropy
+score is defined by summing up the average entropy of
+different heads for each layer:
+Se =
+X
+p
+1
+H
+X
+h
+Eh, (2)
+To examine the effectiveness of the proposed Entropy score,
+we selected 32 ViT models from [4] [20] [21] [24] and
+conducted MIM pre-training followed by fine-tuning on
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 3 =====
+
+ImageNet-100 low-labeled data. Figure 2 illustrates the re-
+lationship between the Entropy score and the percentage of
+label reduction each model can achieve while maintaining a
+fixed test accuracy. The results shown in Figure 2 and Table I
+demonstrate a Spearman’s rank correlation coefficient of 0.93,
+indicating a strong positive correlation between the Entropy
+score and the generalization ability of the models.
+Fig. 2. Relationship between the Entropy score and percentage of label
+reduction along with Spearman’s rank correlation coefficient. The blue, yellow,
+purple, and green points represent the Tiny, Small, Base, and Large sizes of
+ViTs. The star markers indicate the models presented in Table I. For this
+analysis, we set the fixed test accuracy to 80%.
+TABLE I
+RELATIONSHIP BETWEEN E NTROPY SCORES AND LABELED DATA
+SAVING FOR DIFFERENT MODELS ON IMAGE NET-100.
+Model Entropy Score Labeled Data
+Saving (%)
+DeiT-T 117.4 40.0
+Autoformer-T 117.6 48.0
+ResNet-50 125.0 76.0
+DeiT-S 132.1 77.5
+MCMAE-S 137.5 89.0
+DeiT-B 144.7 94.0
+Swin-B 254.9 95.0
+DeiT-L 296.2 98.0
+B. TPC Score
+TPC-NAS [9] is a fast zero-shot NAS method. It evaluates
+an architecture’s quality using expressivity [10]. A model with
+higher architectural expressivity is expected to perform better
+on practical tasks or applications. Consider a neuron in a
+network as a node, where multiple paths connect it to nodes
+in the next layer, each associated with a different weight. A
+greater number of paths in a model can enable more diverse
+transformations of the input data. As a result, architectures
+with more paths generally exhibit better expressivity [10]. For
+instance, the model in Figure 3 has a total end-to-end path
+count of 81.
+The core of TPC-NAS is the TPC score [9], which calculates
+the total number of paths from the input layer to the output
+layer. For a multi-layer model, the TPC score is obtained by
+Fig. 3. Example of a model with two convolution layers adapted from [9].
+Each input pixel can influence 9 output pixels. Consequently, the entire model
+has a total of 81 paths.
+multiplying the number of paths at each layer, equivalent to the
+network’s outdegree. Equation (3) represents the TPC score
+for a convolutional layer, where co,p, kp, sp, and gp denote
+the number of output channels, kernel size, stride size, and
+group size for layer p, respectively. Equation (4) represents
+the TPC score for a linear layer, which is equivalent to its
+output dimension. Finally, for a transformer layer shown in
+Figure 4, the TPC score is Equation (5), where A, D, and r is
+the Q-K-V dimension, embedding dimension, and MLP ratio.
+Op = Co,p ∗ kp
+2
+sp2 ∗ gp
+, (3)
+Op = Co,p, (4)
+Op = (A × 3) × D × (D × r) × D, (5)
+Fig. 4. Overview of Transformer layer architecture.
+However, as neural networks become deeper and larger, the
+original TPC score can become extremely large. Therefore,
+[9] takes the logarithm of each layer’s TPC score for easier
+observation and usage. This transforms the multiplication of
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 4 =====
+
+scores into an addition, resulting in a smaller and more
+manageable TPC score, as shown in Equation (6)
+St =
+X
+p
+log (Op). (6)
+We also investigated the relationship between the TPC score
+and model expressivity under MIM pre-training. For consis-
+tency, we used the same 32 ViT models as those in the
+Entropy score correlation analysis. Figure 5 and Table II
+highlight a strong correlation between the TPC score and Top-
+1 accuracy on the ImageNet-100 dataset, further demonstrating
+the effectiveness of the TPC score as a measure of model
+performance.
+Fig. 5. Relationship between the TPC score and low-labeled data accuracy
+along with Spearman’s rank correlation coefficient.
+TABLE II
+RELATIONSHIP BETWEEN TPC SCORES AND T OP-1 A CCURACY
+FOR DIFFERENT VIT MODELS ON IMAGE NET-100 10% LABELED
+DATA.
+Model TPC Score Top-1 Acc. (%)
+DeiT-T 410.7 64.2
+Autoformer-T 411.2 70.1
+ResNet-50 453.3 75.5
+DeiT-S 459.6 77.0
+MCMAE-S 579.3 79.7
+DeiT-B 508.9 82.4
+Swin-B 968.0 83.5
+DeiT-L 1052.0 85.6
+C. GEN-TPC-NAS Algorithms
+GEN-TPC-NAS combines Entropy score and TPC score
+with genetic algorithms. As illustrated in Algorithm 1 and
+Figure 6, it begins with a population P of size N, initializing
+each individual in the population with random architecture
+parameters. Then it does Mutation: randomly select individuals
+from P and apply mutation to generate new individuals or
+Crossover: Use crossover techniques by randomly selecting
+two individuals from the population and exchanging their
+architecture parameters to create new individuals. If the newly
+generated individuals don’t meet the constraints of parameter
+Fig. 6. Overview of the search algorithm in GEN-TPC-NAS.
+count or computational complexity, discard these individuals
+and generate new ones. After N valid individuals are created,
+we combine the new generation with the previous generation’s
+individuals and select the top N individuals with the highest
+TPC scores to form the next generation. Suppose the difference
+between the maximum and minimum TPC scores among the
+N individuals in population P is smaller than a predefined
+threshold T0. In that case, it indicates that the N candidates
+within the population exhibit no significant differences in their
+TPC scores. At this point, the evaluation score is switched
+from TPC score to Entropy score to assess the generalization
+ability of the architectures. Additionally, a minimum TPC
+Score is introduced as a new constraint during the search
+process, signifying that the search aims to discover archi-
+tectures with the highest generalization capability, provided
+their expressivity exceeds a certain value. After sufficient
+generations, the individual with the highest evaluation score
+in the final population represents the best model architecture.
+This approach maintains the fast search advantage of zero-
+shot NAS by only using model architecture parameters and
+one forward propagation, thus avoiding the need for extensive
+training and keeping search time less than one hour.
+D. Search Space Design
+We take inspiration from [29] and design a search space
+that includes four adjustable factors within Transformer build-
+ing blocks: embedding dimension, Q-K-V dimension, head
+dimension, and MLP ratio. The number of heads in the multi-
+head attention module is determined by dividing the Q-K-V
+dimension by the head dimension. Details of the search space
+configurations for various Transformer architectures tailored
+to CV and NLP tasks are provided in Table III. Notably,
+we define the search range for the Q-K-V dimension to be
+slightly larger than that of the embedding dimension, allowing
+for greater flexibility in the number of attention heads. This
+design enables each attention module to dynamically adjust
+and determine the optimal number of heads as needed.
+The constraints applied during the search process primarily
+include the parameter count, computational complexity, and
+the number of layers. While having more parameters in an
+architecture can potentially improve both training and test
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 5 =====
+
+Algorithm 1 GEN-TPC-NAS Algorithm
+Require: search space S, constraints K, maximal depth
+D, number of iterations M, population size N,
+initial structure F0, difference threshold T0
+1: Initial population P(F0)
+2: switchF lag ← F alse
+3: T P CT hreshold ← 0
+4: for m = 1, 2, . . . , M do
+5: Randomly select two models F1, F2 from the
+population.
+6: if mutation condition is met then
+7: Structure ˆF = MUTATE(F1, S)
+8: else
+9: Structure ˆF = CROSSOVER(F1, F2, S)
+10: end if
+11: if ˆF does not satisfy hardware constraints K or
+has more than D layers then
+12: Go to line 6
+13: else
+14: Calculate St( ˆF )
+15: if switchF lag = F alse then
+16: S ← St
+17: Insert ˆF to population P
+18: else
+19: S ← Se
+20: if St( ˆF ) ≤ T P CT hreshold then
+21: Go to line 6
+22: else
+23: Calculate Se( ˆF )
+24: Insert ˆF to population P
+25: end if
+26: end if
+27: end if
+28: Remove Fmin, the model with the lowest S, if |P|
+exceeds N
+29: if switchF lag = F alse and St(Fmax) −
+St(Fmin) ≤ T0 then
+30: T P CT hreshold ← St(Fmin)
+31: switchF lag ← T rue
+32: end if
+33: end for
+Return Fmax, the model with the highest S
+performance, it is often difficult to determine whether the
+performance gain stems from the architecture itself or simply
+from the increase in parameter count. Furthermore, model
+deployment typically imposes limits on parameter size and
+computational complexity. Therefore, setting constraints on
+these factors is both reasonable and essential to ensure that the
+searched models are practical for real-world implementation.
+Regarding the constraint on the model’s number of layers,
+it is evident from Equation (2) and Equation (6) that both
+the Entropy and TPC scores can increase indefinitely as the
+number of layers grows. However, if the parameter count and
+computational complexity are fixed, adding more layers is
+TABLE III
+SEARCH SPACE DESIGN OF VITS AND GPT2. T UPLES OF THREE VALUES
+IN PARENTHESES REPRESENT THE LOWEST VALUE , HIGHEST , AND STEPS .
+Search Space DeiT-Tiny DeiT-Small GPT2
+Embed Dim (168, 216, 24) (384,448,32) (768,832,32)
+Q-K-V Dim (136, 288, 32) (352,448,32) (736,832,32)
+Head Dim (32,96,32) (32,96,32) (32,96,32)
+MLP Ratio (2.0,4.0,0.125) (2.0,4.0,0.125) (2.0,4.0,0.125)
+unlikely to result in significant performance improvements.
+Therefore, we impose a limit on the number of layers during
+the search process.
+IV. E XPERIMENTS
+In this section, we first provide the experimental settings
+of the proposed GEN-TPC-NAS. Then we compare GEN-
+TPC-NAS with the state-of-the-art models. Finally, we conduct
+ablation studies on ViT models and GPT2. All the experiments
+are conducted on 2 GeForce RTX 4090 GPUs.
+A. Experimental settings
+Dataset Description . For the computer vision task, we
+evaluate the effectiveness of the proposed method on the
+large-scale ImageNet-1k [6] image classification and ADE20K
+[36] semantic segmentation. Additionally, we use ImageNet-
+100, comprising the first 100 classes from ImageNet-1k, for
+ablation studies. For the NLP task, we utilize the Cleaned
+Common Crawl dataset and the Cleaned Wikipedia dataset as
+pre-training datasets. The test dataset used for fine-tuning is
+WikiText-2, a curated collection of over 100 million tokens
+extracted from verified Wikipedia articles.
+Implementation Details . During the search phase, we
+maintain a fixed population size of 100 and iterate through
+1000 generations. The difference threshold T0 is set to 0.5. For
+the computer vision task, we select DeiT-Tiny as the baseline
+model for the challenging ImageNet-1k Experiments. The
+design of the search space is detailed in Table III, while the
+search constraints are determined by the original architecture’s
+parameter size, computational cost, and depth.
+In the pre-training stage, we employ the MaskTAS algo-
+rithm [25] and train for 100 epochs. We use a batch size of
+1024 and a base learning rate of 1.5e-4. During fine-tuning,
+the entire dataset is used to train 200 epochs for the standard
+ImageNet-1k benchmark. For the low-labeled data ImageNet-
+1k benchmark, we fine-tune models for 200 epochs on 20–40%
+of ImageNet-1k labeled data to evaluate model performance
+under limited annotation conditions. For ADE20K, we follow
+the same setting in MAE and adopt UperNet [37] as our
+framework with a GEN-TPC-Tiny pre-trained backbone. The
+input image resolution is 512 × 512 for training and evaluating.
+We use mIoU as the evaluation metric.
+For the NLP task, we adopt a 12-layer GPT-2 model with
+110 million parameters as the baseline. The search space
+design is shown in Table III, with constraints ensuring similar
+computational and parameter sizes. We set the learning rate
+to 6e-4 and the batch size to 6. We pre-train GPT2 with an
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 6 =====
+
+TABLE IV
+COMPARISON WITH STATE -OF-THE -ART VITS ON IMAGE NET-1K.
+Method FLOPs (G) Params. (M) Top-1 Accuracy (%) Design Type Search Cost
+(GPU Days)
+DeiT [30] 1.2 5.7 72.2 Manual -
+Autoformer [29] 1.3 5.7 74.7 One-Shot 24
+ViTAS-C [31] 1.6 5.6 74.7 One-Shot 32
+GraSP [32] 1.3 5.5 74.3 Zero-Shot 0.4
+GradSign [33] 1.5 6.0 74.9 Zero-Shot 1.7
+MGM [34] 1.5 6.0 75.0 Zero-Shot 0.14
+Grad-norm [35] 1.4 5.9 74.8 Zero-Shot 0.03
+TF-TAS [4] 1.4 5.9 75.3 Zero-Shot 0.5
+T-Razor [5] 1.4 5.9 75.5 Zero-Shot 0.4
+MaskTAS [25] 1.3 5.8 75.6 One-Shot+SSL N/A
+GEN-TPC-NAS 1.3 5.4 77.5 Zero-Shot+SSL 0.02
+input sequence length of 1024 for 100000 steps. Fine-tuning
+is performed with a learning rate of 1e-5 for 4 epochs. We
+use 100% and 0-10% labeled data of the Wikitext-2 dataset
+for the full and low-labeled data experiment, respectively.
+The evaluation metric is perplexity. Lower perplexity indicates
+better model performance and the ability to generate sentences
+closer to the original.
+B. Results
+Vision Transformers (ViTs). We first compare GEN-TPC-
+NAS with previous NAS methods on the standard ImageNet-
+1K benchmark. As shown in Table IV, our GEN-TPC-NAS
+achieves an accuracy of 77.5%, surpassing the performance of
+previous state-of-the-art models. This highlights the combina-
+tion of NAS and SSL could learn more useful representations
+than traditional supervised learning. Furthermore, our compar-
+ison with MaskTAS [25] demonstrates that the combination of
+zero-shot NAS and SSL outperforms the self-supervised one-
+shot NAS framework. For the low-labeled data ImageNet-1k
+benchmark, we compare our proposed method with TF-TAS
+[4] and MaskTAS [25]. Using the architectures reported in
+their papers, we apply the same pre-training and fine-tuning
+settings. The experimental results in Figure 7 demonstrate
+that GEN-TPC-NAS achieves higher accuracy with 20-40%
+labeled data. This indicates that our method exhibits better
+generalization ability compared to other approaches in sce-
+narios with limited annotations. Furthermore, compared to the
+baseline DeiT-Tiny trained in a supervised-learning manner,
+GEN-TPC-NAS can reduce the required labeled data by up to
+75% while maintaining the same level of accuracy.
+We also evaluate the generalization ability of the proposed
+method by transferring the searched architectures to a semantic
+segmentation task. The results shown in Table V indicate the
+proposed GEN-TPC-NAS can still achieve better performance
+than the other methods.
+GPT2. Table VI compares the performance of the baseline
+GPT2, TPC-GPT2, and GEN-TPC-GPT2. The proposed GEN-
+TPC-NAS achieves a further 2.9% reduction in perplexity
+compared to TPC-NAS, demonstrating its superior perfor-
+mance. This result validates that GEN-TPC-NAS is not only
+applicable to image classification tasks based on ViT but
+Fig. 7. Comparison with other NAS methods on low-labeled data ImageNet-
+1k benchmark.
+TABLE V
+PERFORMANCE COMPARISON (MIOU) ON ADE20K SEMANTIC
+SEGMENTATION .
+Model Pre-train Data mIOU
+DeiT-Tiny [30] IN1K w/ labels 38.0
+MAE-Tiny [8] IN1K w/o labels 37.6
+MaskTAS-Tiny [25] IN1K w/o labels 40.6
+GEN-TPC-Tiny IN1K w/o labels 41.2
+TABLE VI
+COMPARISON BETWEEN ARCHITECTURE DISCOVERED BY
+GEN-TPC-NAS, TPC-NAS AND BASELINE GPT2.
+Model FLOPs
+(G)
+Params.
+(M)
+TPC
+Score
+Entropy
+Score Perplexity
+GPT2 [18] 108 84.9 503.1 127.4 21.1
+TPC-GPT2 [9] 108 84.7 504.3 129.8 13.5
+GEN-TPC-GPT2 104 84.9 504.2 131.0 10.6
+also effective in identifying high-performing models for text
+generation tasks.
+For the low-labeled data Wikitext-2 experiment, we use
+0-10% labeled data to fine-tune our GEN-TPC-GPT2. The
+comparison results with baseline GPT2 and TPC-GPT2 are
+shown in Figure 8. GEN-TPC-GPT2 can achieve baseline-level
+perplexity by less than 1% of labeled data. In comparison to
+TPC-GPT2, our model can attain the same perplexity using
+only 3% labeled data, reducing the number of labels by 97%.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 7 =====
+
+Fig. 8. Wikitext-2 Results on GPT2-series.
+This demonstrates the high generalization ability of our model
+in the field of NLP tasks.
+C. Ablation Studies
+Experiments on ViT Models of Different Sizes. To further
+validate the generalization ability of our method across differ-
+ent parameter scales, we conducted experiments using DeiT-
+Small and DeiT-Tiny on the ImageNet-100 dataset. The results
+in Figure 9 and Figure 10 demonstrate that the architectures
+identified by GEN-TPC-NAS achieve accuracy comparable to
+that of the baseline models trained with supervised learning,
+even when utilizing only 10% of the labeled data. When
+comparing the amount of labeled data required for the original
+models and GEN-TPC-NAS to achieve the same baseline
+accuracy, we observe that the Small-series reduces the required
+labeled data by 5%, while the Tiny-series reduces it by an
+additional 15%.
+TABLE VII
+COMPARISON BETWEEN ARCHITECTURE DISCOVERED BY
+GEN-TPC-NAS, TPC-NAS AND BASELINE VITS.
+Model FLOPs
+(G)
+Params.
+(M)
+TPC
+Score
+Entropy
+Score
+Acc.@30%
+label (%)
+DeiT-Small [30] 4.7 22.1 459.6 132.1 81.7
+TPC-Small [9] 4.6 21.1 461.4 133.9 82.1
+GEN-TPC-Small 4.6 20.8 461.4 135.3 82.7
+DeiT-Tiny [30] 1.3 5.7 410.7 117.4 72.6
+TPC-Tiny [9] 1.3 5.4 412.5 117.6 77.0
+GEN-TPC-Tiny 1.3 5.4 413.0 120.2 77.9
+Effect of TPC Score Difference Threshold. As shown in
+Table VIII and Table IX, we observed that when TPC Score
+difference threshold T0 = 0.5, the GEN-TPC-NAS identified
+architectures balancing both TPC and Entropy scores, resulting
+in the best performance. When T0 = 0, the search essentially
+becomes equivalent to TPC-NAS, focusing solely on evaluat-
+ing architectures based on the TPC score. On the other hand,
+when T0 = 1, the search algorithm prioritizes generalization
+before identifying architectures with sufficiently high TPC
+Scores. As a result, the selected architectures exhibit higher
+Entropy scores but remain sub-optimal due to a gap in TPC
+scores compared to the optimal architecture.
+Fig. 9. low-labeled data ImageNet-100 Results on Small size of ViTs.
+Fig. 10. low-labeled data ImageNet-100 Results on Tiny size of ViTs.
+TABLE VIII
+EFFECT OF TPC S CORE DIFFERENCE THRESHOLD FOR VITS.
+Setting TPC
+Score
+Entropy
+Score
+Acc.@10%
+label (%)
+Acc.@30%
+label (%)
+GEN-TPC-Small, T0=0 461.4 133.9 77.4 82.1
+GEN-TPC-Small, T0=0.5 461.4 135.3 78.5 82.7
+GEN-TPC-Small, T0=1.0 460.3 135.3 77.7 82.0
+GEN-TPC-Tiny, T0=0 412.5 117.6 70.6 77.0
+GEN-TPC-Tiny, T0=0.5 413.0 120.2 71.0 77.9
+GEN-TPC-Tiny, T0=1.0 412.1 120.4 70.8 76.9
+TABLE IX
+EFFECT OF TPC S CORE DIFFERENCE THRESHOLD FOR GPT2.
+Setting TPC
+Score
+Entropy
+Score
+Perplexity
+@1% label
+Perplexity
+@3% label
+GEN-TPC-GPT2, T0=0 504.3 129.8 17.7 14.9
+GEN-TPC-GPT2, T0=0.5 504.2 131.0 16.9 13.3
+GEN-TPC-GPT2, T0=1.0 503.1 131.0 17.2 13.5
+V. C ONCLUSION
+In this study, we introduce GEN-TPC-NAS, a novel self-
+supervised zero-shot neural architecture search (NAS) method
+for Transformer architectures. By combining two zero-shot
+proxies from complementary perspectives, our method identi-
+fies architectures that effectively balance expressivity and gen-
+eralization. The integration of NAS and self-supervised learn-
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 8 =====
+
+ing (SSL) not only significantly reduces the annotation costs
+of supervised learning, but also facilitates the efficient training
+of transformers. Experimental results on image classification
+and text generation tasks demonstrate that GEN-TPC-NAS can
+achieve state-of-the-art performance in both standard and low-
+labeled data scenarios. These findings highlight the potential
+of GEN-TPC-NAS to automate the neural architecture design
+process for real-world applications, reducing dependency on
+human expertise and lowering data labeling costs.
+ACKNOWLEDGMENT
+This work was supported by the National Science and
+Technology Council (NSTC), Taiwan, under Grant No. NSTC
+112-2923-E-002-014-MY3.
+REFERENCES
+[1] A. Vaswani, “Attention is all you need,” Advances in Neural Information
+Processing Systems, 2017.
+[2] M. Tan, B. Chen, R. Pang, V . Vasudevan, M. Sandler, A. Howard,
+and Q. V . Le, “Mnasnet: Platform-aware neural architecture search for
+mobile,” in Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition , 2019, pp. 2820–2828.
+[3] M. Javaheripi, G. de Rosa, S. Mukherjee, S. Shah, T. Religa, C. C.
+Teodoro Mendes, S. Bubeck, F. Koushanfar, and D. Dey, “Litetransform-
+ersearch: Training-free neural architecture search for efficient language
+models,” Advances in Neural Information Processing Systems , vol. 35,
+pp. 24 254–24 267, 2022.
+[4] Q. Zhou, K. Sheng, X. Zheng, K. Li, X. Sun, Y . Tian, J. Chen, and
+R. Ji, “Training-free transformer architecture search,” in Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition ,
+2022, pp. 10 894–10 903.
+[5] Q. Zhou, K. Sheng, X. Zheng, K. Li, Y . Tian, J. Chen, and R. Ji,
+“Training-free transformer architecture search with zero-cost proxy
+guided evolution,” IEEE Transactions on Pattern Analysis and Machine
+Intelligence, pp. 1–17, 2024.
+[6] J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei, “Imagenet:
+A large-scale hierarchical image database,” in 2009 IEEE conference on
+computer vision and pattern recognition . Ieee, 2009, pp. 248–255.
+[7] C. Wei, H. Fan, S. Xie, C.-Y . Wu, A. Yuille, and C. Feichtenhofer,
+“Masked feature prediction for self-supervised visual pre-training,” in
+Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, 2022, pp. 14 668–14 678.
+[8] K. He, X. Chen, S. Xie, Y . Li, P. Doll ´ar, and R. Girshick, “Masked au-
+toencoders are scalable vision learners,” inProceedings of the IEEE/CVF
+conference on computer vision and pattern recognition , 2022, pp.
+16 000–16 009.
+[9] M.-S. Huang, P.-C. Chen, and T.-D. Chiueh, “Tpc-nas: Simple and
+effective neural architecture search based on total path count,” in 2024
+IEEE 6th International Conference on AI Circuits and Systems (AICAS) ,
+2024, pp. 542–546.
+[10] I. G ¨uhring, M. Raslan, and G. Kutyniok, “Expressivity of deep neural
+networks,” 2020.
+[11] E. Real, S. Moore, A. Selle, S. Saxena, Y . L. Suematsu, J. Tan, Q. V .
+Le, and A. Kurakin, “Large-scale evolution of image classifiers,” in
+International Conference on Machine Learning . PMLR, 2017, pp.
+2902–2911.
+[12] Z. Guo, X. Zhang, H. Mu, W. Heng, Z. Liu, Y . Wei, and J. Sun, “Single
+path one-shot neural architecture search with uniform sampling,” in
+European conference on computer vision . Springer, 2020, pp. 544–
+560.
+[13] H. Cai, C. Gan, T. Wang, Z. Zhang, and S. Han, “Once for all: Train
+one network and specialize it for efficient deployment,” in International
+Conference on Learning Representations , 2020.
+[14] M. Lin, P. Wang, Z. Sun, H. Chen, X. Sun, Q. Qian, H. Li, and R. Jin,
+“Zen-nas: A zero-shot nas for high-performance image recognition,” in
+Proceedings of the IEEE/CVF International Conference on Computer
+Vision, 2021, pp. 347–356.
+[15] R. Wang, M. Cheng, X. Chen, X. Tang, and C.-J. Hsieh, “Rethinking ar-
+chitecture selection in differentiable NAS,” in International Conference
+on Learning Representations , 2021.
+[16] J. Mellor, J. Turner, A. Storkey, and E. J. Crowley, “Neural architec-
+ture search without training,” in International Conference on Machine
+Learning. PMLR, 2021, pp. 7588–7598.
+[17] P. Dong, L. Li, and Z. Wei, “Diswot: Student architecture search
+for distillation without training,” in Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition , 2023, pp.
+11 898–11 908.
+[18] A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, I. Sutskever et al. ,
+“Language models are unsupervised multitask learners,” OpenAI blog ,
+vol. 1, no. 8, p. 9, 2019.
+[19] A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai,
+T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly,
+J. Uszkoreit, and N. Houlsby, “An image is worth 16x16 words:
+Transformers for image recognition at scale,” ICLR, 2021.
+[20] H. Touvron, M. Cord, M. Douze, F. Massa, A. Sablayrolles, and
+H. Jegou, “Training data-efficient image transformers & distillation
+through attention,” in International Conference on Machine Learning ,
+vol. 139, July 2021, pp. 10 347–10 357.
+[21] Z. Liu, Y . Lin, Y . Cao, H. Hu, Y . Wei, Z. Zhang, S. Lin, and
+B. Guo, “Swin transformer: Hierarchical vision transformer using shifted
+windows,” in Proceedings of the IEEE/CVF International Conference on
+Computer Vision (ICCV) , 2021.
+[22] T. Chen, S. Kornblith, M. Norouzi, and G. Hinton, “A simple framework
+for contrastive learning of visual representations,” in International
+conference on machine learning . PMLR, 2020, pp. 1597–1607.
+[23] K. He, H. Fan, Y . Wu, S. Xie, and R. Girshick, “Momentum contrast
+for unsupervised visual representation learning,” in Proceedings of the
+IEEE/CVF conference on computer vision and pattern recognition , 2020,
+pp. 9729–9738.
+[24] P. Gao, T. Ma, H. Li, Z. Lin, J. Dai, and Y . Qiao, “Mcmae: Masked con-
+volution meets masked autoencoders,” Advances in Neural Information
+Processing Systems, vol. 35, pp. 35 632–35 644, 2022.
+[25] C. Yan, X. Chang, Z. Li, L. Yao, M. Luo, and Q. Zheng, “Masked
+distillation advances self-supervised transformer architecture search,”
+in The Twelfth International Conference on Learning Representations ,
+2024.
+[26] G. Li, D. Hoang, K. Bhardwaj, M. Lin, Z. Wang, and R. Mar-
+culescu, “Zero-shot neural architecture search: Challenges, solutions,
+and opportunities,” IEEE Transactions on Pattern Analysis and Machine
+Intelligence, 2024.
+[27] S. Rajaee and M. T. Pilehvar, “A cluster-based approach for im-
+proving isotropy in contextual embedding space,” arXiv preprint
+arXiv:2106.01183, 2021.
+[28] C. Tao, H. Wang, X. Zhu, J. Dong, S. Song, G. Huang, and J. Dai, “Ex-
+ploring the equivalence of siamese self-supervised learning via a unified
+gradient framework,” in Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition , 2022, pp. 14 431–14 440.
+[29] M. Chen, H. Peng, J. Fu, and H. Ling, “Autoformer: Searching
+transformers for visual recognition,” in Proceedings of the IEEE/CVF
+international conference on computer vision , 2021, pp. 12 270–12 280.
+[30] H. Touvron, M. Cord, M. Douze, F. Massa, A. Sablayrolles, and
+H. J ´egou, “Training data-efficient image transformers & distillation
+through attention,” in International conference on machine learning .
+PMLR, 2021, pp. 10 347–10 357.
+[31] X. Su, S. You, J. Xie, M. Zheng, F. Wang, C. Qian, C. Zhang, X. Wang,
+and C. Xu, “Vitas: Vision transformer architecture search,” in European
+Conference on Computer Vision . Springer, 2022, pp. 139–157.
+[32] C. Wang, G. Zhang, and R. Grosse, “Picking winning tickets before
+training by preserving gradient flow,” in International Conference on
+Learning Representations, 2020.
+[33] Z. Zhang and Z. Jia, “Gradsign: Model performance inference with
+theoretical insights,” 2022.
+[34] J. Xu, L. Zhao, J. Lin, R. Gao, X. Sun, and H. Yang, “Knas: Green
+neural architecture search,” in Proceedings of ICML 2021 , 2021.
+[35] M. S. Abdelfattah, A. Mehrotra, Ł. Dudziak, and N. D. Lane, “Zero-Cost
+Proxies for Lightweight NAS,” in International Conference on Learning
+Representations (ICLR), 2021.
+[36] B. Zhou, H. Zhao, X. Puig, T. Xiao, S. Fidler, A. Barriuso, and
+A. Torralba, “Semantic understanding of scenes through the ade20k
+dataset,” International Journal of Computer Vision , vol. 127, pp. 302–
+321, 2019.
+[37] T. Xiao, Y . Liu, B. Zhou, Y . Jiang, and J. Sun, “Unified perceptual
+parsing for scene understanding,” in Proceedings of the European
+conference on computer vision (ECCV) , 2018, pp. 418–434.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 16,2026 at 16:12:33 UTC from IEEE Xplore.  Restrictions apply. 

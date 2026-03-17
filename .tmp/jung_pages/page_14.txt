@@ -1,0 +1,52 @@
+Published as a conference paper at ICLR 2023
+A D ATASET
+A.1 NAS-B ENCH -201
+We base our evaluations on the NAS-Bench-201 (Dong & Yang, 2020) search space. It is a cell-
+based architecture search space. Each cell has in total 4 nodes and 6 edges. The nodes in this
+search space correspond to the architecture’s feature maps and the edges represent the architec-
+tures operation, which are chosen from the operation set O = {1 × 1 conv. , 3 × 3 conv. , 3 ×
+3 avg. pooling , skip , zero} (see Figure 1). This search space contains in total 56 = 15 625 archi-
+tectures, from which only 6 466 are unique, since the operations skip and zero can cause isomorphic
+cells (see Figure 8), where the latter operation zero stands for dropping the edge. Each architecture is
+trained on three different image datasets for 200 epochs: CIFAR-10 (Krizhevsky, 2009), CIFAR-100
+(Krizhevsky, 2009) and ImageNet16-120 (Chrabaszcz et al., 2017). For our evaluations, we consider
+all unique architectures in the search space and test splits of the corresponding datasets. Hence, we
+evaluate 3 · 6 466 = 19 398pretrained networks in total.
+in
+1
+2 out3x3
+3x3
+avg1x1
+1x1
+# 991
+in
+1
+2 out1x1
+avg
+3x33x3
+1x1
+# 3365
+Figure 8: Example of two isomorphic graphs in NAS-Bench-201. Due to the skip connection from
+node in to node 1, both computational graphs are equivalent, but their identification in the search
+space is different. For this dataset, we evaluated all non-isomorphic graphs (#991 was evaluated and
+#3365 was not).
+A.2 D ATASET GATHERING
+We collect evaluations for our dataset for different corruptions and adversarial attacks (as discussed
+in subsection 3.2 and subsection 3.3) following algorithm 1. This process is also depicted in Figure 9.
+Hyperparameter settings for adversarial attacks are listed in Table 2. Due to the heavy load of running
+all these evaluations, they are performed on several clusters. These clusters are comprised of either (i)
+compute nodes with Nvidia A100 GPUs, 512 GB RAM, and Intel Xeon IceLake-SP processors, (ii)
+compute nodes with NVIDIA Quadro RTX 8000 GPUs, 1024 GB RAM, and AMD EPYC 7502P
+processors, (iii) NVIDIA Tesla A100 GPUs, 2048 GB RAM, Intel Xeon Platinum 8360Y processors,
+and (iv) NVIDIA Tesla A40 GPUs, 2048 GB RAM, Intel Xeon Platinum 8360Y processors.
+Table 2: Hyperparameter settings of adversarial attacks evaluated.
+Attack Hyperparameters
+FGSM ϵ ∈ {.1, .5., 1, 2, 3, 4, 5, 6, 7, 8, 255}/255
+PGD ϵ ∈ {.1, .5., 1, 2, 3, 4, 8, 255}/255
+α = 0.01/0.3
+40 attack iterations
+APGD ϵ ∈ {.1, .5., 1, 2, 3, 4, 8, 255}/255
+100 attack iterations
+Square ϵ ∈ {.1, .5., 1, 2, 3, 4, 8, 255}/255
+5 000 search iterations
+14

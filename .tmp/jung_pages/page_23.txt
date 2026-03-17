@@ -1,0 +1,76 @@
+Published as a conference paper at ICLR 2023
+A.8 E XAMPLE IMAGE OF CORRUPTIONS IN CIFAR-10-C
+gaussian_noise
+shot_noise
+impulse_noise
+defocus_blur
+glass_blur
+motion_blur
+zoom_blur
+snow
+frost
+fog
+brightness
+contrast
+elastic_transform
+pixelate
+jpeg_compression
+1
+2
+3
+4
+5 Severity
+Figure 18: An example image of CIFAR-10-C (Hendrycks & Dietterich, 2019) with different
+corruption types at different severity levels. CIFAR-100-C (Hendrycks & Dietterich, 2019) consists
+of images with the same corruption types and severity levels.
+A.9 M AIN PAPER FIGURES FOR OTHER IMAGE DATASETS
+A.9.1 CIFAR-100 A DVERSARIAL ATTACK ACCURACIES (FIGURE 2)
+0 0.1 0.5 1 2 3 4 5 6 7 8 255
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 FGSM accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 PGD accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 AA_APGD-CE accuracies
+0 0.1 0.5 1 2 3 4 8
+epsilon
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7accuracy
+cifar100 AA_SQUARE accuracies
+Figure 19: Accuracy boxplots over all unique architectures in NAS-Bench-201 for different adver-
+sarial attacks (FGSM (Goodfellow et al., 2015), PGD (Kurakin et al., 2017), APGD (Croce & Hein,
+2020), Square (Andriushchenko et al., 2020)) and perturbation magnitude values ϵ, evaluated on
+CIFAR-100. Red line corresponds to guessing.
+23
