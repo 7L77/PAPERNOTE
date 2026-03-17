@@ -37,9 +37,13 @@ created: 2026-03-14
 ### 论文要解决什么问题
 - 现有可微 NAS 多以自然精度为目标，面对 FGSM/PGD/C&W/APGD 等攻击时鲁棒性不足。
 - 既有 robust NAS 往往把鲁棒性指标直接当正则项，过程可解释性弱，难回答“哪些结构元素导致鲁棒性提升”。
-
+    Mok et al. [9] take the perspective of the input loss landscape
+    Dong et al. [10] start from the Lipschitz constant and the adversarial robustness of architectures, and then explore the relationship between both.
+    Hosseini et al. [11] propose two adversarial robustness metrics based on the certificated lower bound and Jacobian regularization, and both metrics are enumerated and regularized to the objective functions of differentiable NAS to perform joint maximal optimization.
+    Cheng et al. [12] design an adversarial noise estimator to generate adversarial examples under different attack strengths, and the adversarial losses of these examples are optimized together with the natural loss.
 ### 现有方法不足
 - 只给“结果更鲁棒”，不给“结构层面可追溯因果”。
+
 - 架构参数搜索可能过拟合验证集，后期自然精度下降（论文引用 DARTS 退化问题）。
 
 ### REP 的核心思路
@@ -65,34 +69,34 @@ created: 2026-03-14
 
 ## 关键公式（含解释）
 ### Eq. (3): 鲁棒基元指示矩阵
-\[
+$$
 \alpha^R_{m,n}=
 \begin{cases}
 1, & (e_m,o_n)\ \text{是鲁棒基元}\\
 0, & \text{否则}
 \end{cases}
-\]
+$$
 - 含义：把“已识别鲁棒基元”编码成结构先验。
 
 ### Eq. (4): 距离正则
-\[
+$$
 D(\alpha)=\|\alpha-\alpha^R\|_2^2
-\]
+$$
 - 含义：越小表示架构参数越偏向鲁棒基元。
 
 ### Eq. (5)-(6): 搜索目标
-\[
+$$
 \min_{\alpha}\ L_{val}(w^*(\alpha),\alpha)+\lambda D(\alpha)
-\]
-\[
+$$
+$$
 \text{s.t.}\quad w^*(\alpha)=\arg\min_w L_{train}(w,\alpha)
-\]
+$$
 - `L_val` 保证验证性能（自然精度主导），`D(alpha)` 引导鲁棒基元选择，`\lambda` 做折中。
 
 ### DARTS 离散化（Eq. (2), 前置）
-\[
+$$
 o^{(i,j)}=\arg\max_{o\in O}\alpha_o^{(i,j)}
-\]
+$$
 - REP 不改变离散化方式，而是通过正则改变 `alpha` 分布。
 
 ## 关键图表解读
@@ -150,3 +154,7 @@ o^{(i,j)}=\arg\max_{o\in O}\alpha_o^{(i,j)}
 - [[Adversarial Robustness]]
 - [[Neural Architecture Search]]
 - [[Cell-based Search Space]]
+
+
+## 代码详情
+### 每个epoch取当前架构的genotype

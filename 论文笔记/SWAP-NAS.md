@@ -48,29 +48,29 @@ created: 2026-03-14
 ## 方法详解
 ### Step 1: 标准激活模式（对比基线）
 定义标准模式集合：
-\[
+$$
 A_{N,\theta}=\left\{p^{(s)}:p^{(s)}=\mathbf{1}(p^{(s)}_v)_{v=1}^{V},\ s\in\{1,\dots,S\}\right\}
-\]
+$$
 - 上界由样本数 \(S\) 限制，输入分辨率升高时容易“饱和”到接近 \(S\)（Sec. 3.1）。
 
 ### Step 2: Sample-wise Activation Pattern（核心）
 定义 sample-wise 集合：
-\[
+$$
 \hat{A}_{N,\theta}=\left\{p^{(v)}:p^{(v)}=\mathbf{1}(p^{(v)}_s)_{s=1}^{S},\ v\in\{1,\dots,V\}\right\}
-\]
+$$
 - 每个中间激活单元给出一个跨样本二值向量，集合基数上界由 \(V\) 驱动（Sec. 3.2, Def. 3.2）。
 
 ### Step 3: SWAP-Score
-\[
+$$
 \Psi_{N,\theta}=|\hat{A}_{N,\theta}|
-\]
+$$
 - 直接用 unique pattern 数量作为得分（Sec. 3.2, Def. 3.3）。
 
 ### Step 4: 参数量正则（控尺寸）
-\[
+$$
 f(\Theta)=\exp\left(-\frac{(\Theta-\mu)^2}{\sigma}\right),\quad
 \Psi'_{N,\theta}=\Psi_{N,\theta}\cdot f(\Theta)
-\]
+$$
 - \(\mu\) 控中心，\(\sigma\) 控曲线宽度，可把搜索推向目标模型大小区间（Sec. 3.3, Def. 3.4/3.5）。
 
 ### Step 5: 与进化搜索结合（SWAP-NAS）
@@ -130,3 +130,76 @@ f(\Theta)=\exp\left(-\frac{(\Theta-\mu)^2}{\sigma}\right),\quad
 - [[Spearman's Rank Correlation]]
 - [[Cell-based Search Space]]
 
+
+
+## 代码分析
+
+### 特征提取
+注册提取点
+在 [swap.py](D:/PRO/essays/code_depots/SWAP-NAS Sample-Wise Activation Patterns for Ultra-Fast NAS/src/metrics/swap.py#L77) 里，register_hook 遍历 model.named_modules()，给所有 nn.ReLU 注册 forward_hook
+
+收集中间特征
+在 [swap.py](D:/PRO/essays/code_depots/SWAP-NAS Sample-Wise Activation Patterns for Ultra-Fast NAS/src/metrics/swap.py#L82) 的 hook_in_forward，把每个 ReLU 的 output.detach() 存进 self.interFeature（只收 4D 特征图，通常是卷积特征）。
+```
+    def register_hook(self, model):
+        for n, m in model.named_modules():
+            if isinstance(m, nn.ReLU):
+                m.register_forward_hook(hook=self.hook_in_forward)
+
+    def hook_in_forward(self, module, input, output):
+        if isinstance(input, tuple) and len(input[0].size()) == 4:
+            self.interFeature.append(output.detach()) 
+
+```
+
+### 拼接成一个大特征矩阵
+在 [swap.py](D:/PRO/essays/code_depots/SWAP-NAS Sample-Wise Activation Patterns for Ultra-Fast NAS/src/metrics/swap.py#L86)，一次前向后把每层特征 f.view(B, -1) 展平，再 torch.cat(..., dim=1)，得到 (batch_size, total_neurons)。
+```
+
+    def forward(self):
+        self.interFeature = []
+        with torch.no_grad():
+            self.model.forward(self.inputs.to(self.device))
+            if len(self.interFeature) == 0: return
+            activtions = torch.cat([f.view(self.inputs.size(0), -1) for f in self.interFeature], 1)         
+            self.swap.collect_activations(activtions)
+            
+            return self.swap.calSWAP(self.regular_factor)
+```
+
+
+### 二值化后用于 SWAP 评分
+在 [swap.py](D:/PRO/essays/code_depots/SWAP-NAS Sample-Wise Activation Patterns for Ultra-Fast NAS/src/metrics/swap.py#L21)，对激活做 torch.sign，再转置成 (neurons, samples) 去重计数（torch.unique）得到 SWAP 分数。
+```
+
+    @torch.no_grad()
+    def collect_activations(self, activations):
+        n_sample = activations.size()[0]
+        n_neuron = activations.size()[1]
+
+        if self.activations is None:
+            self.activations = torch.zeros(n_sample, n_neuron).to(self.device)  
+
+        self.activations = torch.sign(activations)
+
+    @torch.no_grad()
+    def calSWAP(self, regular_factor):
+        
+        self.activations = self.activations.T # transpose the activation matrix: (samples, neurons) to (neurons, samples)
+        self.swap = torch.unique(self.activations, dim=0).size(0)
+        
+        del self.activations
+        self.activations = None
+        torch.cuda.empty_cache()
+
+        return self.swap * regular_factor
+```
+
+### 描述
+SWAP 打分实际用的是 hook 到的中间 ReLU 特征。
+    SWAP 只取激活后的特征
+        SWAP 只给 nn.ReLU 注册 hook，并保存 output，也就是 ReLU 后特征。
+        后续还会 torch.sign 二值化。
+    NEAR 会同时覆盖“激活前后”信息，但方式是“遍历模块输出”
+        NEAR 对两类模块都挂 hook：hasattr(module, "weight")（如 Conv/Linear）和激活函数模块。
+        hook 取的是每个模块的 output。对带权重层来说通常是激活前；对激活层来说是激活后。

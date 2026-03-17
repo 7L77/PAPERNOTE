@@ -218,3 +218,21 @@ def get_effective_rank(matrix, return_singular_values=False):
     return np.nan_to_num(erank)
 
 ```
+
+### 香农熵，但是不太一样
+Shannon 熵（香农熵）
+NEAR 在代码里是这样算的：
+先取奇异值：s = torch.linalg.svdvals(matrix)
+归一化：s /= torch.sum(s)
+熵后再取指数：erank = e ** entropy(s)
+
+NEAR：对激活矩阵奇异值谱做熵（再指数化成 effective rank）。
+AZ-NAS：sE 是对PCA 特征值谱做熵。
+VKDNW：对**FIM 特征值谱（分位采样后）**做熵
+
+### 激活前后的奇异值个数
+NEAR 的奇异值个数是不是固定？
+    不是全局固定。torch.linalg.svdvals(matrix) 返回个数是 min(m, n)
+NEAR 会尽量把每层激活裁成近似方阵（行数裁到列数），所以单层里常见是 n 个奇异值；但不同层的 n 不同，所以整体仍不固定。
+    调用 torch.linalg.svdvals(matrix)。 min(m,n) 这个规则是 svdvals 本身的数学/库行为，不是代码里手写常数。
+    
