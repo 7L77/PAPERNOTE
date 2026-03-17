@@ -11,10 +11,14 @@
             "id": "30df3e7ac7123e69",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "论文笔记/LLMENAS.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "新标签页"
+              "title": "LLMENAS"
             }
           }
         ]
@@ -165,8 +169,24 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "706965593cce3a96",
+  "active": "30df3e7ac7123e69",
   "lastOpenFiles": [
+    "code_depots/NEAR A Training-Free Pre-Estimator of Machine Learning Model Performance/requirements.txt",
+    "code_depots/NEAR A Training-Free Pre-Estimator of Machine Learning Model Performance/requirements-dev.txt",
+    "code_depots/NEAR A Training-Free Pre-Estimator of Machine Learning Model Performance/pyproject.toml",
+    "code_depots/Neural architecture search for wide spectrum adversarial robustness/retrain/train_adv_mgpu_imgnet.py",
+    "code_depots/Neural architecture design and robustness a dataset/robustness_dataset.py",
+    "code_depots/Neural architecture design and robustness a dataset/README.md",
+    "code_depots/Neural architecture design and robustness a dataset/dataset.ipynb",
+    "code_depots/Neural architecture design and robustness a dataset/LICENSE",
+    "code_depots/Neural architecture design and robustness a dataset",
+    "code_depots/Robust Principles Architectural Design Principles for Adversarially Robust CNNs/setup.py",
+    "code_depots/ZeroNAS Differentiable Generative Adversarial Networks Search for Zero-Shot Learning/plot.py",
+    "code_depots/ZeroNAS Differentiable Generative Adversarial Networks Search for Zero-Shot Learning/operations_retrain.py",
+    "论文笔记/MeCo.md",
+    "论文笔记/Dextr.md",
+    "改造想法/MeCo/002_pre_post/1.pre_post.md",
+    "论文笔记/_概念/Twice Perturbation_ch.md",
     "论文笔记/_概念/GELU_ch.md",
     "论文笔记/_概念/GELU.md",
     "论文笔记/_概念/SiLU (Sigmoid Linear Unit)_ch.md",
@@ -187,22 +207,6 @@
     "论文笔记/_概念/FBNetV2_ch.md",
     "论文笔记/_概念/Isomorphic Architectures.md",
     "论文笔记/_概念/FBNetV2.md",
-    "论文笔记/_概念/Wide Spectrum Adversarial Robustness.md",
-    "论文笔记/_概念/Adversarial Training_ch.md",
-    "论文笔记/_概念/Hessian Spectrum_ch.md",
-    "论文笔记/_概念/KL Divergence_ch.md",
-    "论文笔记/_概念/Validation Loss Estimator_ch.md",
-    "论文笔记/_概念/Hessian Spectrum.md",
-    "papers/On the Interplay of Convolutional Padding and Adversarial Robustness.pdf",
-    "papers/ParZC Parametric Zero-Cost Proxies for Efficient NAS.pdf",
-    "papers/Neural architecture design and robustness a dataset.pdf",
-    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/accuracy.cpython-37.pyc",
-    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/warmup_lr.cpython-36.pyc",
-    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/warmup_lr.cpython-37.pyc",
-    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/weight_decay.cpython-37.pyc",
-    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/weight_decay.cpython-36.pyc",
-    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/dist_init.cpython-36.pyc",
-    "code_depots/Neural architecture search for wide spectrum adversarial robustness/test_AN_estimator/util/__pycache__/torch_dist_sum.cpython-36.pyc",
     "code_depots/Neural architecture search for wide spectrum adversarial robustness/ewss.PNG",
     "code_depots/Neural architecture search for wide spectrum adversarial robustness/demo2.PNG",
     "code_depots/Neural architecture search for wide spectrum adversarial robustness/ane.PNG",
