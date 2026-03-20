@@ -1,0 +1,1244 @@
+arXiv:2506.05869v1  [cs.LG]  6 Jun 2025
+Loss Functions for Predictor-based Neural Architecture Search
+Han Ji Yuqi Feng Jiahao Fan Yanan Sun
+College of Computer Science, Sichuan University
+jihan@stu.scu.edu.cn, feng770623@gmail.com, {fanjh,ysun}@scu.edu.cn
+Abstract
+Evaluation is a critical but costly procedure in neural ar-
+chitecture search (NAS). Performance predictors have been
+widely adopted to reduce evaluation costs by directly esti-
+mating architecture performance. The effectiveness of pre-
+dictors is heavily influenced by the choice of loss functions.
+While traditional predictors employ regression loss func-
+tions to evaluate the absolute accuracy of architectures, re-
+cent approaches have explored various ranking-based loss
+functions, such as pairwise and listwise ranking losses, to
+focus on the ranking of architecture performance. Despite
+their success in NAS, the effectiveness and characteristics
+of these loss functions have not been thoroughly investi-
+gated. In this paper, we conduct the first comprehensive
+study on loss functions in performance predictors, catego-
+rizing them into three main types: regression, ranking, and
+weighted loss functions. Specifically, we assess eight loss
+functions using a range of NAS-relevant metrics on 13 tasks
+across five search spaces. Our results reveal that specific
+categories of loss functions can be effectively combined to
+enhance predictor-based NAS. Furthermore, our findings
+could provide practical guidance for selecting appropriate
+loss functions for various tasks. We hope this work provides
+meaningful insights to guide the development of loss func-
+tions for predictor-based methods in the NAS community.
+1. Introduction
+Neural architecture search (NAS) aims to automate the de-
+sign of specialized neural architectures for any given task
+and has been widely applied in various domains [8, 17,
+32]. NAS typically contains three key components: search
+space, search strategy, and performance evaluation [6]. One
+significant bottleneck of early NAS was the expensive per-
+formance evaluation stage, which involves training each ar-
+chitecture from scratch [29, 45]. To mitigate the heavy com-
+putational cost, prior research has introduced a wide range
+of evaluation acceleration methods, such as weight shar-
+ing [27], early stopping strategy [7], zero-cost proxy [1],
+and performance predictor [19].
+Among these methods, performance predictors are one
+of the most widely used because of their ability to pro-
+vide accurate and stable predictions across various search
+spaces. A performance predictor requires a small number of
+trained architectures to learn the mapping from the encod-
+ing of an architecture to its corresponding performance. Af-
+ter that, it can directly estimate the performance of unseen
+architectures, significantly reducing the need for expensive
+evaluations.
+A crucial component of a performance predictor is the
+loss function, which determines its optimization direction.
+Previous studies [24, 40] have demonstrated that the choice
+of loss function can dramatically affect the performance of
+the predictor. This raises an important question: how to
+design a proper loss function to empower the performance
+predictor? A large number of works [22, 33, 34] opt for
+Mean Square Error (MSE) loss to estimate the absolute ac-
+curacy of an architecture. Other works have explored rank-
+ing loss functions, such as hinge ranking (HR) loss [10, 24],
+which predict rankings of architecture performance. Addi-
+tionally, some works [30, 36] employ weighted loss func-
+tions, which focus more on architectures with higher accu-
+racy. While several works [24, 40] have discussed the effect
+of loss functions in predictors, they only consider MSE and
+ranking loss. Additionally, existing evaluations of loss func-
+tions often lack generalizability due to limited search spaces
+and assessment metrics. These limitations motivate us to in-
+vestigate how different loss functions compare across vari-
+ous settings and how their respective strengths can be lever-
+aged to enhance predictor-based NAS.
+In this paper, we provide the first comprehensive study
+on loss functions in performance predictors. We identify
+three significant categories of loss functions. Regression
+loss functions minimize the difference between the pre-
+diction score and the absolute accuracy of an architecture.
+Ranking loss functions aim to rank architectures correctly.
+They can be further classified into pairwise ones that re-
+duce the number of misranked architecture pairs and list-
+wise ones that align the predicted ranking list with the
+ground truth of architectures. Weighted loss functions as-
+1
+
+Neural 
+Architectures
+Encoder
+Regressor
+Loss Function
+Regression Pairwise Ranking
+Listwise Ranking Weighted
+Absolute
+Accuracy
+Relative Relationship
+Actual
+Pred
+Overall Consistency Poor
+Good
+Prefer well-performing ones
+Weight
+Acc.
+Figure 1. Illustration of main loss functions discussed in this paper. Ranking loss functions are further classified into pairwise and
+listwise ones. During the training stage of a predictor, it first obtains the architecture representation from the encoder and then regresses
+representation to the prediction score via a loss function. The choice of loss function decides the optimization direction of the predictor.
+sign weights to an architecture according to its absolute ac-
+curacy. The main categories of loss functions are illustrated
+in Figure 1.
+We conduct rigorous experiments on 13 tasks across five
+popular search spaces: NAS-Bench-101 [43], NAS-Bench-
+201 [3], TransNAS-Bench-101 Micro/Macro [4], NAS-
+Bench-Graph [28], and DARTS [18]. Each loss function
+is evaluated based on two aspects: overall ranking perfor-
+mance and performance on identifying well-performing ar-
+chitectures. The latter is particularly important because the
+primary goal of NAS is to discover the best architectures
+within a search space. Our experiments are performed un-
+der various settings, including different numbers of training
+data and types of predictors. Finally, we evaluate the per-
+formance of each loss function in predictor-based NAS.
+Overall, our results reveal that loss functions have a sub-
+stantial impact on the effectiveness of predictors, especially
+in identifying well-performing architectures. Besides, we
+also find that no loss functions have consistent performance
+across different search spaces, numbers of training data,
+and types of predictors. In general, weighted loss func-
+tions perform better at distinguishing good architectures
+with enough training data, but they can be inferior to rank-
+ing loss functions when training data are extremely limited.
+Furthermore, we demonstrate that combining effective loss
+functions into a piecewise (PW) loss function can lead to
+significant performance improvements for predictor-based
+NAS. Our comprehensive findings unveil the crucial role
+of loss functions in performance predictors. We hope this
+study will offer valuable insights for the design of new loss
+functions for predictor-based NAS.
+Our contributions are summarized below:
+• We provide the first comprehensive study on a series of
+loss functions in performance predictors, including re-
+gression, ranking, and weighted loss functions.
+• We conduct extensive experiments on the effectiveness of
+loss functions on five search spaces. Our results can offer
+recommendations for the optimal loss function to use for
+different NAS tasks.
+• We demonstrate that specific categories of loss functions
+can be combined to enhance the predictor-based NAS
+framework, leading to performance improvements over
+any single loss as well as previous competitive methods.
+2. Relate Works
+Performance Predictors for NAS. Performance predictors
+can estimate the final performance of unseen architectures
+after learning from a limited set of trained architectures,
+enabling NAS to explore the search space efficiently. The
+effectiveness of predictors largely depends on the quantity
+of training data, which is typically obtained by training ar-
+chitectures from scratch. To construct an effective predic-
+tor with fewer training samples, recent studies mainly fo-
+cus on generating informative architecture representation
+by designing advanced models [22, 34], optimizing archi-
+tecture encoding [24, 41], and incorporating tailored self-
+supervised tasks [12, 44]. Despite these advancements, the
+impact of loss functions on performance predictors remains
+underexplored.
+Loss Functions for Performance Predictors. Several loss
+functions have been employed in performance predictors.
+Early predictors [19, 21, 23] typically employ regression
+2
+
+loss functions such as MSE to predict architecture accu-
+racy directly. Another widely adopted paradigm is ranking-
+based loss functions, which focus on learning the rela-
+tive ordering of architectures. For instance, GATES [24],
+Arch-Graph [9], and GMAENAS [12] separately utilize
+pairwise HR, Binary Cross Entropy (BCE), and Bayesian
+Personalized Ranking (BPR) loss to estimate the relative
+rankings of architectures. Additionally, DCLP [44] uses
+ListMLE [39], a listwise ranking loss function, to gener-
+ate a ranking list that closely aligns with ground truth rank-
+ings. Hybrid loss functions have also been explored to bal-
+ance accuracy prediction and ranking prediction. For ex-
+ample, NAR-Former [42] combines MSE with pairwise Se-
+quence Ranking (SR) loss to simultaneously preserve the
+absolute accuracy of each architecture while refining rel-
+ative rankings. Finally, weighted loss functions, such as
+Exponential Weighted (EW) [30] and Mean Absolute Per-
+centage Error (MAPE) [36] loss, assign higher weights to
+well-performing architectures, prioritizing predictive preci-
+sion for high-accuracy candidates. These weighted losses
+are typically derived from regression loss functions. Al-
+though some works employ auxiliary loss functions like
+unsupervised learning loss [41] and consistency loss [42]
+to enhance the performance predictor, they fall beyond the
+scope of our study. This paper focuses on analyzing the core
+loss functions used in performance predictors.
+3. Loss Functions of Performance Predictors
+We denote a set of architectures sampled from search space
+S as X = {x1, x2, . . . , xn} and their respective ground-
+truth (GT) performances as Y = {y1, y2, . . . , yn}. Then we
+have a training set D = {(x1, y1), (x2, y2), . . . ,(xn, yn)}
+composed of n architecture-GT pairs. We define a map-
+ping function for the predictor P : X → Y . P takes ar-
+chitectures X as input and output their prediction scores
+ˆY = { ˆy1, ˆy2, . . . , ˆyn}. In this paper, we discuss eight loss
+functions, containing seven existing ones and a novel one.
+We split them into four categories and describe them be-
+low. Detailed information about these loss functions can be
+found in the Supplementary Material.
+Regression loss functions are popular options for predic-
+tors. For each input architecture xi, the predictor aims to
+minimize the difference between prediction scores and GTs.
+MSE is selected as the representative loss [34].
+Pairwise Ranking loss functions are also common for pre-
+dictors, which focus on the relative relationship of architec-
+tures. For each input architecture pair(xi, xj), the predictor
+is penalized when the pair is ranked incorrectly. HR [26],
+Logistic Ranking (LR) [40], and MSE+SR [42] are selected
+as the representative loss. Note that MSE+SR combines the
+pairwise SR loss with MSE.
+Listwise Ranking loss functions optimize the consistency
+between the list of prediction scores and the actual rank-
+ing of architectures in a listwise manner. We use ListMLE
+loss [39] as the representative one.
+Weighted loss functions give greater weights to archi-
+tectures with higher accuracy to better identify well-
+performing architectures. We use EW[30] and MAPE [36]
+loss as the representative loss. Besides, we introduce
+Weighted Approximate-Rank Pairwise (WARP) [35] loss, a
+weighted pairwise ranking loss widely used in the multi-
+label image annotation task, into predictor-based NAS.
+4. Experiments
+In this section, we present the experimental settings and re-
+sults. Our experiments can be divided into two parts: eval-
+uating the performance of loss functions using a variety of
+NAS-correlated metrics and evaluating the effectiveness of
+loss functions in predictor-based NAS. We first discuss the
+settings used in our experiments.
+4.1. Experimental Settings
+NAS Search Spaces. The experiments are conducted in five
+popular search spaces: NAS-Bench-101 [43], NAS-Bench-
+201 [3], TransNAS-Bench-101 Micro/Macro [4], NAS-
+Bench-Graph [28], DARTS [18]. Note that TransNAS-
+Bench-101 Macro is a skeleton-based search space while
+the remaining are cell-based ones.
+Assessment Metrics. We introduce the major metrics to as-
+sess loss functions, including the ranking correlation metric
+and top-ranking precision metrics. We first discuss the for-
+mer below.
+Kendall’s Tau [14] ( τ) reflects the ordinal association be-
+tween prediction scores and GTs. It is calculated as τ =
+2(nc−nd)
+n(n−1) , where nc and nd separately denote the number of
+concordant and discordant architecture pairs.
+Since the ability to identify well-performing architec-
+tures matters more than distinguishing the bad ones [25],
+we focus more on the metrics that evaluate the top-K rank-
+ing precision. Assuming the actual ranking and the pre-
+dicted ranking of architecture xi is ri and ˆri, respectively.
+The GT of the i-th best architecture in the search space is
+ygi. We use XK = {xi| ˆri <= K} to represent the archi-
+tectures with top-K highest prediction scores in the search
+space. N denotes the total number of architectures in the
+search space. We employ the following two popular met-
+rics [10, 24]:
+Precision@T ∈ (0, 100] = #{i|ri<=T N∩ ˆri<=T N}
+T N : The
+portion of actual top-T% architectures among the top-T%
+predicted architectures. Note that T ∈ (0, 100] denotes the
+portion instead of a specific ranking in this metric.
+N@K ∈ [1, N] = arg min xi∈XK ri: The best actual rank-
+ing among architectures with the top-K prediction scores.
+This metric is particularly important as it directly reflects
+the result of a basic predictor-based NAS paradigm, where
+3
+
+/uni00000013
+/uni00000018
+/uni00000014/uni00000013
+/uni00000014/uni00000018
+/uni00000015/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+NAS-Bench-101
+/uni00000013/uni00000011/uni00000013
+/uni00000015/uni00000011/uni00000018
+/uni00000018/uni00000011/uni00000013
+/uni0000001a/uni00000011/uni00000018
+/uni00000014/uni00000013/uni00000011/uni00000013
+/uni00000014/uni00000015/uni00000011/uni00000018
+/uni00000014/uni00000018/uni00000011/uni00000013
+/uni00000014/uni0000001a/uni00000011/uni00000018/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+NAS-Bench-201
+/uni00000013
+/uni00000014
+/uni00000015
+/uni00000016
+/uni00000017
+/uni00000018/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+TransNAS-Bench-101 Micro
+/uni00000013
+/uni00000014
+/uni00000015
+/uni00000016
+/uni00000017
+/uni00000018
+/uni00000019
+/uni0000001a/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+TransNAS-Bench-101 Macro
+/uni00000013/uni00000011/uni00000013/uni00000013
+/uni00000013/uni00000011/uni00000015/uni00000018
+/uni00000013/uni00000011/uni00000018/uni00000013
+/uni00000013/uni00000011/uni0000001a/uni00000018
+/uni00000014/uni00000011/uni00000013/uni00000013
+/uni00000014/uni00000011/uni00000015/uni00000018
+/uni00000014/uni00000011/uni00000018/uni00000013
+/uni00000014/uni00000011/uni0000001a/uni00000018
+/uni00000015/uni00000011/uni00000013/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+NAS-Bench-Graph
+/uni00000013
+/uni00000018/uni00000013/uni00000013
+/uni00000014/uni00000013/uni00000013/uni00000013
+/uni00000014/uni00000018/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013/uni00000013
+/uni00000015/uni00000018/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+NAS-Bench-101
+/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013
+/uni00000017/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+NAS-Bench-201
+/uni00000013
+/uni00000018/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000018/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000015/uni00000018/uni00000013
+/uni00000016/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+TransNAS-Bench-101 Micro
+/uni00000013
+/uni00000015/uni00000013
+/uni00000017/uni00000013
+/uni00000019/uni00000013
+/uni0000001b/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000015/uni00000013
+/uni00000014/uni00000017/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+TransNAS-Bench-101 Macro
+/uni00000013
+/uni00000018/uni00000013/uni00000013
+/uni00000014/uni00000013/uni00000013/uni00000013
+/uni00000014/uni00000018/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013/uni00000013
+/uni00000015/uni00000018/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013/uni00000013
+/uni00000016/uni00000018/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+NAS-Bench-Graph
+/uni00000013/uni00000011/uni00000013
+/uni00000013/uni00000011/uni00000014
+/uni00000013/uni00000011/uni00000015
+/uni00000013/uni00000011/uni00000016
+/uni00000013/uni00000011/uni00000017
+/uni00000013/uni00000011/uni00000018
+/uni00000013/uni00000011/uni00000019
+/uni00000013/uni00000011/uni0000001a/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+NAS-Bench-101
+/uni00000013/uni00000011/uni00000017/uni00000013
+/uni00000013/uni00000011/uni00000017/uni00000018
+/uni00000013/uni00000011/uni00000018/uni00000013
+/uni00000013/uni00000011/uni00000018/uni00000018
+/uni00000013/uni00000011/uni00000019/uni00000013
+/uni00000013/uni00000011/uni00000019/uni00000018
+/uni00000013/uni00000011/uni0000001a/uni00000013/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+NAS-Bench-201
+/uni00000013/uni00000011/uni00000017/uni00000013
+/uni00000013/uni00000011/uni00000017/uni00000018
+/uni00000013/uni00000011/uni00000018/uni00000013
+/uni00000013/uni00000011/uni00000018/uni00000018
+/uni00000013/uni00000011/uni00000019/uni00000013
+/uni00000013/uni00000011/uni00000019/uni00000018/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+TransNAS-Bench-101 Micro
+/uni00000013/uni00000011/uni00000013
+/uni00000013/uni00000011/uni00000014
+/uni00000013/uni00000011/uni00000015
+/uni00000013/uni00000011/uni00000016
+/uni00000013/uni00000011/uni00000017
+/uni00000013/uni00000011/uni00000018
+/uni00000013/uni00000011/uni00000019
+/uni00000013/uni00000011/uni0000001a/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+TransNAS-Bench-101 Macro
+/uni00000013/uni00000011/uni00000015/uni00000013
+/uni00000013/uni00000011/uni00000015/uni00000018
+/uni00000013/uni00000011/uni00000016/uni00000013
+/uni00000013/uni00000011/uni00000016/uni00000018
+/uni00000013/uni00000011/uni00000017/uni00000013
+/uni00000013/uni00000011/uni00000017/uni00000018
+/uni00000013/uni00000011/uni00000018/uni00000013/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+NAS-Bench-Graph
+/uni00000013
+/uni00000018/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000018/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000015/uni00000018/uni00000013
+/uni00000016/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+TransNAS-Bench-101 Micro
+/uni00000030/uni00000036/uni00000028/uni0000002f/uni00000035/uni0000002b/uni00000035/uni00000030/uni00000036/uni00000028/uni0000000e/uni00000036/uni00000035/uni0000002f/uni0000004c/uni00000056/uni00000057/uni00000030/uni0000002f/uni00000028/uni00000028/uni0000003a/uni00000030/uni00000024/uni00000033/uni00000028/uni0000003a/uni00000024/uni00000035/uni00000033
+Figure 2. Precision@0.5, N@10, and Kendall’s Tau (Top to Bottom) of different loss functions. The training portion used on these search
+spaces is 0.1%, 1%, 0.3%, 0.3%, and 3% (Left to Right). Note that a higher metric indicates better performance except for N@10.
+a predictor is trained and used to select top-K architectures
+from candidates. A lower N@K is preferred.
+Hyperparameter Tuning. The effectiveness of each loss
+function is closely related to the hyperparameter settings.
+For example, listwise ranking loss functions prefer a larger
+learning rate. Hence, we use different levels of hyperpa-
+rameters for each loss function. To achieve a fair compar-
+ison, we opt for a uniform Graph Convolutional Network
+(GCN)-based [15] performance predictor for its success in
+prior works [5, 20, 30, 34]. The hyperparameters for loss
+functions are reported in the Supplementary Material.
+4.2. Performance Predictor Evaluation
+We conduct this set of experiments on NAS-Bench-
+101 [43], NAS-Bench-201 [3], TransNAS-Bench-101 Mi-
+cro/Macro [4], NAS-Bench-Graph [28]. For a more consis-
+tent evaluation, the predictor is trained on a subset of each
+search space and evaluated on the whole search space un-
+less stated otherwise. All these search spaces provide both
+validation and test accuracy for each architecture. Follow-
+ing previous works [21, 22], we use the former to train
+the predictor and evaluate it with the latter. Since sev-
+eral search spaces include multiple tasks, we only report
+the results of NAS-Bench-201 on CIFAR-10 [16] dataset,
+TransNAS-Bench-101 Micro/Macro on Class Scene task,
+and NAS-Bench-Graph on Cora dataset in this part. The
+full results can be found in the Supplementary Material.
+The training portion in our experiments remains small, as
+many predictor-based NAS methods can already search top-
+performing architectures with very few training data [33,
+36, 40]. Thus, studying performance under larger training
+sets is of limited practical significance. All results are aver-
+aged over 30 runs.
+Results on different search spaces. We first focus on
+the top-ranking ability of each loss function. As shown
+in Figure 2, weighted loss functions achieve the best Pre-
+cision@0.5 and N@10 on all search spaces. For instance,
+MAPE takes the lead on NAS-Bench-201, and W ARP ranks
+first on other search spaces. Conversely, MSE loss fails
+to recognize good architectures on the majority of search
+spaces. This failure can be attributed to their inability to
+rank architectures correctly [40]. These results indicate
+that weighted loss functions are good at identifying well-
+performing architectures on both cell-based and skeleton-
+based search spaces.
+For the overall ranking performance, ranking loss func-
+tions, such as HR, demonstrate a stable advantage on all
+search spaces. Moreover, we discover that training the pre-
+dictor with a combination of two different loss functions
+simultaneously often results in worse results compared to
+using a single one. Specifically, the hybrid MSE+SR loss
+yields sub-optimal results, performing between regression
+and ranking loss functions across all three metrics.
+Trend on different training portions. We further analyze
+4
+
+/uni00000013/uni00000011/uni00000013/uni00000015/uni00000013/uni00000011/uni00000013/uni00000017/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000018
+/uni00000014/uni00000013
+/uni00000014/uni00000018
+/uni00000015/uni00000013
+/uni00000015/uni00000018/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+NAS-Bench-101
+/uni00000013/uni00000011/uni00000014/uni00000016/uni00000013/uni00000011/uni00000015/uni00000018/uni00000013/uni00000011/uni00000018/uni00000014
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000015
+/uni00000017
+/uni00000019
+/uni0000001b
+/uni00000014/uni00000013
+/uni00000014/uni00000015
+/uni00000014/uni00000017
+/uni00000014/uni00000019
+/uni00000014/uni0000001b/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+NAS-Bench-201
+/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015/uni00000013/uni00000011/uni00000016/uni00000013/uni00000011/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013
+/uni00000014
+/uni00000015
+/uni00000016
+/uni00000017
+/uni00000018/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+TransNAS-Bench-101 Micro
+/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015/uni00000013/uni00000011/uni00000016/uni00000013/uni00000011/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013
+/uni00000014
+/uni00000015
+/uni00000016
+/uni00000017
+/uni00000018
+/uni00000019
+/uni0000001a
+/uni0000001b/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+TransNAS-Bench-101 Macro
+/uni00000013/uni00000011/uni00000018/uni00000014/uni00000015/uni00000011/uni00000018/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013/uni00000011/uni00000013
+/uni00000013/uni00000011/uni00000018
+/uni00000014/uni00000011/uni00000013
+/uni00000014/uni00000011/uni00000018
+/uni00000015/uni00000011/uni00000013
+/uni00000015/uni00000011/uni00000018/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000013/uni00000011/uni00000018
+NAS-Bench-Graph
+/uni00000013/uni00000011/uni00000013/uni00000015/uni00000013/uni00000011/uni00000013/uni00000017/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013
+/uni00000014/uni00000013/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013/uni00000013
+/uni00000017/uni00000013/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+NAS-Bench-101
+/uni00000013/uni00000011/uni00000014/uni00000016/uni00000013/uni00000011/uni00000015/uni00000018/uni00000013/uni00000011/uni00000018/uni00000014
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000014/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013
+/uni00000017/uni00000013/uni00000013
+/uni00000018/uni00000013/uni00000013
+/uni00000019/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+NAS-Bench-201
+/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015/uni00000013/uni00000011/uni00000016/uni00000013/uni00000011/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000018/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000018/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000015/uni00000018/uni00000013
+/uni00000016/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+TransNAS-Bench-101 Micro
+/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015/uni00000013/uni00000011/uni00000016/uni00000013/uni00000011/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013
+/uni00000018/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000018/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000015/uni00000018/uni00000013
+/uni00000016/uni00000013/uni00000013
+/uni00000016/uni00000018/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+TransNAS-Bench-101 Macro
+/uni00000013/uni00000011/uni00000018/uni00000014/uni00000015/uni00000011/uni00000018/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013
+/uni00000014/uni00000013/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013/uni00000013
+/uni00000017/uni00000013/uni00000013/uni00000013/uni00000031/uni00000023/uni00000014/uni00000013
+NAS-Bench-Graph
+/uni00000013/uni00000011/uni00000013/uni00000015/uni00000013/uni00000011/uni00000013/uni00000017/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013/uni00000011/uni00000016
+/uni00000013/uni00000011/uni00000017
+/uni00000013/uni00000011/uni00000018
+/uni00000013/uni00000011/uni00000019
+/uni00000013/uni00000011/uni0000001a/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+NAS-Bench-101
+/uni00000013/uni00000011/uni00000014/uni00000016/uni00000013/uni00000011/uni00000015/uni00000018/uni00000013/uni00000011/uni00000018/uni00000014
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013/uni00000011/uni00000017/uni00000018
+/uni00000013/uni00000011/uni00000018/uni00000013
+/uni00000013/uni00000011/uni00000018/uni00000018
+/uni00000013/uni00000011/uni00000019/uni00000013
+/uni00000013/uni00000011/uni00000019/uni00000018
+/uni00000013/uni00000011/uni0000001a/uni00000013/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+NAS-Bench-201
+/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015/uni00000013/uni00000011/uni00000016/uni00000013/uni00000011/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013/uni00000011/uni00000017/uni00000013
+/uni00000013/uni00000011/uni00000017/uni00000018
+/uni00000013/uni00000011/uni00000018/uni00000013
+/uni00000013/uni00000011/uni00000018/uni00000018
+/uni00000013/uni00000011/uni00000019/uni00000013
+/uni00000013/uni00000011/uni00000019/uni00000018/uni0000004e/uni00000057/uni00000044/uni00000058
+TransNAS-Bench-101 Micro
+/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015/uni00000013/uni00000011/uni00000016/uni00000013/uni00000011/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013/uni00000011/uni00000015
+/uni00000013/uni00000011/uni00000016
+/uni00000013/uni00000011/uni00000017
+/uni00000013/uni00000011/uni00000018
+/uni00000013/uni00000011/uni00000019
+/uni00000013/uni00000011/uni0000001a/uni0000004e/uni00000057/uni00000044/uni00000058
+TransNAS-Bench-101 Macro
+/uni00000013/uni00000011/uni00000018/uni00000014/uni00000015/uni00000011/uni00000018/uni00000018
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000033/uni00000052/uni00000055/uni00000057/uni0000004c/uni00000052/uni00000051/uni00000003/uni0000000b/uni00000008/uni0000000c
+/uni00000013/uni00000011/uni00000015/uni00000013
+/uni00000013/uni00000011/uni00000015/uni00000018
+/uni00000013/uni00000011/uni00000016/uni00000013
+/uni00000013/uni00000011/uni00000016/uni00000018
+/uni00000013/uni00000011/uni00000017/uni00000013
+/uni00000013/uni00000011/uni00000017/uni00000018
+/uni00000013/uni00000011/uni00000018/uni00000013/uni0000002e/uni00000048/uni00000051/uni00000047/uni00000044/uni0000004f/uni0000004f/uni00000003/uni00000037 /uni00000044/uni00000058
+NAS-Bench-Graph
+/uni00000013/uni00000011/uni00000018/uni00000014 /uni00000018
+/uni00000014/uni00000013
+/uni00000015/uni00000013
+/uni00000016/uni00000013
+/uni00000017/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000037
+NAS-Bench-201
+/uni00000030/uni00000036/uni00000028/uni0000002f/uni00000035/uni0000002b/uni00000035/uni00000030/uni00000036/uni00000028/uni0000000e/uni00000036/uni00000035/uni0000002f/uni0000004c/uni00000056/uni00000057/uni00000030/uni0000002f/uni00000028/uni00000028/uni0000003a/uni00000030/uni00000024/uni00000033/uni00000028/uni0000003a/uni00000024/uni00000035/uni00000033
+Figure 3. Precision@0.5, N@10, and Kendall’s Tau (Top to Bottom) of different loss functions. Note that a higher metric indicates better
+performance except for N@10.
+/uni00000015/uni00000013/uni00000016/uni00000013/uni00000017/uni00000013/uni00000018/uni00000013
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000036/uni00000044/uni00000050/uni00000053/uni0000004f/uni00000048/uni00000056
+/uni00000015
+/uni00000017
+/uni00000019
+/uni0000001b
+/uni00000014/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000018
+NB201 Mutation
+/uni00000015/uni00000013/uni00000016/uni00000013/uni00000017/uni00000013/uni00000018/uni00000013
+/uni00000037/uni00000055/uni00000044/uni0000004c/uni00000051/uni0000004c/uni00000051/uni0000004a/uni00000003/uni00000036/uni00000044/uni00000050/uni00000053/uni0000004f/uni00000048/uni00000056
+/uni00000018
+/uni00000014/uni00000013
+/uni00000014/uni00000018
+/uni00000015/uni00000013
+/uni00000015/uni00000018/uni00000031/uni00000023/uni00000014/uni00000013
+NB201 Mutation
+/uni00000013/uni00000011/uni00000018/uni00000014 /uni00000018
+/uni00000014/uni00000013
+/uni00000015/uni00000013
+/uni00000016/uni00000013
+/uni00000017/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000037
+NAS-Bench-201
+/uni00000030/uni00000036/uni00000028
+/uni0000002f/uni00000035
+/uni0000002b/uni00000035
+/uni00000030/uni00000036/uni00000028/uni0000000e/uni00000036/uni00000035
+/uni0000002f/uni0000004c/uni00000056/uni00000057/uni00000030/uni0000002f/uni00000028
+/uni00000028/uni0000003a
+/uni00000030/uni00000024/uni00000033/uni00000028
+/uni0000003a/uni00000024/uni00000035/uni00000033
+Figure 4. Precision@5 and N@10 of different loss functions for
+a mutation-based test set on NAS-Bench-201. Note that a higher
+Precision@5 and a lower N@10 are preferred.
+how each metric evolves as the training portion increases.
+The third row of Figure 3 illustrates a consistent improve-
+ment in Kendall Tau for most loss functions, indicating that
+more training data generally benefits the overall ranking
+ability of the predictor. However, the first and second rows
+of Figure 3 reveal a counter-intuitive phenomenon: more
+training data can degrade the top-ranking ability of cer-
+tain loss functions . This observation can be attributed to
+two key factors. First, regression and ranking loss functions
+treat all architectures equally rather than prioritizing well-
+performing ones, which inevitably leads to a decline in their
+ability to identify top architectures. Second, the quality of
+training data plays a crucial role, especially when only a
+very small subset of the search space is randomly sampled.
+For example, if a predictor is trained on just 0.1% data,
+and this subset happens to contain several of the highest-
+performing architectures, it may develop a better ability to
+recognize promising architectures than a predictor trained
+on a larger but less representative dataset that primarily con-
+sists of poor architectures.
+Another fact is that weighted loss functions gener-
+ally perform better at distinguishing top-K architec-
+tures, but its effectiveness diminishes when the training
+dataset is extremely small . We observe that W ARP at-
+tains poor N@10 with the smallest training portion on NAS-
+Bench-201 and NAS-Bench-Graph. This is because limited
+training data causes weighted loss functions to overempha-
+size locally good architectures, assigning them dispropor-
+tionately high weights. Hence, it fails to recognize good
+architectures in the entire search space. Ranking loss func-
+tions are more effective in such cases, as they leverage the
+overall ranking relationship to distinguish good architec-
+tures from a global perspective.
+Results on a mutation-based test set. As suggested in
+prior work [37], it is also important to evaluate the perfor-
+mance of these loss functions to distinguish architectures
+which are local mutations from a few initial architectures.
+This is a more challenging scenario because architectures in
+5
+
+/uni00000013/uni00000011/uni00000018/uni00000014 /uni00000018
+/uni00000037
+/uni00000014/uni00000013
+/uni00000015/uni00000013
+/uni00000016/uni00000013
+/uni00000017/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000037
+NAS-Bench-201
+/uni00000013/uni00000011/uni00000018/uni00000014 /uni00000018
+/uni00000037
+/uni00000013
+/uni00000018
+/uni00000014/uni00000013
+/uni00000014/uni00000018
+/uni00000015/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000037
+TransNAS-Bench-101 Micro
+/uni00000018 /uni00000014/uni00000013/uni00000015/uni00000013
+/uni0000002e
+/uni00000013
+/uni00000018/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000018/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000015/uni00000018/uni00000013
+/uni00000016/uni00000013/uni00000013
+/uni00000016/uni00000018/uni00000013
+/uni00000017/uni00000013/uni00000013/uni00000031/uni00000023/uni0000002e
+NAS-Bench-201
+/uni00000018 /uni00000014/uni00000013/uni00000015/uni00000013
+/uni0000002e
+/uni00000014/uni00000013/uni00000013
+/uni00000015/uni00000013/uni00000013
+/uni00000016/uni00000013/uni00000013
+/uni00000017/uni00000013/uni00000013/uni00000031/uni00000023/uni0000002e
+TransNAS-Bench-101 Micro
+/uni00000013/uni00000011/uni00000018/uni00000014 /uni00000018
+/uni00000014/uni00000013
+/uni00000015/uni00000013
+/uni00000016/uni00000013
+/uni00000017/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000037
+NAS-Bench-201
+/uni00000030/uni00000036/uni00000028
+/uni0000002f/uni00000035
+/uni0000002b/uni00000035
+/uni00000030/uni00000036/uni00000028/uni0000000e/uni00000036/uni00000035
+/uni0000002f/uni0000004c/uni00000056/uni00000057/uni00000030/uni0000002f/uni00000028
+/uni00000028/uni0000003a
+/uni00000030/uni00000024/uni00000033/uni00000028
+/uni0000003a/uni00000024/uni00000035/uni00000033
+Figure 5. Precision@T and N@K of different loss functions on
+NAS-Bench-201 with 1% training data and TransNAS-Bench-101
+Micro with 0.3% training data. Note that a higher Precision@T
+and a lower N@K is preferred.
+the test set share similar structures. Specifically, we create a
+test set of 200 architectures by mutating top-10 seed archi-
+tectures in the initial set which consists of 50 architectures
+randomly sampled from the search space. All the architec-
+tures in the test set differ seed architectures by one operation
+or edge. The results on NAS-Bench-201 are presented in
+Figure 4. We can observe a trend similar to Figure 3 where
+the test set is the whole search space. Ranking loss func-
+tions, such as LR and HR, take the lead with limited training
+samples, while MAPE, a weighted loss function, shows su-
+perior performance when training samples increase. These
+results indicate that our findings still hold for neighborhood-
+based NAS methods such as evolutionary search and local
+search.
+Results on different levels of top-K/T. We inspect the
+trend in Precision@T and N@K with an increasing K/T.
+As shown in Figure 5, Precision@T and N@K of ranking
+loss functions are inferior to weighted ones, but the dif-
+ference becomes smaller as K/T grows. For example, on
+NAS-Bench-201, W ARP outperforms HR in Precision@0.5
+by 2.85% but achieves a 1.21% lower Precision@5 than
+HR. This is because the overall ranking ability matters more
+when K/T becomes larger, which aligns with the optimiza-
+tion object of ranking loss functions.
+Impacts of weighting types in weighted loss functions.
+To investigate how weighting types influence the effec-
+tiveness of weighted loss functions, we use three types of
+weights (‘GT’:ˆy; ‘EXP-GT’:exp(ˆy); ‘Ranking’:1 − (r −
+1)/n, r denotes the actual ranking) for W ARP and EW on
+/uni00000013/uni00000011/uni00000018/uni00000014 /uni00000018
+/uni00000037
+/uni00000014/uni00000013
+/uni00000014/uni00000018
+/uni00000015/uni00000013
+/uni00000015/uni00000018
+/uni00000016/uni00000013
+/uni00000016/uni00000018
+/uni00000017/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000037
+WARP
+/uni00000028/uni0000003b/uni00000033/uni00000010/uni0000002a/uni00000037
+/uni0000002a/uni00000037
+/uni00000035/uni00000044/uni00000051/uni0000004e/uni0000004c/uni00000051/uni0000004a
+/uni00000013/uni00000011/uni00000018/uni00000014 /uni00000018
+/uni00000037
+/uni00000018
+/uni00000014/uni00000013
+/uni00000014/uni00000018
+/uni00000015/uni00000013
+/uni00000015/uni00000018
+/uni00000016/uni00000013
+/uni00000016/uni00000018
+/uni00000017/uni00000013/uni00000033/uni00000055/uni00000048/uni00000046/uni0000004c/uni00000056/uni0000004c/uni00000052/uni00000051/uni00000023/uni00000037
+EW
+/uni00000028/uni0000003b/uni00000033/uni00000010/uni0000002a/uni00000037
+/uni0000002a/uni00000037
+/uni00000035/uni00000044/uni00000051/uni0000004e/uni0000004c/uni00000051/uni0000004a
+/uni00000018 /uni00000014/uni00000013/uni00000015/uni00000013
+/uni0000002e
+/uni00000017/uni00000013
+/uni00000019/uni00000013
+/uni0000001b/uni00000013
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000015/uni00000013
+/uni00000014/uni00000017/uni00000013
+/uni00000014/uni00000019/uni00000013/uni00000031/uni00000023/uni0000002e
+WARP
+/uni00000028/uni0000003b/uni00000033/uni00000010/uni0000002a/uni00000037
+/uni0000002a/uni00000037
+/uni00000035/uni00000044/uni00000051/uni0000004e/uni0000004c/uni00000051/uni0000004a
+/uni00000018 /uni00000014/uni00000013/uni00000015/uni00000013
+/uni0000002e
+/uni00000014/uni00000013/uni00000013
+/uni00000014/uni00000014/uni00000013
+/uni00000014/uni00000015/uni00000013
+/uni00000014/uni00000016/uni00000013
+/uni00000014/uni00000017/uni00000013
+/uni00000014/uni00000018/uni00000013
+/uni00000014/uni00000019/uni00000013
+/uni00000014/uni0000001a/uni00000013/uni00000031/uni00000023/uni0000002e
+EW
+/uni00000028/uni0000003b/uni00000033/uni00000010/uni0000002a/uni00000037
+/uni0000002a/uni00000037
+/uni00000035/uni00000044/uni00000051/uni0000004e/uni0000004c/uni00000051/uni0000004a
+Figure 6. Precision@T and N@K of different weighting types for
+W ARP and EW on NAS-Bench-201 with 1% training data. Note
+that a higher Precision@T and a lower N@K are preferred.
+Table 1. Comparisons of other predictors with 1% training data
+on NAS-Bench-201. Precision@0.5 is short for Ptop@0.5. Bold
+indicates the best.
+Predictor Backbone Loss N@10↓ Ptop@0.5↑ τ↑
+AP [2] MLP
+MSE 250.94 4.41 0.43
+HR 23.58 22.15 0.65
+ListMLE 22.74 24.15 0.66
+W ARP 113.20 9.36 0.43
+PINAT [22]Transformer
+MSE 146.60 8.62 0.62
+HR 8.44 29.32 0.67
+ListMLE 21.78 23.56 0.68
+W ARP 3.78 38.71 0.65
+NAS-Bench-201. Figure 6 shows that ‘EXP-GT’ achieves
+the best top-ranking precision and ‘GT’ yields close results.
+Both of them outperform ‘Ranking’ by a large margin.
+These results indicate that involving GT performances of
+architectures in the weight is generally a better choice
+for weighted loss functions than involving their rank-
+ings. This is because GT could reflect the global impor-
+tance of the architecture, while the ranking only focuses on
+its importance in the limited training data locally. The for-
+mer helps weighted loss functions generalize better on the
+entire search space.
+Results on different types of predictors. We examine rep-
+resentative loss functions on another two performance pre-
+dictors: the Multi-Layer Perceptron (MLP)-based Accuracy
+Predictor (AP) [2] and the Transformer-based PINAT [22].
+The results on NAS-bench-201 are shown in Table 1. We
+can see that AP performs best with ListMLE in all met-
+rics, while W ARP helps PINAT achieve the lowest N@10
+and the highest Precision@0.5. The inferior performance
+of W ARP for AP can be credited to its MLP backbone,
+6
+
+/uni00000015/uni00000013/uni00000016/uni00000013/uni00000017/uni00000013/uni00000018/uni00000013/uni00000019/uni00000013/uni0000001a/uni00000013/uni0000001b/uni00000013/uni0000001c/uni00000013/uni00000014/uni00000013/uni00000013
+/uni00000034/uni00000058/uni00000048/uni00000055/uni0000004c/uni00000048/uni00000047/uni00000003/uni00000024/uni00000055/uni00000046/uni0000004b/uni0000004c/uni00000057/uni00000048/uni00000046/uni00000057/uni00000058/uni00000055/uni00000048/uni00000056
+/uni00000018/uni00000011/uni00000018/uni00000013
+/uni00000018/uni00000011/uni0000001a/uni00000018
+/uni00000019/uni00000011/uni00000013/uni00000013
+/uni00000019/uni00000011/uni00000015/uni00000018
+/uni00000019/uni00000011/uni00000018/uni00000013
+/uni00000019/uni00000011/uni0000001a/uni00000018
+/uni0000001a/uni00000011/uni00000013/uni00000013
+/uni0000001a/uni00000011/uni00000015/uni00000018/uni00000037 /uni00000048/uni00000056/uni00000057/uni00000003/uni00000028/uni00000055/uni00000055/uni00000052/uni00000055/uni00000003/uni00000035/uni00000044/uni00000057/uni00000048/uni00000003/uni0000000b/uni00000008/uni0000000c
+NAS-Bench-201 CIFAR-10
+/uni00000030/uni00000036/uni00000028
+/uni0000002b/uni00000035
+/uni0000002f/uni0000004c/uni00000056/uni00000057/uni00000030/uni0000002f/uni00000028
+/uni00000030/uni00000024/uni00000033/uni00000028
+/uni00000033/uni0000003a
+/uni00000015/uni00000013/uni00000016/uni00000013/uni00000017/uni00000013/uni00000018/uni00000013/uni00000019/uni00000013/uni0000001a/uni00000013/uni0000001b/uni00000013/uni0000001c/uni00000013/uni00000014/uni00000013/uni00000013
+/uni00000034/uni00000058/uni00000048/uni00000055/uni0000004c/uni00000048/uni00000047/uni00000003/uni00000024/uni00000055/uni00000046/uni0000004b/uni0000004c/uni00000057/uni00000048/uni00000046/uni00000057/uni00000058/uni00000055/uni00000048/uni00000056
+/uni00000015/uni0000001a
+/uni00000015/uni0000001b
+/uni00000015/uni0000001c
+/uni00000016/uni00000013/uni00000037 /uni00000048/uni00000056/uni00000057/uni00000003/uni00000028/uni00000055/uni00000055/uni00000052/uni00000055/uni00000003/uni00000035/uni00000044/uni00000057/uni00000048/uni00000003/uni0000000b/uni00000008/uni0000000c
+NAS-Bench-201 CIFAR-100
+/uni00000030/uni00000036/uni00000028
+/uni0000002b/uni00000035
+/uni0000002f/uni0000004c/uni00000056/uni00000057/uni00000030/uni0000002f/uni00000028
+/uni00000030/uni00000024/uni00000033/uni00000028
+/uni00000033/uni0000003a
+/uni00000015/uni00000013/uni00000016/uni00000013/uni00000017/uni00000013/uni00000018/uni00000013/uni00000019/uni00000013/uni0000001a/uni00000013/uni0000001b/uni00000013/uni0000001c/uni00000013/uni00000014/uni00000013/uni00000013
+/uni00000034/uni00000058/uni00000048/uni00000055/uni0000004c/uni00000048/uni00000047/uni00000003/uni00000024/uni00000055/uni00000046/uni0000004b/uni0000004c/uni00000057/uni00000048/uni00000046/uni00000057/uni00000058/uni00000055/uni00000048/uni00000056
+/uni00000018/uni00000016
+/uni00000018/uni00000017
+/uni00000018/uni00000018
+/uni00000018/uni00000019
+/uni00000018/uni0000001a/uni00000037 /uni00000048/uni00000056/uni00000057/uni00000003/uni00000028/uni00000055/uni00000055/uni00000052/uni00000055/uni00000003/uni00000035/uni00000044/uni00000057/uni00000048/uni00000003/uni0000000b/uni00000008/uni0000000c
+NAS-Bench-201 ImageNet-16-120
+/uni00000030/uni00000036/uni00000028
+/uni0000002b/uni00000035
+/uni0000002f/uni0000004c/uni00000056/uni00000057/uni00000030/uni0000002f/uni00000028
+/uni00000030/uni00000024/uni00000033/uni00000028
+/uni00000033/uni0000003a
+Figure 7. Comparisons between architectures searched by different types of loss functions on NAS-Bench-201.
+Table 2. Searching results on NAS-Bench-201 with a query budget
+of 100. Bold indicates the best.
+Predictor Loss CIFAR-10CIFAR-100ImageNet-16-120
+NASBOT [13]MSE 6.36 28.62 54.12
+ReNAS [40] LR 6.01 27.88 54.03
+NPENAS [33]MSE 5.69 26.54 53.52
+PWLNAS (ours)PW 5.63 26.51 52.88
+Global Best - 5.63 26.49 52.69
+which can easily overfit the limited training data and fall
+into the local optimal with the weighted loss function. Con-
+versely, the Transformer backbone helps PINAT generalize
+well on the whole search space. In terms of identifying
+well-performing architectures, these results reflect thatpre-
+dictors with a simple backbone such as MLP work bet-
+ter with ranking loss functions, while predictors with a
+generalizable backbone such as GCN and Transformer
+achieve better results with weighted loss functions.
+4.3. Predictor-based NAS Evaluation
+Now, we investigate the impact of different types of loss
+functions in predictor-based NAS. In this set of experi-
+ments, we employ the popular predictor-guided evolution-
+ary search [12], which trains the predictor many times dur-
+ing the iterative sampling. Since DARTS [18] does not pro-
+vide the architecture accuracy, we train architectures for 50
+epochs and evaluate them on the validation dataset as the
+training samples for the predictor. We also propose a new
+predictor-based NAS algorithm and compare its effective-
+ness with prior works. The results are averaged over multi-
+ple runs (DARTS for 5 and others for 20).
+Predictor-based NAS with a piecewise loss function.
+One significant finding from Figure 3 is that different types
+of loss functions are specialized under specific training por-
+tions. Based on this, we improve the predictor-based NAS
+by changing its fixed loss function to a flexible PW loss.
+We call this new method PWLNAS. Specifically, we use re-
+gression/ranking loss functions in early iterations to warm
+up the predictor and then shift to the weighted one to rec-
+ognize good architectures. The choice of loss functions and
+Table 3. Searching results on NAS-Bench-101 with a query budget
+of 150. Bold indicates the best.
+Predictor Loss Strategy Test Err.(%)
+BANANAS [36] MAPE BO 5.92
+WeakNAS [38] MSE Random 5.90
+CATE [41] EW Reinforce 5.88
+FlowerFormer [10] HR Evolution 5.86
+NPENAS [33] MSE Evolution 5.85
+PWLNAS (ours)
+MSE
+Evolution
+6.06
+HR 5.83
+ListMLE 5.84
+W ARP 5.86
+PW 5.80
+Global Best - - 5.68
+the number of warm-up iterations depends on the specific
+task. We give detailed settings for PWLNAS as well as the
+pseudo-code of PWLNAS in the Supplementary Material.
+Searching on NAS-Bench-201. We use a PW loss com-
+posed of HR and MAPE. Comparisons between different
+loss functions are reported in Figure 7. We see that PW
+loss achieves the lowest test error rate than any single one
+on three datasets. HR performs better than MAPE in the
+region of low query budget, which is consistent with our
+finding in Section 4.2. Besides, as shown in Table 2, PWL-
+NAS outperforms competitive predictor-based methods. In
+particular, PWLNAS can find the best architecture on the
+CIFAR-10 dataset.
+Searching on NAS-Bench-101. We use a PW loss com-
+posed of ListMLE and W ARP. Table 3 summarizes a ma-
+jor advantage of PW loss over single ones. Addition-
+ally, PWLNAS also surpasses previous SOTA methods like
+NPENAS [33] and FlowerFormer [10]. Note that such
+improvement is non-trivial compared with those improve-
+ments claimed in prior works.
+Searching on TransNAS-Bench-101 Micro.We use a PW
+loss composed of MSE and EW for the Jigsaw task as well
+as a PW loss composed of HR and W ARP for other tasks.
+According to Table 4, PWLNAS takes the lead on all tasks
+with PW loss when compared with competitive methods.
+7
+
+Table 4. Searching results on TransNAS-Bench-101 Micro with a
+query budget of 50. Bold indicates the best.
+Tasks Cls.O. Cls.S. Auto. Jigsaw
+Predictor Loss Acc.↑ Acc.↑ SSIM↑ Acc.↑
+Arch-Graph [9] BCE 45.48 54.70 56.52 94.66
+WeakNAS [38] MSE 45.66 54.72 56.77 94.63
+PWLNAS (ours)
+MSE 45.36 54.66 55.59 94.76
+HR 45.57 54.67 56.12 94.61
+ListMLE 45.53 54.66 55.95 94.63
+W ARP 45.46 54.76 56.87 94.62
+EW 45.51 54.71 55.88 94.67
+PW 45.73 54.83 56.93 94.88
+Global Best 46.32 54.94 57.72 95.37
+Table 5. Searching results on the CIFAR-10 dataset within
+DARTS. The search cost is evaluated with GPU Days. Bold in-
+dicates the best.
+Predictor Loss Test Err.(%) Params(M) Cost
+PNAS [17] MSE 3.34±0.09 3.2 225
+TNASP [21] MSE 2.57±0.04 3.6 0.3
+CDP [20] MSE 2.63±0.08 3.3 0.1
+NPENAS [33] MSE 2.54±0.10 3.5 1.8
+PINAT [22] MSE 2.54±0.08 3.6 0.3
+GMAENAS [12] BPR 2.50±0.03 3.6 3.3
+DCLP [44] ListMLE 2.48±0.02 3.3 0.14
+PWLNAS (ours)
+MSE 2.74±0.04 4.4
+0.2
+HR 2.67±0.09 3.9
+ListMLE 2.62±0.07 3.8
+MAPE 2.53±0.06 4.5
+PW 2.47±0.05 3.6
+Besides, several loss functions only perform well on spe-
+cific tasks. For example, MSE ranks second on Jigsaw but
+performs worst on Class Scene. This indicates the necessity
+of effectively combining different types of loss functions to
+improve predictor-based NAS.
+Searching on DARTS. We use a PW loss composed of HR
+and MAPE. Table 5 demonstrates the results on DARTS
+with 100 queried architectures. We find that PWLNAS
+achieves the lowest test error rate of 2.47 %, beating prior
+SOTA methods like DCLP [44].
+5. Discussions and Suggestions
+In Section 4, we evaluate loss functions of performance pre-
+dictors under various settings and observe similar trends
+in most cases. The key findings include: (1) Weighted
+loss functions identify good architectures better with suf-
+ficient training data while ranking ones tend to perform bet-
+ter with extremely few training data; (2) Simple predic-
+tors (MLP-based) work better with ranking loss functions
+and advanced predictors (GCN/Transformer-based) benefit
+more from weighted ones in distinguishing promising ar-
+chitectures. (3) Specific categories of loss functions can be
+combined to enhance predictor-based NAS. Our results can
+recommend suitable loss functions for predictor-based NAS
+in new tasks majorly according to their performance in top-
+ranking metrics like N@K and Precision@T. For instance,
+if a predictor-based method aims to explore a search space
+that resembles NAS-Bench-201 using a GCN-based predic-
+tor, we suggest employing HR loss in the early iterations to
+warm up and then using MAPE loss to train the predictor.
+Meanwhile, we also offer several suggestions to improve
+predictor-based NAS according to the findings revealed in
+this paper. First, combine different types of loss functions
+in a more flexible way. Although the proposed PW loss is
+simple and effective, the value of the threshold to use dif-
+ferent losses is fixed and relies on human experience. A
+promising direction is increasing the intensity of weight for
+loss functions as the training portion grows. In the begin-
+ning, the weight can be set to 0, which equals to ranking
+loss. In this way, the weighted loss is expected to bet-
+ter distinguish good architectures on different constraints
+of training portions. Second, design loss functions that
+directly optimize top-K metrics . Despite the effective-
+ness of existing weighted loss functions, they optimize top-
+K metrics by assigning weights indirectly. Since several
+measure-specific loss functions [11, 31] have achieved im-
+pressive results in other top-ranking problems, involving the
+top-K metrics such as Precision@T during optimization is
+also feasible for the loss function in predictors, which can
+further enhance the predictor-based NAS. Additionally, de-
+signing advanced sampling strategies to select represen-
+tative architectures for training the predictor . We ob-
+serve that more training samples are not certain to benefit
+the top-ranking ability of predictors even with a weighted
+loss function, which could stem from that randomly se-
+lected training samples fail to represent the distribution of
+the diverse search space. An effective sampling method can
+greatly improve the efficiency of predictor-based NAS.
+6. Conclusion
+In this paper, we provide the first comprehensive study for
+eight loss functions in performance predictors, including re-
+gression, ranking, and weighted loss functions. We com-
+pare their performance using various assessment metrics
+on 13 NAS tasks across five search spaces, including cell-
+based and skeleton-based ones. Meanwhile, we leverage
+the advantage of specific categories of loss functions and
+propose a new PWLNAS method that employs a piecewise
+loss function. PWLNAS achieves better results than us-
+ing any single loss function and outperforms competitive
+predictor-based NAS methods. We hope this paper can mo-
+tivate the design of new loss functions to enhance predictor-
+based NAS in further research.
+8
+
+References
+[1] Mohamed S Abdelfattah, Abhinav Mehrotra, Łukasz
+Dudziak, and Nicholas D Lane. Zero-cost proxies for
+lightweight nas. arXiv preprint arXiv:2101.08134, 2021. 1
+[2] Han Cai, Chuang Gan, Tianzhe Wang, Zhekai Zhang, and
+Song Han. Once-for-all: Train one network and specialize it
+for efficient deployment. arXiv preprint arXiv:1908.09791,
+2019. 6
+[3] Xuanyi Dong and Yi Yang. Nas-bench-201: Extending the
+scope of reproducible neural architecture search. In Proc. of
+ICLR, 2019. 2, 3, 4
+[4] Yawen Duan, Xin Chen, Hang Xu, Zewei Chen, Xiaodan
+Liang, Tong Zhang, and Zhenguo Li. Transnas-bench-101:
+Improving transferability and generalizability of cross-task
+neural architecture search. In Proc. of CVPR, 2021. 2, 3, 4
+[5] Lukasz Dudziak, Thomas Chau, Mohamed Abdelfattah,
+Royson Lee, Hyeji Kim, and Nicholas Lane. Brp-nas:
+Prediction-based nas using gcns. Proc. of NeurIPS , 2020.
+4
+[6] Thomas Elsken, Jan Hendrik Metzen, and Frank Hutter.
+Neural architecture search: A survey. The Journal of Ma-
+chine Learning Research, 20(1):1997–2017, 2019. 1
+[7] Stefan Falkner, Aaron Klein, and Frank Hutter. Bohb: Ro-
+bust and efficient hyperparameter optimization at scale. In
+Proc. of ICML, 2018. 1
+[8] Golnaz Ghiasi, Tsung-Yi Lin, and Quoc V Le. Nas-fpn:
+Learning scalable feature pyramid architecture for object de-
+tection. In Proc. of CVPR, 2019. 1
+[9] Minbin Huang, Zhijian Huang, Changlin Li, Xin Chen, Hang
+Xu, Zhenguo Li, and Xiaodan Liang. Arch-graph: Acyclic
+architecture relation predictor for task-transferable neural ar-
+chitecture search. In Proc. of CVPR, 2022. 3, 8
+[10] Dongyeong Hwang, Hyunju Kim, Sunwoo Kim, and Kijung
+Shin. Flowerformer: Empowering neural architecture encod-
+ing using a flow-aware graph transformer. InProc. of CVPR,
+pages 6128–6137, 2024. 1, 3, 7
+[11] Rolf Jagerman, Zhen Qin, Xuanhui Wang, Michael Bender-
+sky, and Marc Najork. On optimizing top-k metrics for neu-
+ral ranking models. In Proc. of SIGIR, 2022. 8
+[12] Kun Jing, Jungang Xu, and Pengfei Li. Graph masked au-
+toencoder enhanced predictor for neural architecture search.
+In Proc. of IJCAI, 2022. 2, 3, 7, 8
+[13] Kirthevasan Kandasamy, Willie Neiswanger, Jeff Schnei-
+der, Barnabas Poczos, and Eric P Xing. Neural architec-
+ture search with bayesian optimisation and optimal transport.
+Proc. of NeurIPS, 2018. 7
+[14] Maurice G Kendall. A new measure of rank correlation.
+Biometrika, 30(1/2):81–93, 1938. 3
+[15] Thomas N Kipf and Max Welling. Semi-supervised classifi-
+cation with graph convolutional networks. In Proc. of ICLR,
+2016. 4
+[16] Alex Krizhevsky, Geoffrey Hinton, et al. Learning multiple
+layers of features from tiny images. 2009. 4
+[17] Chenxi Liu, Barret Zoph, Maxim Neumann, Jonathon
+Shlens, Wei Hua, Li-Jia Li, Li Fei-Fei, Alan Yuille, Jonathan
+Huang, and Kevin Murphy. Progressive neural architecture
+search. In Proc. of ECCV, 2018. 1, 8
+[18] Hanxiao Liu, Karen Simonyan, and Yiming Yang. Darts:
+Differentiable architecture search. In Proc. of ICLR, 2018.
+2, 3, 7
+[19] Yuqiao Liu, Yehui Tang, and Yanan Sun. Homogeneous
+architecture augmentation for neural predictor. In Proc. of
+ICCV, 2021. 1, 2
+[20] Yuqiao Liu, Yehui Tang, Zeqiong Lv, Yunhe Wang, and
+Yanan Sun. Bridge the gap between architecture spaces via
+a cross-domain predictor. Proc. of NeurIPS, 2022. 4, 8
+[21] Shun Lu, Jixiang Li, Jianchao Tan, Sen Yang, and Ji
+Liu. Tnasp: A transformer-based nas predictor with a self-
+evolution framework. Proc. of NeurIPS, 2021. 2, 4, 8
+[22] Shun Lu, Yu Hu, Peihao Wang, Yan Han, Jianchao Tan, Jix-
+iang Li, Sen Yang, and Ji Liu. Pinat: A permutation invari-
+ance augmented transformer for nas predictor. In Proc. of
+AAAI, 2023. 1, 2, 4, 6, 8
+[23] Renqian Luo, Fei Tian, Tao Qin, Enhong Chen, and Tie-Yan
+Liu. Neural architecture optimization. Proc. of NeurIPS ,
+2018. 2
+[24] Xuefei Ning, Yin Zheng, Tianchen Zhao, Yu Wang, and
+Huazhong Yang. A generic graph-based neural architecture
+encoding scheme for predictor-based nas. In Proc. of ECCV,
+2020. 1, 2, 3
+[25] Xuefei Ning, Changcheng Tang, Wenshuo Li, Zixuan Zhou,
+Shuang Liang, Huazhong Yang, and Yu Wang. Evaluating ef-
+ficient performance estimators of neural architectures. Proc.
+of NeurIPS, 2021. 3
+[26] Xuefei Ning, Zixuan Zhou, Junbo Zhao, Tianchen Zhao,
+Yiping Deng, Changcheng Tang, Shuang Liang, Huazhong
+Yang, and Yu Wang. Ta-gates: An encoding scheme for neu-
+ral network architectures. Proc. of NeurIPS, 2022. 3
+[27] Hieu Pham, Melody Guan, Barret Zoph, Quoc Le, and Jeff
+Dean. Efficient neural architecture search via parameters
+sharing. In Proc. of ICML, 2018. 1
+[28] Yijian Qin, Ziwei Zhang, Xin Wang, Zeyang Zhang, and
+Wenwu Zhu. Nas-bench-graph: Benchmarking graph neu-
+ral architecture search. Proc. of NeurIPS, 2022. 2, 3, 4
+[29] Esteban Real, Sherry Moore, Andrew Selle, Saurabh Saxena,
+Yutaka Leon Suematsu, Jie Tan, Quoc V Le, and Alexey Ku-
+rakin. Large-scale evolution of image classifiers. In Proc. of
+ICML, 2017. 1
+[30] Han Shi, Renjie Pi, Hang Xu, Zhenguo Li, James Kwok,
+and Tong Zhang. Bridging the gap between sample-based
+and one-shot neural architecture search with bonas. Proc. of
+NeurIPS, 2020. 1, 3, 4
+[31] Xuanhui Wang, Cheng Li, Nadav Golbandi, Michael Ben-
+dersky, and Marc Najork. The lambdaloss framework for
+ranking metric optimization. In Proc. of CIKM, 2018. 8
+[32] Yujing Wang, Yaming Yang, Yiren Chen, Jing Bai, Ce
+Zhang, Guinan Su, Xiaoyu Kou, Yunhai Tong, Mao Yang,
+and Lidong Zhou. Textnas: A neural architecture search
+space tailored for text representation. InProc. of AAAI, 2020.
+1
+[33] Chen Wei, Chuang Niu, Yiping Tang, Yue Wang, Haihong
+Hu, and Jimin Liang. Npenas: Neural predictor guided evo-
+lution for neural architecture search. IEEE Transactions on
+Neural Networks and Learning Systems, 34(11):8441–8455,
+2022. 1, 4, 7, 8
+9
+
+[34] Wei Wen, Hanxiao Liu, Yiran Chen, Hai Li, Gabriel Ben-
+der, and Pieter-Jan Kindermans. Neural predictor for neural
+architecture search. In Proc. of ECCV, 2020. 1, 2, 3, 4
+[35] Jason Weston, Samy Bengio, and Nicolas Usunier. Wsabie:
+Scaling up to large vocabulary image annotation. In Proc. of
+IJCAI, 2011. 3
+[36] Colin White, Willie Neiswanger, and Yash Savani. Bananas:
+Bayesian optimization with neural architectures for neural
+architecture search. In Proc. of AAAI, 2021. 1, 3, 4, 7
+[37] Colin White, Arber Zela, Robin Ru, Yang Liu, and Frank
+Hutter. How powerful are performance predictors in neural
+architecture search? Proc. of NeurIPS, 2021. 5
+[38] Junru Wu, Xiyang Dai, Dongdong Chen, Yinpeng Chen,
+Mengchen Liu, Ye Yu, Zhangyang Wang, Zicheng Liu, Mei
+Chen, and Lu Yuan. Stronger nas with weaker predictors.
+Proc. of NeurIPS, 2021. 7, 8
+[39] Fen Xia, Tie-Yan Liu, Jue Wang, Wensheng Zhang, and
+Hang Li. Listwise approach to learning to rank: theory and
+algorithm. In Proc. of ICML, 2008. 3
+[40] Yixing Xu, Yunhe Wang, Kai Han, Yehui Tang, Shangling
+Jui, Chunjing Xu, and Chang Xu. Renas: Relativistic evalu-
+ation of neural architecture search. In Proc. of CVPR, 2021.
+1, 3, 4, 7
+[41] Shen Yan, Kaiqiang Song, Fei Liu, and Mi Zhang. Cate:
+Computation-aware neural architecture encoding with trans-
+formers. In Proc. of ICML, 2021. 2, 3, 7
+[42] Yun Yi, Haokui Zhang, Wenze Hu, Nannan Wang, and Xi-
+aoyu Wang. Nar-former: Neural architecture representation
+learning towards holistic attributes prediction. In Proc. of
+CVPR, 2023. 3
+[43] Chris Ying, Aaron Klein, Eric Christiansen, Esteban Real,
+Kevin Murphy, and Frank Hutter. Nas-bench-101: Towards
+reproducible neural architecture search. In Proc. of ICML ,
+2019. 2, 3, 4
+[44] Shenghe Zheng, Hongzhi Wang, and Tianyu Mu. Dclp: Neu-
+ral architecture predictor with curriculum contrastive learn-
+ing. In Proc. of AAAI, 2024. 2, 3, 8
+[45] Barret Zoph and Quoc Le. Neural architecture search with
+reinforcement learning. In Proc. of ICLR, 2016. 1
+10

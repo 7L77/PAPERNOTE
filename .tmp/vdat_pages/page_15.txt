@@ -1,0 +1,57 @@
+Appendix
+The appendix contains contents from following aspects, in order to provide more insights about the
+proposed VDAT method:
+• Appendix A: This section presents additional details about the methodology of VDAT.
+• Appendix B: This section contains additional details of experimental settings to facilitate
+the reproducibility.
+• Appendix C: This section presents experimental results regarding robust NAS, containing
+the results of VDAT on CIFAR-100 and ImageNet-1K, the results in different search spaces,
+the results under black-box attacks, and the visualizations of the search process.
+• Appendix D: This section contains additional visualizations of VDAT, i.e., the visualizations
+regarding the training process on ImageNet-1K and the normalized margin differences.
+• Appendix E: This section presents additional results in terms of the parameter studies and
+ablation studies.
+A More Details about the Workflow of VDAT
+To help readers better understand how VDAT is integrated into robust NAS methods, we present a
+framework of robust NAS methods along with VDAT. The workflow is presented in Algorithm 2.
+Algorithm 2 General Workflow of Robust NAS with VDAT
+Input: Target dataset X = {x1, x2, . . . , xn}, the pre-determined nodes and operations, the number
+of epochs N for search, and the interval T
+Output: The derived robust neural architecture
+1: Initialize the supernet based on the pre-determined nodes and operations
+2: Initialize the trainable weights ω and architecture parameters α of the supernet
+3: Divide X into two halves, i.e., X Train and X Valid
+4: for i = 0 to N do
+5: if i mod T == 0 then
+6: Calculate Pω,α(xi) for each sample in X Train and X Valid
+7: Perform data filtering and update corresponding subsets X Train
+nat , X Train
+adv , X Valid
+nat , and X Valid
+adv
+8: end if
+9: Calculate Ltrain = Ltrain
+nat (X Train
+nat , ω, α) + Ltrain
+adv (X Train
+adv , ω, α)
+10: Keep the architecture parameter frozen, and update the trainable weights ω based on Ltrain
+11: Keep the trainable weights ω frozen, update the architecture parameter α according to the
+update strategy of this robust NAS method based on X Valid
+nat and X Valid
+adv
+12: end for
+13: Determine the searched architecture based on the architecture parameter α optimized
+14: Return The derived robust neural architecture
+As shown in Algorithm 2, given the target datasetX , along with the pre-determined nodes, operations,
+the number N of search epoch, and the interval T , the robust neural architecture is derived finally.
+There are four parts (lines 1-3, lines 5-8, lines 9-11, and line 13) in total in the search process. In
+the fist part, the supernet along with the trainable weights ω and the architecture parameters α are
+initialized (lines 1-2). Then, the target dataset X is equally divided into two parts, i.e., X Train and
+X Valid for updating ω and α, respectively (line 3). In the second part, the data filtering is performed
+according to the interval T , and X Train and X Valid are filtered respectively (lines 6-7). In the third
+part, the trainable weights is updated based on the training loss Ltrain calculated (lines 9-10). Then,
+the architecture parameters α is updated based on the update strategy of this robust NAS method
+(line 11). In the fourth part, the robust neural architecture is determined based on the architecture
+parameter α optimized (line 13).
+15

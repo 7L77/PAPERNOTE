@@ -1,0 +1,60 @@
+As for the first category of FAT methods, the experimental results on CIFAR-10 and CIFAR-100
+are presented in Table 1. As can be seen, both VDAT FGSM and VDATPGD achieve state-of-the-art
+natural accuracy and adversarial accuracy in most cases. Meanwhile, because VDAT only performs
+adversarial training on the filtered subset, VDAT FGSM is more efficient than the state-of-the-art
+FGSM-based FAT methods, i.e., FGSM-SDI, TDAT, and FGSM-PGK. Moreover, VDATPGD is also
+much more efficient than standard PGD-AT, and it does not increase much training cost compared
+with FGSM-based FAT methods. Furthermore, the experimental results in Table 1 also show that
+VDATFGSM performs better than VDATPGD on natural accuracy and weak adversarial attacks, while
+VDATFGSM is not as good as VDATPGD on stronger attacks. Specifically, VDATFGSM outperforms
+VDATPGD in terms of natural accuracy and adversarial accuracy under the FGSM adversarial attack.
+As for the stronger adversarial attacks, i.e., C&W and AA, VDAT PGD often performs better than
+VDATFGSM. This is mainly because VDATPGD provides stronger adversarial examples, and learning
+these adversarial examples can help the model achieve better accuracy under stronger adversarial
+attacks. However, it is shown that stronger adversarial examples can lead to robust overfitting of the
+strong adversarial perturbations [53]. As a result, the model suffers from the poor generalizability to
+the clean data and weak adversarial examples, thus the natural accuracy and adversarial accuracy
+under weak adversarial attacks become lower.
+Beyond CIFAR-10 and CIFAR-100, we also conduct experiments on ImageNet-1K against state-of-
+the-art FAT methods in the first category, to demonstrate effectiveness and efficiency of VDAT on the
+large-scale dataset. As can be observed from Table 2, VDAT achieves the highest natural accuracy
+and adversarial accuracy under both PGD10 and PGD50 adversarial attacks. Meanwhile, VDAT is at
+least 9.6% more efficient than the state-of-the-art FGSM-based FAT methods. In conclusion, VDAT
+demonstrates superior efficiency and efficacy compared with state-of-the-art FAT methods in the first
+category.
+Table 2: Experimental results of the adversarial
+training on ImageNet-1K. The baseline model for
+training is ResNet50.
+Adversarial Attacks Training Cost
+Methods Natural (%) PGD10(%) PGD50(%) (GPU Hours)
+PGD-AT [35] 59.19 35.87 35.41 140.80Free-AT [44] 63.42 33.22 33.08 85.13FGSM-PGI [26] 64.32 36.24 34.93 42.47FGSM-SDI [28] 59.62 37.50 36.63 44.53FGSM-PGK [27] 66.2437.13 35.70 42.47VDATFGSM 67.47 39.48 38.69 38.41
+Table 3: Comparisons between the state-of-
+the-art data filtering-based FAT and VDAT on
+CIFAR-10, CIFAR-100, and ImageNet-1K.
+Models / Datasets Methods Natural (%) AA (%) Cost
+WideResNet34-10 /CIFAR-10
+AdvGradMatch [13] 84.54 47.83 17.21DFEAT [3] 85.66 52.77 10.30VDATFGSM 92.34 54.49 3.41
+WideResNet34-10 /CIFAR-100DFEAT [3] 66.51 30.68 14.33VDATFGSM 72.91 31.65 3.44
+ResNet50 /ImageNet-1KDFEAT [3] 64.76 36.10 53.72VDATFGSM 67.47 36.98 38.41
+Regarding the FAT methods falling into the second category, we choose the state-of-the-art methods,
+i.e., AdvGradMatch [13] and DFEAT [3], and then directly report the experimental results presented
+in their seminal papers. The experimental results are shown in Table 3. As can be seen, VDAT
+demonstrates superior performance on all three datasets comparing with the FAT methods selected.
+Meanwhile, the training cost of VDAT is significantly lower (≥ 28.5% lower) than that of AdvGrad-
+Match and DFEAT on both medium scale datasets (CIFAR-10 and CIFAR-100) and the large-scale
+dataset (ImageNet-1K), thus illustrating the superiority of VDAT.
+5.3 Overall Results for Robust NAS
+In order to evaluate the scalability of VDAT in different scenarios, we conduct experiments in
+terms of robust NAS. Specifically, we directly replace the PGD-based adversarial training with
+different FAT methods in the optimization of the supernet, to obtain robust neural architectures. Then,
+the derived architectures are adversarially trained by the PGD 7 adversarial training following the
+conventions [38, 17]. The experimental results are shown in Table 4.
+As can be seen from Table 4, the natural accuracy becomes higher when the robust NAS method is
+combined with VDAT, and this accuracy is also higher than that in cases of FGSM-SDI and FGSM-
+PDK. Meanwhile, the adversarial accuracy reaches the best in most cases after introducing VDATPGD
+or VDATFGSM. Besides, the search cost becomes the lowest after introducing VDATFGSM, and the
+search cost also becomes lower than that of vanilla robust NAS methods after introducing VDATPGD.
+These experiments demonstrate the scalability of VDAT in the scenario of robust NAS. Furthermore,
+it can be observed that VDATFGSM generally performs better than VDATPGD on both natural accuracy
+and adversarial accuracy. This phenomenon is mainly caused by the overfitting phenomenon of the
+7

@@ -1,0 +1,36 @@
+Table 12: The experimental settings for the adversarial attacks FGSM, PGD, C&W, and AA.
+Items FGSM PGD C&W AA
+Total Perturbation Scaleϵ 8/255 8/255 / 8/255
+Step Size / 2/255 / /
+Steps / 20, 50, 100 100 /
+c / / 0.5 /
+C Additional Experimental Results for Robust NAS
+To further demonstrate the effectiveness of VDAT in the scenario of robust NAS, we conduct
+experiments in terms of evaluations under white-box attacks, black-box attacks, different search
+spaces, and visualizations of the search processes. These experimental results are presented in order
+in the following sections.
+C.1 Experiments under White-box Attacks
+Beyond the experimental results under white-box attacks on CIFAR-10 (Table 4), we also conduct
+experiments on CIFAR-100 and ImageNet-1K, to comprehensively evaluate the effectiveness of
+VDAT on both medium-scale and large-scale datasets. The robust neural architectures are searched
+and then adversarially trained for evaluations. The experimental results on CIFAR-100 and ImageNet-
+1K are presented in Tables 13 and 14, respectively.
+Table 13: Experimental results of VDAT on CIFAR-100 under white-box attacks. The adversarial
+training methods are integrated into the corresponding robust NAS methods.
+Adversarial Attacks Search Cost
+Models Params Natural (%) FGSM (%) PGD 20(%) PGD100(%) C&W (%) AA (%) (GPU Days)
+DSRNA [24] 2.0M 57.44 35.03 28.11 27.97 21.52 25.20 0.80+ FGSM-SDI [28] 2.0M 60.18 28.67 22.50 22.24 24.63 21.07 0.53+ FGSM-PGK [27] 2.8M 60.35 31.26 26.54 26.38 27.99 24.25 0.43+ VDATPGD 3.2M 63.82 38.79 31.32 30.89 24.22 28.48 0.65+ VDATFGSM 3.5M 61.02 37.41 33.31 33.07 22.12 31.42 0.34
+AdvRush [36] 4.2M 58.73 39.51 30.15 29.67 20.08 26.46 1.22+ FGSM-SDI [28] 3.3M 59.09 34.03 29.18 28.80 34.98 25.96 0.74+ FGSM-PGK [27] 3.7M 61.01 31.41 25.73 25.34 24.94 24.44 0.59+ VDATPGD 3.5M 61.51 40.98 32.44 31.47 28.60 30.29 0.76+ VDATFGSM 3.7M 61.91 41.40 31.04 30.81 20.87 29.13 0.47
+RNAS [41] 3.5M 60.24 40.52 31.11 31.06 20.84 27.37 0.71+ FGSM-SDI [28] 4.4M 59.60 30.83 24.99 24.63 24.80 23.07 0.42+ FGSM-PGK [27] 3.4M 59.53 32.74 26.67 26.37 28.63 25.08 0.34+ VDATPGD 4.1M 58.73 41.45 33.14 32.77 29.01 30.20 0.68+ VDATFGSM 3.8M 61.07 43.21 34.60 34.37 21.62 30.82 0.27
+ARNAS [38] 4.5M 58.18 32.60 29.54 29.30 19.51 25.76 2.95+ FGSM-SDI [28] 5.0M 62.00 32.54 26.48 26.07 24.66 24.38 1.81+ FGSM-PGK [27] 3.8M 63.40 32.45 26.30 26.06 20.54 25.35 1.44+ VDATPGD 5.7M 62.78 33.54 31.44 30.96 26.95 29.62 2.22+ VDATFGSM 5.0M 63.43 35.32 29.84 29.59 21.82 28.46 1.15
+As can be seen from Table 13, VDATFGSM consistently achieves better natural accuracy compared
+with state-of-the-art FAT methods and the baselines. Meanwhile, VDATPGD can achieve the state-of-
+the-art natural accuracy in the cases of DSRNA and AdvRush. Moreover, after combining VDAT
+with robust NAS methods selected, the adversarial accuracy reaches the highest in most cases.
+Furthermore, VDATFGSM also consistently achieves the lowest search cost compared with the cases of
+state-of-the-art FAT methods and vanilla robust NAS methods. In addition, the robust NAS methods
+integrated with VDATPGD also demonstrates better efficiency than the original ones.
+As shown in Table 14, both natural accuracy and adversarial accuracy are improved after introducing
+VDATFGSM. These results demonstrate the effectiveness of VDAT in terms of the large-scale dataset
+in the scenario of robust NAS.
+17

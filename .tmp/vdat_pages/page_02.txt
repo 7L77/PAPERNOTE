@@ -1,0 +1,67 @@
+Class I Class IIClass III✔Natural DataAdv Example✔✔Batch-wise Sampling……SelectedRemovedVDATNon-Vulnerable
+Vulnerable……
+Figure 1: The core idea of VDAT and state-of-the-art FAT methods
+based on data filtering.
+Natural PGD50 Cost
+Evaluation Metrics
+0
+20
+40
+60
+80Accuracy (%)
+0
+40
+80
+120
+160
+Training Cost (GPU Hours)
+PGD-AT
+Free-AT
+FGSM-PGI
+FGSM-SDI
+FGSM-PDK
+VDAT
+Figure 2: The performance
+on ImageNet-1K.
+Consequently, the vulnerability of data samples is different under the adversarial attack with the same
+strength. An example is shown in the left part of Figure 1, where the gray, green, and blue samples are
+less vulnerable than the yellow, red, and purple ones. Because the random allocation of batches, each
+batch is likely to contain both vulnerable and non-vulnerable samples as shown in the upper right of
+Figure 1. Suppose the first batch is considered to be less representative than the second batch by the
+method, and then only the second batch will be learned because of the batch-wise filtering manner.
+As a result, the vulnerable samples in the first batch are not learned, while the non-vulnerable ones in
+the second batch are learned, thus hindering the overall performance and efficiency.
+In this study, we introduce vulnerable data-aware adversarial training (VDAT) to tackle the above
+issue of existing FAT methods based on data filtering. As shown in the lower right part of Figure 1,
+the main idea of VDAT is to perform the sample-wise vulnerability evaluation, and then detect the
+vulnerable samples and learn them in a targeted way. This goal is achieved by two core components
+designed. First, we propose a margin-based vulnerability calculation method, so as to determine
+the vulnerability of each sample in the given dataset. The vulnerability is directly measured by the
+decision margin between the natural data and adversarial examples, thus the computational cost is low.
+Second, we propose a vulnerability-aware data filtering strategy, to reduce the number of samples for
+adversarial training while learn vulnerable samples more robustly. In this strategy, each data sample
+is given a certain probability to be changed to adversarial example, and the probability is calculated
+according to the vulnerability of this data sample. The more vulnerable data samples will have larger
+probability to be changed into adversarial examples. As a result, the vulnerable samples are learned
+robustly in the training process, thus the overall performance is improved while maintaining low
+training cost as shown in Figure 2. The contributions of this work are summarized as follows:
+• We bring a new perspective to FAT. Different from the mainstream perspective focusing
+on the batch-wise data filtering, we mainly focus on the sample-wise data filtering to
+adversarially learn the vulnerable data samples.
+• We propose VDAT with the margin-based vulnerability calculation and the vulnerability-
+aware data filtering, to improve the performance of FAT and lower the computational
+cost.
+• We show that VDAT achieves the state-of-the-art performance regarding both natural and
+adversarial accuracy on CIFAR-10, CIFAR-100, and ImageNet-1K, while bringing up to
+76% efficiency improvement. In addition, VDAT is also effective in improving performance
+and efficiency in the scenario of robust neural architecture search (NAS).
+2 Related Work
+2.1 Fast Adversarial Training (FAT)
+FAT is a kind of method designed to accelerate the time-consuming training process of the standard
+adversarial training [44]. In general, most FAT methods mainly focus on the efficient generation
+of adversarial examples [1, 25]. For example, Jia et al. [28] propose a input data-aware adversarial
+example initialization method, to generate adversarial examples which are beneficial to both natural
+accuracy and adversarial robustness in a single-step manner. Tong et al. [45] propose the taxonomy
+driven FAT method to overcome the catastrophic overfitting [30] via optimizing learning objective,
+loss function, and initialization manner jointly. Jia et al. [27] propose prior knowledge-guided
+2

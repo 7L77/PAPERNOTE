@@ -1,0 +1,58 @@
+Table 14: The experimental results of VDAT on ImageNet-1K under white-box attacks. VDAT is
+integrated into robust NAS methods.
+Models Natural (%) FGSM (%) PGD 20 (%) AA (%)
+DSRNA [24] 43.32 13.04 7.88 6.49
++ VDATFGSM 53.72 20.16 12.20 10.55
+AdvRush [36] 51.54 18.42 10.74 9.23
++ VDATFGSM 54.88 21.12 12.67 11.15
+RNAS [41] 51.18 17.62 9.87 8.61
++ VDATFGSM 53.26 20.15 11.85 10.29
+ARNAS [38] 54.69 20.60 11.27 11.13
++ VDATFGSM 57.05 22.68 13.14 12.90
+C.2 Experiments under Black-box Attacks
+To evaluate the architectures derived by robust NAS methods more comprehensively, we conduct
+experiments under black-box adversarial attacks beyond white-box adversarial attacks. In this set of
+experiments, we choose the commonly used transfer-based black-box attack [6] to further validate
+the adversarial robustness of the searched architectures. Specifically, the adversarial examples are
+generated based on the PGD20 adversarial attack, and then they are transferred to attack other models.
+This practice follows the convention [36, 38]. The experimental results under the black-box attack
+are presented in Table 15. As can be seen, when VDAT is integrated into robust NAS methods, the
+adversarial accuracy under the black-box attack still improves, demonstrating its effectiveness under
+the black-box attack.
+Table 15: The experimental results under the transfer-based black-box attack on CIFAR-10 and
+CIFAR-100. The highlighted data means that the source model and the target model are the same,
+thus the experimental results are the same as those under the white-box attack.
+Datasets Source
+Target AdvRush RNAS ARNAS AdvRush
++ VDATFGSM
+RNAS
++ VDATFGSM
+ARNAS
++ VDATFGSM
+CIFAR-10
+AdvRush 53.07 68.08 71.46 74.03 73.76 75.95
+RNAS 68.61 53.48 66.99 72.87 70.92 74.89
+ARNAS 66.90 62.22 55.87 71.51 70.05 72.86
+AdvRush + VDATFGSM 67.43 65.66 68.88 55.32 70.41 73.18
+RNAS + VDATFGSM 68.40 64.65 68.52 71.69 55.43 73.42
+ARNAS + VDATFGSM 66.90 62.22 55.86 71.55 70.00 57.15
+CIFAR-100
+AdvRush 30.15 36.55 39.27 43.37 43.72 46.24
+RNAS 41.55 31.11 40.22 45.61 44.83 47.47
+ARNAS 41.14 36.89 29.54 45.14 44.38 46.91
+AdvRush + VDATFGSM 41.03 38.06 40.89 31.04 42.77 46.23
+RNAS + VDATFGSM 46.50 42.16 45.16 47.86 34.60 49.18
+ARNAS + VDATFGSM 41.17 36.91 29.61 45.04 44.41 29.84
+C.3 Experiments in Different Search Spaces
+The above experimental results are all performed in a classical search space in the NAS community,
+i.e., the DARTS search space [34]. To further demonstrate the scalability of VDAT in the scenario
+of robust NAS, we perform experiments on both NAS-Bench-101 [52] and NAS-Bench-201 [15]
+search spaces. As can be seen in Table 16, VDAT can still bring improvements regarding both natural
+accuracy and adversarial accuracy in most cases. Please note that the improvement on NAS-Bench-
+201 is much more significant than that on NAS-Bench-101. This is because the search space of
+NAS-Bench-201 is much smaller than NAS-Bench-101, so that the architecture parameter can overfit
+the search data more easily. This will lead to the enrichment of the “skip connection” operation,
+causing the performance collapse [ 46]. Fortunately, VDAT can mitigate such overfitting because
+the data for training and search is changed iteratively during the search process, thus VDAT brings
+significant improvements.
+18

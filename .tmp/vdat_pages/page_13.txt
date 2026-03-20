@@ -1,0 +1,48 @@
+[36] Jisoo Mok, Byunggook Na, Hyeokjun Choe, and Sungroh Yoon. AdvRush: Searching for
+adversarially robust neural architectures. In Proceedings of the IEEE/CVF International
+Conference on Computer Vision, pages 12322–12332, 2021.
+[37] Guillermo Ortiz-Jimenez, Apostolos Modas, Seyed-Mohsen Moosavi, and Pascal Frossard.
+Hold me tight! influence of discriminative features on deep network boundaries. Advances in
+Neural Information Processing Systems, 33:2935–2946, 2020.
+[38] Yuwei Ou, Yuqi Feng, and Yanan Sun. Towards accurate and robust architectures via neural
+architecture search. In Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, pages 5967–5976, 2024.
+[39] Chao Pan, Qing Li, and Xin Yao. Adversarial initialization with universal adversarial perturba-
+tion: A new approach to fast adversarial training. In Proceedings of the AAAI Conference on
+Artificial Intelligence, volume 38, pages 21501–21509, 2024.
+[40] Tianyu Pang, Xiao Yang, Yinpeng Dong, Hang Su, and Jun Zhu. Bag of tricks for adversarial
+training. In International Conference on Learning Representations, 2021.
+[41] Yaguan Qian, Shenghui Huang, Bin Wang, Xiang Ling, Xiaohui Guan, Zhaoquan Gu, Shaoning
+Zeng, Wujie Zhou, and Haijiang Wang. Robust network architecture search via feature distortion
+restraining. In Proceedings of the European Conference on Computer Vision, pages 122–138,
+2022.
+[42] Rahul Rade and Seyed-Mohsen Moosavi-Dezfooli. Reducing excessive margin to achieve a bet-
+ter accuracy vs. robustness trade-off. In International Conference on Learning Representations,
+2022.
+[43] Md Farhamdur Reza, Ali Rahmati, Tianfu Wu, and Huaiyu Dai. CGBA: Curvature-aware
+geometric black-box attack. In Proceedings of the IEEE/CVF International Conference on
+Computer Vision, pages 124–133, 2023.
+[44] Ali Shafahi, Mahyar Najibi, Mohammad Amin Ghiasi, Zheng Xu, John Dickerson, Christoph
+Studer, Larry S Davis, Gavin Taylor, and Tom Goldstein. Adversarial training for free!Advances
+in Neural Information Processing Systems, 32, 2019.
+[45] Kun Tong, Chengze Jiang, Jie Gui, and Yuan Cao. Taxonomy driven fast adversarial training.
+In Proceedings of the AAAI Conference on Artificial Intelligence, volume 38, pages 5233–5242,
+2024.
+[46] Ruochen Wang, Minhao Cheng, Xiangning Chen, Xiaocheng Tang, and Cho-Jui Hsieh. Re-
+thinking architecture selection in differentiable NAS. In International Conference on Learning
+Representations, 2021.
+[47] Yulong Wang, Tong Sun, Xin Yuan, Shenghong Li, and Wei Ni. Minimizing adversarial training
+samples for robust image classifiers: Analysis and adversarial example generator design. IEEE
+Transactions on Information Forensics and Security, 19:9613–9628, 2024.
+[48] Eric Wong, Leslie Rice, and J. Zico Kolter. Fast is better than free: Revisiting adversarial
+training. In International Conference on Learning Representations, 2020.
+[49] Dongxian Wu, Shu-Tao Xia, and Yisen Wang. Adversarial weight perturbation helps robust
+generalization. Advances in Neural Information Processing Systems, 33:2958–2969, 2020.
+[50] Yuancheng Xu, Yanchao Sun, Micah Goldblum, Tom Goldstein, and Furong Huang. Explor-
+ing and exploiting decision boundary dynamics for adversarial robustness. In International
+Conference on Learning Representations, 2023.
+[51] Yuhui Xu, Lingxi Xie, Wenrui Dai, Xiaopeng Zhang, Xin Chen, Guo-Jun Qi, Hongkai Xiong,
+and Qi Tian. Partially-connected neural architecture search for reduced computational redun-
+dancy. IEEE Transactions on Pattern Analysis and Machine Intelligence, 43(9):2953–2970,
+2021.
+13

@@ -1,0 +1,49 @@
+[18] Yuqi Feng, Yuwei Ou, Jiahao Fan, and Yanan Sun. Zero-cost proxy for adversarial robustness
+evaluation. In The Thirteenth International Conference on Learning Representations, 2025.
+[19] Yuqi Feng, Yanan Sun, Gary G. Yen, and Kay Chen Tan. REP: An interpretable robustness
+enhanced plugin for differentiable neural architecture search. IEEE Transactions on Knowledge
+and Data Engineering, 37(5):2888–2902, 2025.
+[20] Yao Ge, Yun Li, Keji Han, Junyi Zhu, and Xianzhong Long. Advancing example exploitation
+can alleviate critical challenges in adversarial training. In Proceedings of the IEEE/CVF
+International Conference on Computer Vision, pages 145–154, 2023.
+[21] Ian J Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing adversar-
+ial examples. In International Conference on Learning Representations, 2015.
+[22] Minghao Guo, Yuzhe Yang, Rui Xu, Ziwei Liu, and Dahua Lin. When NAS meets robustness:
+In search of robust architectures against adversarial attacks. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, pages 631–640, 2020.
+[23] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for im-
+age recognition. In Proceedings of the IEEE Conference on Computer Vision and Pattern
+Recognition, pages 770–778, 2016.
+[24] Ramtin Hosseini, Xingyi Yang, and Pengtao Xie. DSRNA: Differentiable search of robust
+neural architectures. In Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, pages 6196–6205, 2021.
+[25] Zhichao Huang, Yanbo Fan, Chen Liu, Weizhong Zhang, Yong Zhang, Mathieu Salzmann,
+Sabine Süsstrunk, and Jue Wang. Fast adversarial training with adaptive step size. IEEE
+Transactions on Image Processing, 32:6102–6114, 2023.
+[26] Xiaojun Jia, Yong Zhang, Xingxing Wei, Baoyuan Wu, Ke Ma, Jue Wang, and Xiaochun Cao.
+Prior-guided adversarial initialization for fast adversarial training. In European Conference on
+Computer Vision, pages 567–584. Springer, 2022.
+[27] Xiaojun Jia, Yong Zhang, Xingxing Wei, Baoyuan Wu, Ke Ma, Jue Wang, and Xiaochun Cao.
+Improving fast adversarial training with prior-guided knowledge. IEEE Transactions on Pattern
+Analysis and Machine Intelligence, 46(9):6367–6383, 2024.
+[28] Xiaojun Jia, Yong Zhang, Baoyuan Wu, Jue Wang, and Xiaochun Cao. Boosting fast adversarial
+training with learnable adversarial initialization. IEEE Transactions on Image Processing ,
+31:4417–4430, 2022.
+[29] Hamid Karimi, Tyler Derr, and Jiliang Tang. Characterizing the decision boundary of deep
+neural networks. arXiv preprint arXiv:1912.11460, 2019.
+[30] Hoki Kim, Woojin Lee, and Jaewook Lee. Understanding catastrophic overfitting in single-
+step adversarial training. In Proceedings of the AAAI Conference on Artificial Intelligence ,
+volume 35, pages 8119–8127, 2021.
+[31] Alex Krizhevsky and Geoffrey Hinton. Learning multiple layers of features from tiny images.
+2009.
+[32] Alexey Kurakin, Ian J. Goodfellow, and Samy Bengio. Adversarial machine learning at scale.
+In International Conference on Learning Representations, 2017.
+[33] Shiye Lei, Fengxiang He, Yancheng Yuan, and Dacheng Tao. Understanding deep learning via
+decision boundary. IEEE Transactions on Neural Networks and Learning Systems, 36(1):1533–
+1544, 2025.
+[34] Hanxiao Liu, Karen Simonyan, and Yiming Yang. DARTS: Differentiable architecture search.
+In International Conference on Learning Representations, 2019.
+[35] Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, and Adrian Vladu.
+Towards deep learning models resistant to adversarial attacks. In International Conference on
+Learning Representations, 2018.
+12

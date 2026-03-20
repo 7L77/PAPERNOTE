@@ -1,0 +1,1758 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 1
+LLMENAS: Evolutionary Neural Architecture
+Search via Large Language Model Guidance
+Yutao Lai, Zicheng Cai, Lei Chen, Tongtao Ling, Hai-Lin Liu
+Abstract—Differentiable Neural Architecture Search (NAS)
+and traditional evolutionary approaches frequently struggle
+with premature convergence to local optima. To overcome this
+limitation, we propose LLMENAS, a hierarchical framework
+that introduces trajectory-aware fitness design as the upper-
+level optimizer. By analyzing the convergence state of historical
+optimization trajectories, the Large Language Model (LLM) acts
+as a fitness designer to dynamically design fitness functions. This
+mechanism enables the search to navigate complex landscapes
+and escape local optima. Furthermore, we introduce a closed-
+loop self-improving mechanism, enabling the LLM to iteratively
+enhance its design strategies through self-reflection and self-
+refinement based on feedback. Extensive experiments show that
+LLMENAS achieves competitive results, with top-1 accuracies
+of 97.58% on CIFAR-10, 83.52% on CIFAR-100, and 75.6%
+on ImageNet-1k. Furthermore, it is achieved with remarkable
+efficiency, costing only 0.15 GPU days on the CIFAR 10 datasets
+and 2 GPU days on ImageNet. The source code is publicly
+available at: https://github.com/LLMENAS/LLMENAS.
+Index Terms—Neural architecture search (NAS), Evolutionary
+strategy, Large language model, image classification.
+I. INTRODUCTION
+F
+Ueled by the exponential growth in computing power,
+deep convolutional neural networks have experienced
+remarkable advancements over the past decade. The design
+of neural architectures has emerged as a prominent research
+focus, with various architectures [1]–[4] proposed by re-
+searchers being widely applied in fields such as image recogni-
+tion, natural language processing, and semantic segmentation.
+However, as neural network architectures grow deeper and
+more complex, designing and fine-tuning these networks has
+become increasingly challenging. Traditional neural network
+design often requires substantial human effort, expertise, and
+specialized knowledge, posing significant barriers to efficiency
+and scalability.
+The emergence of Neural Architecture Search (NAS) has
+been precisely aimed at addressing this challenge. By au-
+tomating the exploration of network architectures in the well-
+established search space, NAS is capable of discovering high-
+quality architectures that often exhibit superior performance
+and efficiency for specific tasks. Therefore, NAS has emerged
+This work was supported by the National Natural Science Foundation
+of China under Grant No. 62172110 and the Natural Science Foundation
+of Guangdong Province 2024A1515010196.(Corresponding author: Hai-Lin
+Liu.)
+Yutao Lai, Zicheng Cai, Lei Chen, Tongtao Ling and Hai-Lin Liu are with
+the School of Mathematics and Statistics, Guangdong University of Tech-
+nology, Guangzhou 510006, China (e-mail: 2112114007@mail2.gdut.edu.cn;
+caicaicheng777@gmail.com; chenlei3@gdut.edu.cn; lingtongtao@gmail.com;
+hlliu@gdut.edu.cn)
+as a focal point within the deep learning community, particu-
+larly in applications such as image classification [5], [6], image
+segmentation [7], [8], and object detection [9], [10]. NAS
+methods are broadly categorized into three main approaches:
+evolutionary algorithms-based, reinforcement learning-based,
+and gradient-based. Recently, studies on neural network search
+have primarily focused on evolutionary algorithms based NAS
+and Gradient-Based NAS. EA-based NAS methods [11], [12]
+incur heavy search costs. To this end, following the introduc-
+tion of Differentiable Architecture Search (DARTS), gradient-
+based NAS has seen significant development and attention.
+DARTS has made neural network architecture search more
+efficient and flexible by introducing a differentiable search
+space. This approach allows for the training and evaluation of
+various candidate network structures within a weight-sharing
+supernet, substantially reducing the complexity and compu-
+tational cost of the search. However, some flaws of DARTS
+have gradually been revealed by researchers, among which the
+most significant issue is falling into local optima [13], [14]. In
+DARTS, the architecture parameters are tightly coupled with
+the supernet weights. During the search process in DARTS,
+this coupling can lead to a performance collapse phenomenon,
+leading to a sharp decline in network performance. This
+phenomenon typically occurs when the algorithm tends to
+select parameter-free operations during the search process,
+such as skip connections, thereby leading to getting stuck in
+local optima. The mainstream strategy in LLM-based NAS
+methods [15], [16] positions the LLM as a direct architecture
+generator, an approach that has opened up novel avenues
+in the field. However, it also suffers from some limitations.
+First, its low output diversity often traps the search process in
+local optima. Second, in complex search spaces, the LLM’s
+inherent propensity for hallucination can yield invalid archi-
+tectures. Combining the strength of evolutionary algorithms
+with the efficiency of gradient-based methods presents a highly
+promising direction [13], [17], [18]. However, the effectiveness
+of combining these methods requires careful coordination of
+exploration and exploitation during the search process.
+To transcend these limitations, this paper proposes LLME-
+NAS, a general hierarchical optimization framework. Unlike
+traditional static formulations, we formulate the upper-level
+optimization as a trajectory-aware fitness design process. By
+analyzing the historical optimization trajectories, the LLM
+acts as a fitness designer to identify when the lower-level
+evolutionary search is trapped in a local optimum. It then
+generates fitness functions to dynamically reshape the search
+landscape, effectively smoothing out local barriers and guiding
+the population toward promising regions.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 2
+The specific contributions of this paper are summarized as
+follows:
+1) We propose a general hierarchical optimization frame-
+work that employs a trajectory-aware LLM as the upper-
+level fitness designer. Leveraging its powerful reasoning
+capabilities, the trajectory-aware LLM is utilized to
+automatically design fitness functions based on historical
+optimization data. Consequently, it dynamically designs
+fitness functions to guide the lower-level evolutionary
+search to escape local traps effectively.
+2) We develop a self-improving mechanism that creates
+a closed learning loop for the LLM. Through Self-
+Reflection and self-refinement, the LLM optimizes its
+own designed fitness function based on feedback from
+the evolutionary process, ensuring the guidance contin-
+uously adapts to the search phase.
+3) Extensive experiments have been conducted to demon-
+strate that LLMENAS achieves competitive performance
+with remarkable efficiency. It achieves top-1 accuracy of
+97.58% (CIFAR-10), 83.52% (CIFAR-100), and 75.6%
+(ImageNet-1k), while costing only 0.15 GPU days on
+CIFAR-10/100 and 2 GPU days on ImageNet-1k, re-
+spectively.
+II. RELATED WORK
+In this section, we will provide an overview of relevant work
+in NAS and review approaches to NAS based on LLMs.
+A. Neural Architecture search
+Since the advent of deep learning, the design of neu-
+ral network architectures has played a pivotal role in en-
+hancing model performance, exemplified by breakthroughs
+like ResNet [3]. However, crafting these architectures typi-
+cally demands substantial human effort, resources, and expert
+knowledge. To overcome these challenges, Neural Architecture
+Search has emerged as a promising solution. As a subfield of
+AutoML, NAS aims to automate the design of neural network
+architectures, significantly reducing the reliance on manual
+intervention. Within the broader AutoML domain, NAS has
+remained a highly active and influential area of research.
+Overall, existing neural architecture search methods can
+be categorized into three types based on their search strate-
+gies: reinforcement learning-based neural architecture search
+(RL-based NAS), gradient-based neural architecture search
+(GD-based NAS), and evolutionary algorithm-based neural
+architecture search (EA-based NAS). RL-based NAS employs
+reinforcement learning techniques to guide the search process,
+typically using a controller to generate neural network archi-
+tectures and rewarding it based on the performance of the
+generated models. GD-based NAS leverages gradient descent
+to optimize the architecture by differentiating through the
+search space, enabling efficient and continuous optimization
+of neural network architectures. EA-based NAS refers to the
+use of evolutionary algorithms to search and optimize the
+architecture and hyperparameters of neural networks.
+RL-based NAS models the neural architecture search as a
+Markov decision process, treating the generation of network
+architectures as an agent’s action-selection process. [19] is
+a pioneering work in neural architecture search, using rein-
+forcement learning to discover the optimal network architec-
+ture, achieving comparable performance to human-designed
+networks. Ding et al. [20] proposed an RL-based NAS method
+that utilizes a broad scalable architecture called BCNN (Broad
+Convolutional Neural Network), which addresses the issue
+of slow propagation speed in ENAS, which arises from its
+deep network topology. Specifically, BNAS incorporates the
+reinforcement learning-based search strategy and parameter
+sharing from ENAS but applies them to the newly designed
+BCNN. To address the challenge of selecting a suitable autoen-
+coder architecture, Dissem et al. [21] utilized a reinforcement
+learning-based neural architecture search (RLNAS) approach
+to discover the optimal neural configuration.
+Gradient-based neural architecture search methods trans-
+form the discrete search space into a continuous one by
+relaxing the search parameters. all candidate operations are
+represented in DARTS [5] as a supernet. DARTS relaxes
+the discrete architecture parameters into a continuous form,
+allowing for the simultaneous optimization of both the archi-
+tecture parameters and model weights, significantly reducing
+the search costs for neural architecture search while achieving
+considerable performance. Although gradient-based methods
+have significantly improved the efficiency of neural architec-
+ture search, they still have limitations in certain aspects. Due
+to the gradient-based approach’s preference for parameter-less
+operations such as skip connections, DARTS often falls into
+local optima [22], [23] during the architecture search process,
+leading to a significant performance collapse. To address this
+performance collapse issue, many research efforts have been
+proposed [24], [25]. Some approaches focus on improving the
+optimization during the search process by introducing regu-
+larization, early stopping [26], [27]. Other works explore the
+way to more accurately evaluate the importance of candidate
+operations [28], [29].
+EA-based NAS refers to the use of evolutionary algorithms
+to search and optimize the architecture and hyperparameters of
+neural networks. EA-based NAS has become one of the most
+widely used strategies for discovering optimal neural network
+architectures. LargeEvo [11] is the first attempt to apply EA to
+execute a neural architecture search. LargeEvo employs sim-
+ple mutation operations on individual candidates has yielded
+highly competitive neural network architectures on the CIFAR-
+10 and CIFAR-100 datasets. Sun et al. [30] introduced an
+EA-based approach to search a predefined search space for
+neural architecture search. Furthermore, the paper incorporates
+skip connections to mitigate the issue of vanishing gradients.
+However, the high search cost associated with EA-based NAS
+methods has attracted considerable criticism, becoming one of
+the main bottlenecks. To address this issue, various strategies
+have been applied in NAS to reduce the computational cost
+of EA-based NAS. Additionally, many studies [8], [31], [32]
+have been conducted utilizing surrogate models to reduce
+the computational expense associated with EA-based neural
+network architecture search. Some studies have successfully
+reduced computational costs by employing weight inheritance
+techniques. For example, Huang et al. proposed an elite weight
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 3
+inheritance strategy [33], significantly reducing the time re-
+quired to evaluate architectures. In recent years, zero-shot
+neural architecture search [34], [35] has garnered considerable
+attention. It eliminates the need for a costly training phase and
+typically offers interpretable zero-order proxies. As a result,
+many training-free neural architecture search metrics have
+been developed and integrated with Evolutionary Algorithms
+(EA), delivering highly competitive results.
+B. LLM-based Optimization
+LLMs [36]–[38] are models trained to predict the next word
+in a sequence. Their power comes from three core ingredients:
+data, scale, and transformer architecture. LLMs have recently
+undergone revolutionary breakthroughs, which demonstrate
+unprecedented capabilities across diverse fields, including code
+generation [39] and natural language processing [40]. Notably,
+they also exhibit strong potential in advanced cognitive tasks
+such as automated algorithm design [41]–[43]. Such progress
+is considered a significant step towards Artificial General
+Intelligence (AGI). For example, Liu et al. [41], [44] combined
+evolutionary computation with LLM-based automated algo-
+rithm design, achieving competitive results on several com-
+monly used combinatorial optimization benchmark datasets.
+Above LLM-based heuristic evolution methods often converge
+prematurely to local optima. To counteract this limitation,
+researchers have actively explored various strategies [45]–
+[47] aimed at promoting population diversity. In addition,
+researchers have explored the use of large language models for
+mathematical discovery [48]–[50]. For example, the recently
+proposed FunSearch [48], using an evolutionary procedure that
+pairs a pre-trained LLM with a systematic evaluator, discov-
+ered new constructions of larger cap sets. Novikov et al. [49]
+proposed an evolutionary coding agent, namely AlphaEvolve,
+that significantly enhances state-of-the-art LLM capabilities
+for challenging tasks like scientific problem-solving and com-
+putational infrastructure optimization by autonomously having
+LLMs directly modify code.
+While Evolutionary Algorithms (EAs) are widely valued for
+their global search in black-box optimization, their efficacy is
+often hampered by a reliance on random exploration and a
+lack of task-specific knowledge, leading to inefficient searches
+and slow convergence. The advent of LLMs, pre-trained on
+vast and diverse datasets, offers a compelling solution; their
+rich, implicitly learned cross-domain knowledge and abstract
+patterns can provide crucial heuristic guidance to EAs. [51]
+LLMs can guide population initialization [44], direct the
+selection or generation of search operators [52], [53], or be
+directly employed as optimizers [54], [55]. Large language
+models have also been integrated into surrogate-assisted evo-
+lutionary algorithms [56], [57], yielding highly competitive
+experimental results. This integration enhances the efficiency
+and effectiveness of EAs.
+C. LLM-based Neural Architecture Search
+Given that LLMs possess an exceptional capability for
+understanding and generating neural network architectures,
+they have been employed as neural network generators within
+a framework combined with Evolutionary Algorithm (EA)
+search, achieving competitive experimental results. Zheng
+et al. [58] introduced an innovative approach called GPT-
+4 Enhanced Neural Architecture Search (GENIUS), which
+harnesses the generative power of GPT-4 as a black-box opti-
+mizer to search promising architectures. Chen et al. [16] pro-
+posed combining evolutionary prompt engineering with soft
+prompt tuning, which consistently identifies diverse and high-
+performing models. Nasir et al. [15] proposed a method called
+LLMatic, which combines the generative capabilities of LLMs
+with the diversity and robustness of Quality Diversity (QD)
+algorithms to search for optimal architectures. Zhou et al. [59]
+proposed a Large Language Model-Assisted Design Principle
+Transfer (LAPT) framework to enhance the efficiency and per-
+formance of Transferable Neural Architecture Search (TNAS).
+Ji et al. [60] proposed the Reflective Zero-cost NAS (RZ-NAS)
+method, which leverages training-free metrics within a zero-
+cost framework to improve the capabilities of LLM for NAS.
+Yang et al. [61] introduce NADER, a novel framework that
+reframes neural architecture design as a large-language-model-
+based multi-agent collaboration task. Fang et al. proposed
+the Personalized Federated Graph Neural Architecture Search
+(PFGNAS) method, which leverages task-specific prompts to
+continuously discover and integrate optimal GNN architectures
+within a federated learning framework.
+III. METHODOLOGY
+A. Problem Formulation: A Hierarchical Optimization Frame-
+work
+Neural architecture search is traditionally driven by a fixed,
+manually designed fitness function throughout the optimiza-
+tion process. Such static formulations cannot adapt to the
+evolving structure of the search dynamics, offering limited
+capability in correcting stagnation or recognizing detrimental
+convergence patterns. To overcome this limitation, we propose
+a hierarchical optimization framework, where numerical evolu-
+tion and semantic reasoning cooperate through a dynamically
+designed fitness function.
+Letζ= (P 0, f0, P1, f1, . . . , PG)denote a stochastic opti-
+mization trajectory of total lengthG, whereP g represents the
+population state andf g denotes the fitness landscape active at
+generationg.
+a) Lower Level:The population evolution follows a
+Markov transition kernelT, representing the evolutionary
+operator (e.g., CMA-ES). At generationg, the population
+evolves conditioned on the current fitness fuctionf g:
+Pg+1 ∼ T(P g+1 |P g, fg)(1)
+The abstract transition kernelTis instantiated with concrete
+evolutionary strategies.
+b) Upper Level:The upper level is governed by a
+trajectory-aware fitness strategyπ LLM . Unlike static methods,
+the trajectory-aware fitness designer operates on a continuous
+rolling basis. The LLM observes the comprehensive history
+Hg (defined in Section III-D) to design the new fitness function
+dynamically:
+fg+1 =π LLM(Hg)(2)
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 4
+Historical 
+Trajectory 
+Memory 𝐻𝐻𝑔𝑔
+Previous 
+Strategy
+S𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑𝑑
+prev
+Previous 
+Code
+Ccode
+prev
+Input Prompt
+New Fitness Strategy
+Natural language Directive
+Executable Python code
+Upper-Level: The Trajectory-aware LLM Fitness Function Design Process Generated Output 
+Verification
+√  Syntax Linting
+√ Functional Testing
+√ Test instances
+Passed?
+Population 
+Sampling
+Performance 
+Evaluation
+Distribution 
+Update
+Lower-Level: Evolutionary Architecture Search
+End?
+Performance 
+Feedback
+Self-Refinement Self-Reflection
+Self-improving  Mechanism
+Analyze Failure Strategy
+Design novel Strategy
+Analyze Success Strategy
+Fine-tune Current Strategy
+∆Lval
+g < 0 ∆Lval
+g ≥ 0
+Environmental 
+Selection
+The Best 
+Architecture
+0
+1
+2
+3
+LLM
+Yes
+Yes
+No
+No
+Regenerate{𝐿𝐿1
+𝜏𝜏}
+𝜏𝜏= g − 𝛿𝛿+ 1, … g
+Natural language 
+directive
+Fig. 1: Overall framework of the proposed LLMENAS.
+Consequently, the goal of the strategyπ LLM is to minimize
+the expected validation loss of the immediate future state. We
+define the upper-level objective as:
+π∗
+LLM = argmin
+π
+Eζ∼ρ(π)
+
+Lval(x∗
+g+1)
+
+(3)
+whereρ(π)represents the probability distribution of the
+trajectory segment induced by trajectory-aware fitness strategy
+π, andx ∗
+g+1 denotes the best-performing architecture identified
+at the next generation.
+B. Preliminaries
+1) Differentiable Architecture Search (DARTS):DARTS [5]
+marks the beginning of differentiability-based methods for
+the search for neural architecture. Similar to previous work
+[62], [63], DARTS searches for an optimal cell, which is then
+stacked to form the final network architecture. In the search
+space of DARTS, the cell is composed ofNnodes andE
+edges, forming a directed acyclic graph (DAG). Each nodex (i)
+represents a latent feature, and each edge(i, j)corresponds
+to an operationo (i,j). DARTS introduces a continuous archi-
+tectural representation, transforming the discrete architecture
+search problem into a differentiable optimization problem,
+thereby allowing the use of gradient descent algorithms for
+architectural search. By applying a softmax to all operations,
+DARTS achieves a continuous representation of the architec-
+ture:
+o(i,j)(x(i)) =
+X
+o∈O
+exp(α(i,j)
+o )
+P
+o′∈O exp(α(i,j)
+o′ )
+o(x(i)),(4)
+whereOdenotes the candidates operations set, andα (i,j)
+o
+indicates the mixing weight for operationo (i,j). By applying
+a continuous relaxation of the search space, DARTS employs
+gradient descent to jointly optimize architectural parametersα
+and supernet weightsω, addressing the following hierarchical
+optimization problem:
+min
+α
+F(ω ∗(α),α) =L val(ω∗(α),α)
+s.t. ω ∗(α) =argmin ωLtrain(ω,α),
+(5)
+Once the search concludes, the final architecture is iden-
+tified by choosing the operation with the highest architec-
+ture parameterαon each edge, represented aso (i,j) =
+arg maxo′∈O α(i,j)
+o .
+C. Evolutionary Strategy for Neural Architecture Search
+Recent research has highlighted that differentiability-based
+methods for neural network architecture search are prone
+to falling into local optima [14], [29], which can lead to
+performance collapse. To address this challenge, this paper
+adopts Covariance Matrix Adaptation Evolution Strategy [64]
+(CMA-ES) to explore better evolutionary paths to avoid pre-
+mature convergence during the search process. Compared to
+differentiability-based methods, CMA-ES can more effectively
+explore a broader range of paths. Leveraging sophisticated
+sampling strategies and adaptive covariance matrix adjust-
+ments, CMA-ES conducts a deeper and more comprehensive
+search across the complex landscape of neural network archi-
+tectures. This capability significantly increases the likelihood
+of identifying promising paths and escaping local minima.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 5
+The detailed procedure is as follows: Initially, a Gaussian
+distribution is established for the architecture parameters. Sub-
+sequently, we randomly sampledNarchitecture individuals
+from the Gaussian distribution. Each architecture individual
+can be represented asx n =x 1, x2, x3, ..xN .
+xg
+i =m g +σ g(C(g))
+1
+2 N(0,I),(6)
+Then, the fitness function is employed to assess the per-
+formance of theNarchitecture individuals. Among theN
+architectural individuals, the distribution information of the top
+µindividuals with the highest fitness values will be utilized to
+update the parameters of CMA-ES, which drive the population
+towards more promising regions for exploration.
+The mean of the next generation is calculated through a
+weighted average of theµtop-performing candidate solutions
+selected, which aids the algorithm in steering towards more
+favorable solution paths.
+mg+1 =Pµ
+i=1 wizg
+i , (7)
+whereµ=⌊λ/2⌋, andw i represents the importance of
+selected individual when updating the mean of the Gaus-
+sian distribution, where individuals with better fitness have
+larger weights. Meanwhile,σ g+1 is updated via the equation:
+σg+1 =σ gexp( cσ
+dn
+( std
+dσ
+−1)), wherec σis the step size update
+coefficient.
+For the CMA-ES, the step of updating the covariance matrix
+is the core mechanism of the entire algorithm. It primarily
+updates the covariance matrix in two ways: the rank-1 update
+and the rank-µupdate.
+The rank-1 update mainly utilizes the deviation relationship
+between the means of consecutive generations.
+pg+1 = (1−c 1)pg +
+q
+c1(2−c 1)µef f
+(mg+1 −m g)
+σg (8)
+Cg+1 = (1−c 1)Cg +c 1(p(g+1)p(g+1) T ) (9)
+whereµ ef f represents the coefficient of evolution pathp,c 1
+represents the learning rate of rank-1 update.
+The rank-µupdate takes advantage of the deviation rela-
+tionships between theµindividuals of the current generation
+and the mean.
+Cg+1 = (1−c µ)Cg +c µ
+Pµ
+i=1 βi(xg
+i −m g)(xg
+i −m g)T ,
+(10)
+whereµ=⌊λ/2⌋,c µ represents the learning rate of rank-
+1 update.β i denotes the weight coefficient of the bestµ
+individuals.
+By combining the rank-1 update and rank-µupdate, the
+update equation forC g can be written as:
+Cg+1 = (1−c 1 −c µ)Cg +c 1(p(g+1)p(g+1) T )
++c µ
+Pµ
+i=1 βi(xg
+i −m g)(xg
+i −m g)T ,
+(11)
+Moreover, the above process will repeat forGiterations.
+After each iteration, the best individualx ∗
+best from the popu-
+lation is recorded inDto ensure the optimal search path is not
+missed during the process. Finally, we select the best search
+path fromDto guide the optimization of the architecture
+parametersα.
+To provide a more intuitive demonstration of the work-
+flow of our proposed algorithm, Algorithm 1 presents the
+overall framework of the proposed LLMENAS in the form
+of pseudocode. And the overall framework of the proposed
+LLMENAS is schematized in Fig. 1.
+D. Realization of the Trajectory-Aware Fitness Designer
+To implement the fitness design strategyπ LLM defined in
+the hierarchical framework, we establish a mapping mecha-
+nism that translates evolutionary search trajectories into exe-
+cutable scalarization functions.
+1) Basis Metrics for Fitness Formulation:The core task
+of the trajectory-aware fitness designer is to design a scalar
+fitness functionf(L 1,L 2)that dynamically balances conflict-
+ing goals. Therefore, instead of processing raw architectural
+weights, the LLM designs the fitness function using two funda-
+mental basis metrics representing exploitation and exploration:
+L1 :To measure the quality of candidate architectures, we
+utilize the validation performance based on the cross-entropy
+loss function:
+L1(yi,ˆyi) =−
+NX
+i=1
+yi log(ˆyi)(12)
+whereNis the batch size,y i represents the true label, andˆy i
+denotes the predicted probability. MinimizingL 1 drives the
+population toward high-performance regions.
+L2 :The selection of an appropriate diversity metric in-
+volves a critical trade-off between its descriptive ability to
+capture architectural variations and its computational cost.
+Overly complex metrics can introduce significant computa-
+tional overhead and increase search time, while overly sim-
+plistic metrics, such as standard cosine similarity, may be
+computationally cheap but often fail to capture the nuanced
+structural differences between architectures. In consideration
+of this trade-off, our choice is the architecture similarity score
+method detailed in [65]. Let ⃗Ck(α)represent the set of input
+edges for thek-th node in architectureα. The dissimilarity
+dis(αg, x∗
+g+1)between the previous centerα t and the current
+best individualx ∗
+g+1 is calculated as:
+dis(αg, x∗
+g+1) =D max−
+X
+k∈N odes
+I( ⃗Ck(αg), ⃗Ck(x∗
+g+1))(13)
+whereD max is the total number of nodes, andI(·)is the
+indicator function. The diversity metric is then normalized:
+L2(αg, x∗
+g+1) = 1− dis(αg, x∗
+g+1)
+Dmax
+(14)
+Here,L 2 ∈[0,1]. A value ofL 2 ≈1indicates structural
+stagnation (high similarity), serving as a signal for the designer
+to adjust the fitness landscape.
+2) Trajectory-to-Context Encoding:Our trajectory-aware
+LLM aggregates a composite historical windowH g containing
+the evolutionary search trajectory. To ensure the LLM pos-
+sesses sufficient context to identify optimization trends while
+maintaining rapid adaptability, we explicitly decouple the
+intervention frequency from the observation window length.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 6
+The historical contextH g is constructed using a sliding
+window approach:
+Hg ={(L τ
+1)}g
+τ=g−δ+1 ∪Ψ prev (15)
+This mechanism implies that the search process begins
+with a warm-up phase of lengthδto accumulate the initial
+trajectory. Onceg≥δ, the window slides forward at each
+step, ensuring the LLM continually diagnoses the dynamics
+of the most recentδgenerations. LetT= 1denote the
+intervention interval after warm-up (i.e., after the initialδ= 5
+epochs, the fitness function is updated every T epoch), and
+letδ= 5denote the fixed observation window length used to
+accumulate the initial trajectory.
+Crucially, to enable the closed-loop self-improvement, the
+context explicitly incorporates the previous strategic directive
+and code implementation via the recursive componentΨ prev:
+Ψprev =
+(
+{Sprev
+directive,C prev
+code },ifg > δ
+∅,ifg=δ (16)
+Here,S prev
+directive denotes the natural language strategy and
+Cprev
+code represents the executable Python function from the
+previous interaction. Wheng=δ, the LLM performs acold
+startbased solely on the accumulated trajectory without prior
+strategic context. For subsequent steps (g > δ), the frame-
+work enters theself-improving loop, whereΨ prev provides
+the necessary context for the self-improving mechanism. The
+encoding process transforms this raw data into a structured
+natural language prompt, as detailed in supplementary file
+S.III.B.
+3) Initial Fitness Strategy Design:At the end of the warm-
+up phase (g=δ), the LLM performs a cold start to establish
+the baseline search direction. Based on the accumulated tra-
+jectoryH δ, the LLM executes the initial design policy by gen-
+erating a strategic directive and its corresponding scalarization
+function implementation:
+[fδ+1(L1,L 2),S directive] =LLM(P rompt init, Hδ)(17)
+whereP rompt init denotes the specific initialization prompt
+(detailed in Figure S-1). The output includes a high-level
+logical explanation of the current proposed strategy and an
+executable Python function that mathematically implements
+the directive. This establishes the initial dynamic landscape
+before the self-improving loop begins.
+E. Self-Improving Mechanism
+The self-improving mechanisms are motivated by the need
+to foster LLMs’ adaptability for domain-specific strategy de-
+sign. By enabling continuous learning from both successful
+and failed experiences, the LLMs develop a more nuanced
+understanding of the problem space, leading to the generation
+of increasingly robust solutions.
+We formally define the performance feedback signal∆L g
+val
+as the validation loss change over the update intervalT:
+∆Lg
+val =L val(x∗
+g)− L val(x∗
+g−T )(18)
+wherex ∗
+g is the elite individual at the current generation and
+x∗
+g−T is the elite from the previous intervention step. Based
+on this feedback, the mechanism branches into two distinct
+phases:
+1) Self-Reflection (∆L g
+val ≥0):This phase is triggered
+when the validation performance stagnates or worsens. Such
+stagnation implies that the newly adopted strategy has failed
+to yield significant improvement. Consequently, the LLM
+enters a reflection mode. By analyzing the trajectoryH g, the
+LLM critiques the logic within the previous codeC prev
+code and
+identifies why the mathematical formulation failed. Based on
+this diagnosis, the LLM proposes a novel and distinct approach
+for designing the fitness function, effectively reshaping the
+landscape to escape the local optimum.
+[fg+1,S directive] =LLM(P rompt ref lect, Hg)(19)
+whereP rompt ref lect, shown in Figure S-2 of the supple-
+mentary file, denotes the prompts used to reflect the previous
+design of the fitness function.
+2) Self-Refinement (∆L g
+val <0):Conversely, this phase
+is activated when the validation performance improves sig-
+nificantly. This indicates that the current fitness strategy is
+effectively guiding the system along a descending gradient. To
+capitalize on this momentum, the LLM conducts a retrospec-
+tive analysis on the successful codeC prev
+code to identify the key
+structural factors driving the improvement. Building on these
+reinforced insights, the LLM retains the core logic but fine-
+tunes its mathematical coefficients to accelerate convergence.
+[fg+1,S directive] =LLM(P rompt ref ine, Hg)(20)
+whereP rompt ref ine, detailed in Figure S-3 of the supple-
+mentary file, denotes the prompts used to refine the previous
+design of the fitness function.
+F . Generated Output Verification Mechanism
+To ensure the reliability of the outputs automatically gen-
+erated by the LLM, a verification mechanism [39], [53] is
+essential. When the LLM generates a candidate output, these
+outputs are subjected to a specific verification process. For
+generated code for fitness functions, this typically involves
+automated checks like linting and syntax validation, followed
+by execution with predefined test instances to assess its
+functional correctness and stability.
+In instances where the generated outputs fail this verifica-
+tion, a generated output verification prompt is triggered. This
+prompt requires LLM to regenerate the new outputs, providing
+context about the specific error encountered and reiterating the
+original requirements and constraints.
+This verification mechanism is iterative: the newly gen-
+erated output undergoes the same verification process. This
+loop continues until the generated code successfully passes
+all verification stages or a predefined maximum number of
+regeneration attempts, denoted asK, is reached. If, afterK
+attempts, a valid fitness function has not been successfully
+generated and verified, we default to a robust fitness function
+f=L1and a corresponding default idea as a fallback
+mechanism to ensure the continuity of the evolutionary search.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 7
+This iterative refinement with a fallback strategy improves
+search stability.Kis set to 3 in this paper.
+For the specific prompts utilized in the generated output
+verification mechanism, please refer to the Figure S-4.
+Algorithm 1 Main framework of LLMENAS
+Require:Architecture parametersα, Supernet weightsω;
+Observation window lengthδ; Update intervalT(set to
+1); Evolution epochsG; Step sizeξ
+1:Initialization:Parameterize edgesα (i,j);H 0 ← ∅;
+fcurr ← L 1 (Eq. 12).
+2:forg= 0,1, . . . , Gdo
+3:Update weightsωvia gradient descent
+∇ωLtrain(ω,α).
+4:ifg≥δthen▷LLM Guidance Phase
+5:ifg==δthen
+6:Initial Design:Generatef new viaπ LLM based
+onH δ (Eq. 17).
+7:else
+8:Calculate feedback:∆L g
+val =L val(x∗
+g)−
+Lval(x∗
+g−T ).
+9:if∆L g
+val ≥0then
+10:Self-Reflection:Generatef new via Eq. 19
+usingH g.
+11:else
+12:Self-Refinement:Generatef new via
+Eq. 20 usingH g.
+13:end if
+14:end if
+15:Verifyf new via Algorithm 2 and updatef curr ←
+fnew.
+16:end if
+17:form= 1, . . . , Mdo
+18:Samplex g
+i , i= 1, . . . , λvia Eq. 6.
+19:Evaluateλindividuals usingf curr.
+20:Update CMA-ES parameters based on top⌊λ/2⌋
+individuals.
+21:Store best individualx ∗
+g inD.
+22:end for
+23:Select best search paths t+1 fromDbased on valida-
+tion accuracy.
+24:Update architecture:α t+1 =α t +ξs t+1.
+25:end for
+26:Derive final architectureα.
+G. Evolutionary Search for Exploration of Architecture Pa-
+rameters
+In this paper, we use the optimal individuals obtained from
+population-based evolutionary strategies as the search path
+referenced to guide the architecture search towards promising
+regions.
+αg =α g−1 +ηd g,(21)
+whereα g represents the architecture parameter at theg th
+epochs, whileα g−1 denotes the architecture parameter at
+previous epochs.d g denotes the search path atg th epochs
+Algorithm 2 Generated Output Verification Mechanism
+Require:LLM, Verification Criteria, Error Handling Prompt,
+Maximum AttemptsK, Default Settings, Initial Prompt
+P romptini, IdeaI ini proposed by LLMs, CodeC ini
+proposed by LLMs
+1:Initializeattempts←0
+2:InitializeI ←I ini ▷Idea for fitness function design
+3:InitializeC ←C ini ▷Executable code for fitness
+function
+4:InitializeisV erif ied←False
+5:while(attempts < K)and(¬isV erif ied)do
+6:attempts←attempts+ 1
+7:ifattempts >1then
+8:Get context about the errorerrorContextusing
+errorContext.
+9:Generate the Output Verification promptP rompt
+usingerrorContext,C,I
+10:end if
+11:Generate the repaired codeCusingP rompt.
+12:isV erif ied←Verify the generated codeC.
+13:end while
+14:if¬isV erif iedthen
+15:Fallback to default codeC.
+16:Fallback to default ideaI.
+17:end if
+18:returnC,I
+andηmeans the step size. When converting architecture pa-
+rameters to architectures, this paper uses the softmax function
+Eq. 4 to map the current parameters to the range [0,1]. This
+mapping ensures that the architecture parameters adhere to
+the constraints of the valid search space. As a result, the
+architecture derived from the transformed parameters will not
+violate the constraints of the valid search space.
+x∗
+n =argmax Acc val(ωg−1,x n), n= 1,2, . . . , N, (22)
+dg = xn
+∥xn∥2
+(23)
+whereAcc val means the validation accuracy,x ∗
+n is the search
+path that yields the best fitness value by sampling the evolu-
+tionary strategy, andω g−1 is the supernet weights at (g−1)
+step. After completing the search, we adopt the same approach
+as DARTS to obtain the final architecture, where each edge is
+constructed with the operation that has the maximum weight.
+IV. EXPERIMENTS AND ANALYSIS
+In this study, to substantiate the efficacy of the pro-
+posed algorithm, we conducted experiments across various
+datasets, including CIFAR-10, CIFAR-100, ImageNet, and
+NASBench201. The experiments on CIFAR-10, CIFAR-100,
+and NAS-Bench-201 were conducted on a single Nvidia RTX
+3090. And the experiments on ImageNet were conducted on
+a single RTX 4090. The large language model used in this
+article is GLM-4-Flash [81], which is an open-source model
+freely available to the research community. The open-source
+repository is available at https://github.com/zai-org/GLM-4.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 8
+TABLE I: Comparison of LLMENAS with state-of-the-art NAS methods on CIFAR-10 and CIFAR-100.
+Architecture Test Error (%) Params Search Cost LLM Inference Latency Search StrategyCIFAR-10 CIFAR-100 (M) (GPU-Days) (GPU-Days)
+ResNet [3] 4.61 22.1 1.7 - - -
+VGG [2] 6.66 28.05 20.1 - - -
+DenseNet [4] 3.46 17.18 25.6 - - -
+MetaQNN [66] 6.92 17.14 - 100 - RL
+ENAS [62] 2.89 19.43 4.6 0.5 - RL
+DARTS(1st) [5] 3.00 17.54 3.4 0.4 - GD
+DARTS(2st) [5] 2.76 - 3.3 1.0 - GD
+PC-DARTS [67] 2.57 16.90 3.60.1- GD
+β-DARTS [26] 2.5316.243.78 0.4 - GD
+FairDARTS [68] 2.54 17.61 2.8 0.4 - GD
+GDAS [69] 2.93 19.18 3.4 0.2 - GD
+SNAS [70] 3.10 20.09 2.8 1.5 - GD
+DARTS+PT [71] 2.61 - 3.0 0.8 - GD
+DARTS- [72] 2.59 17.51 3.4 0.4 - GD
+DrNAS [73] 2.54 - 4.0 0.4 - GD
+IS-DARTS [25] 2.56 - 4.25 0.42 - GD
+ADARTS [29] 2.46 17.03 2.9 0.2 - GD
+AmoebaNet-A [12] 3.34 17.63 3.3 3150 - EA
+CNN-GA (CIFAR10) [74] 3.22 - 2.9 35 - EA
+CNN-GA (CIFAR100) [74] - 20.53 4.1 40 - EA
+NSGANetV1-A2 [75] 2.65 17.420.927 - EA
+Cars [76] 2.62 - 3.6 0.4 - EA
+NPENAS-NP [77] 3.62 26.76 3.5 1.8 - EA
+EPCNAS-C [78] 3.07 18.36 1.16 1.10 - EA
+EAEPSO [79] 2.74 16.94 2.94 2.2 - EA
+SLE-NAS-B [80] 3.47 18.07 0.94 0.4 - EA
+SaDENAS [18] 2.59 16.91 3.24 0.2 - EA
+GENAS [13] 2.49 16.96 3.20 0.26 - EA
+LAPT-NAS [59] 2.65 - -0.1- LLM+GD
+LLMENAS2.4216.48 3.5 0.15 ⋆ 0.0020 LLM+EA
+⋆ Search cost includes LLM latency and all extra expenses due to external API integration.
+A. Datasets
+Both CIFAR-10 and CIFAR-100 datasets consist of 60,000
+images, with each image having a resolution of 32x32 pixels.
+The CIFAR-10 dataset is comprised of 10 classes, whereas
+CIFAR-100 contains 100 classes. The ImageNet dataset is a
+relatively large dataset consisting of 1,000 classes. It contains
+1,100,000 images in the training set and 50,000 images in the
+testing set. In the ImageNet dataset, each image maintains a
+resolution of 224 * 224 pixels. To rapidly assess architectural
+performance, Dong et al. [82] introduced NAS-Bench-201,
+a benchmark dataset for neural network architecture search.
+It comprises 15,625 neural cell candidate architectures, each
+trained multiple times across CIFAR-10, CIFAR-100, and
+ImageNet16-120 datasets, with training logs and performance
+metrics provided for every training. In NAS-Bench-201, the
+training logs and performance metrics for the candidate archi-
+tectures are provided, eliminating the need for researchers to
+train them from scratch.
+B. Implementation Details
+1) CIFAR-10/100:Following the search space of DARTS,
+we adopt the same operation spaceOin this paper. In order
+to reduce memory usage and search cost, the partial channel
+connection strategy proposed in PC-DARTS is employed in
+this study. During the search stage, the CIFAR-10 dataset was
+meticulously split into two equal parts. One part was utilized
+for architecture search, while the other was employed for
+optimizing the supernet weights. For the neural architecture
+search on the CIFAR-10 dataset, we executed a 50 epochs
+search, with the first 15 epochs designated as a warm-up
+phase, using a batch size of 256. The architecture derived from
+this search was then meticulously retrained for 600 epochs
+from scratch. In terms of parameter configuration for CMA-
+ES, the population size was set to 25, with an initial standard
+deviation of 0.05, and all other parameters were aligned with
+the standard CMA-ES settings. The step size and the initial
+number of channels were set to 0.8 and 16, respectively.
+2) ImageNet:The ImageNet dataset is vast and diverse,
+making it significantly more complex than CIFAR-10. For
+the neural architecture search on the ImageNet dataset, we
+conducted a 50 epochs search, with the first 25 epochs
+designated as a warm-up phase, using a batch size of 1024. The
+architecture derived from this search was then meticulously
+retrained for 600 epochs from scratch. In terms of parameter
+configuration for CMA-ES, the population size was set to
+50, with an initial standard deviation of 0.05, and all other
+parameters were aligned with the standard CMA-ES settings.
+The step size and the initial number of channels were set to
+0.8 and 16, respectively.
+3) NAS-Bench-201:In the NAS-Bench-201 benchmark, all
+candidate architectures have been evaluated. Therefore, the
+performance metrics of architectures obtained through neural
+architecture search can be obtained directly. For more details
+regarding NAS-Bench-201, please refer to [82].
+C. Performance Evaluation on Standard Benchmarks
+1) Implementation Details:The evaluated network consists
+of 20 cells and is trained from scratch for 600 epochs with a
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 9
+batch size of 96. The standard SGD optimizer is used with a
+momentum of 0.9 and a weight decay of 0.0003. The initial
+learning rate is set to 0.025 and decays to 0 following a
+cosine schedule. Cutout length, auxiliary weight, and drop path
+probability are set to 16, 0.4, and 0.3, respectively.
+2) Results on CIFAR-10/100:Table I compares LLMENAS
+with state-of-the-art methods. LLMENAS achieves a test error
+of 2.42% on CIFAR-10 with a search cost of only 0.15 GPU
+days. Notably, this cost includes the inference latency of the
+LLM, demonstrating that the proposed framework is highly
+efficient. Compared to gradient-based methods like DARTS
+andβ-DARTS, LLMENAS achieves lower error rates while
+avoiding the well-known performance collapse issue. This
+verifies the validity of the framework we proposed. While
+methods like NSGANetV1 [83] require up to 27 GPU days,
+and recent efficient EAs like SLE-NAS [78] reduce this cost,
+LLMENAS further surpasses them in search efficiency. This
+efficiency stems from the trajectory-aware fitness designer’s
+ability to prune unpromising search directions early via tra-
+jectory diagnosis. On CIFAR-100, the transferred architecture
+achieves superior performance compared to most existing
+algorithms, validating its effectiveness even with fewer pa-
+rameters.
+3) Results on ImageNet:On the large-scale ImageNet
+dataset (Table II), the architecture transferred from CIFAR-10
+achieves75.2%top-1 accuracy. Furthermore, conducting the
+search directly on ImageNet (using the proposed hierarchical
+framework) improves accuracy to75.6%in just 2 GPU days.
+LLMENAS outperforms both standard evolutionary methods
+and recent LLM-based approaches like LAPT-NAS [59], prov-
+ing its scalability to complex search spaces.
+4) Results on NAS-Bench-201:Table III reports results
+on the NAS-Bench-201 benchmark. LLMENAS achieves test
+errors of 93.63%, 71.45%, and 45.56% on CIFAR-10, CIFAR-
+100, and ImageNet, respectively. Notably, compared to recent
+LLM-driven frameworks such as GENIUS [58] and Evo-
+Prompting [16], LLMENAS demonstrates superior robustness
+across all three datasets. While EvoPrompting relies on code-
+level prompting, our approach integrates reasoning directly
+into the evolutionary search loop, allowing for finer-grained
+control over the search trajectory.
+D. Computational Overhead and Latency Analysis
+In this section, we provide a detailed breakdown of the com-
+putational overhead and demonstrate that LLMENAS main-
+tains high efficiency comparable to gradient-based methods
+and superior to evolutionary approaches.
+1) LLM Inference Latency:As reported in Table I and Table
+III, the inference latency introduced by the LLM is negligible
+compared to the total search cost. On CIFAR-10, the total
+search cost is0.15GPU days, within which the LLM inference
+accounts for only0.0020GPU days. On NAS-Bench-201,
+the LLM latency is similarly low at0.0060GPU days. On
+ImageNet, the search completes in2.0GPU days, with the
+LLM latency remaining constant at roughly0.0020GPU days.
+These results indicate that the bottleneck in NAS remains
+the supernet training and evaluation (the lower-level optimiza-
+tion), not the upper-level semantic reasoning.
+2) Comparison with Existing Methods:Compared to tradi-
+tional EA-based methods and other state-of-the-art approaches,
+LLMENAS achieves competitive search efficiency across mul-
+tiple benchmarks. On CIFAR-10/100, LLMENAS requires
+only0.15GPU days. This is significantly faster than evolu-
+tionary methods like AmoebaNet-A (3,150GPU days) and
+NSGANetV1 (27GPU days). It also outperforms efficient
+gradient-based methods such as DARTS (0.4GPU days)
+and GDAS (0.2GPU days), while being comparable to PC-
+DARTS (0.1GPU days). On ImageNet, when performing a
+direct search, LLMENAS completes in just2.0GPU days.
+This demonstrates superior efficiency compared to large-scale
+evolutionary searches like AmoebaNet-B (3,150GPU days)
+and NASNet-A (2,000GPU days), and is notably faster than
+efficient direct search methods like ProxylessNAS (8.3GPU
+days). On NAS-Bench-201, LLMENAS achieves a search cost
+of0.10GPU days, surpassing the efficiency of GDAS (0.36
+GPU days) and matching or exceeding DARTS variants (0.12
+GPU days).
+TABLE II: Comparison with state-of-the-art NAS methods on
+ImageNet.
+Architecture Test error Search cost Params LLM Inference Latency
+top-1(%) (GPU-Days) (M) (GPU-Days)
+ResNet [3] 30.1 - 6.6 -
+VGG [2] 29.4 - 4.2 -
+DenseNet [4] 29.4 - 4.2 -
+DARTS(2st) [5] 26.7 1.0 4.7 -
+SNAS [70] 27.3 1.5 2.8 -
+PC-DARTS [67] 25.1 0.1 4.7 -
+GDAS [69] 26.0 0.3 3.4 -
+ProxylessNAS [84]† 24.9 8.3 7.1 -
+DARTS+PT [71]† 25.5 3.4 4.7 -
+NASNet-A [85] 26.0 20003.3-
+AmoebaNet-B [12] 26.0 3150 5.3 -
+CARS [76] 24.8 0.4 5.1 -
+NSGANetV1-A2 [83] 25.5 27 4.1 -
+EAEPSO [79] 26.9 4.0 4.9 -
+EPCNAS-C2 [78] 27.1 1.17 3.0 -
+EG-NAS [17] 24.9 0.1 5.3 -
+LAPT-NAS [59]† 24.9 2 4.6 -
+LLMENAS 24.9 0.15 ⋆ 5.2 -
+LLMENAS† 24.42 ⋆ 6.1 0.0020
+†
+means the results obtained by searching on ImageNet, otherwise on CIFAR-10.⋆
+Search cost includes LLM latency and all extra expenses
+from external API integration.
+E. Experiments of Statistical Significance on CIFAR-10
+To rigorously quantify the superiority of the proposed
+method, we re-evaluated the architectures discovered by LLM-
+ENAS, IS-DARTS, and EG-NAS seven times each under an
+identical experimental setup. A Wilcoxon rank-sum test on
+these seven runs confirms that LLM-ENAS achieves statis-
+tically significantly higher accuracy on CIFAR-10 than both
+IS-DARTS and EG-NAS, with all resulting p-values being less
+than 0.05, as reported in the Table IV. The results of the
+statistical significance analysis further validate the robustness
+and effectiveness of the proposed method.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 10
+Fig. 2: Analysis of the Number of Skip-Connections in Cells during Architecture Search on CIFAR-10.
+TABLE III: Performance comparison of the NAS-Bench-201 benchmark. The average values are obtained over four independent
+search runs. The ’Optimal*’ is derived from the NAS-bench-201 [82] directly, denoting the highest accuracy for each dataset
+in this benchmark.
+Architecture CIFAR-10 CIFAR-100 ImageNet16-120 Search Cost
+(GPU-Days)
+LLM Inference
+Latency (GPU-Days)valid test valid test valid test
+ResNet [3] 90.83 93.97 70.42 70.86 44.53 43.63 - -
+Random (baseline) 90.93±0.36 93.70±0.36 70.60±1.37 70.65±1.38 42.92±2.00 42.96±2.15 - -
+ENAS [62] 37.51±3.19 53.89±0.58 13.37±2.35 13.96±2.33 15.06±1.95 14.57±2.10 0.16 -
+RandomNAS [86] 80.42±3.58 84.07±3.61 52.12±5.55 52.31±5.77 27.22±3.24 26.28±3.09 - -
+GDAS [69] 90.01±0.46 93.23±0.23 24.05±8.12 24.20±8.08 40.66±0.00 41.02±0.00 0.36 -
+DARTS (1st) [5] 39.77±0.00 54.30±0.00 15.03±0.00 15.61±0.00 16.43±0.00 16.32±0.00 0.12 -
+DARTS (2st) [5] 39.77±0.00 54.30±0.00 15.03±0.00 15.61±0.00 16.43±0.00 16.32±0.00 0.3 -
+PC-DARTS [67] 89.96±0.15 93.41±0.30 67.12±0.39 67.48±0.89 40.83±0.08 41.31±0.22 - -
+iDARTS [87] 89.86±0.60 93.58±0.32 70.57±0.24 70.83±0.48 40.38±0.59 40.89±0.68 - -
+DARTS- [72] 91.03±0.4493.80±0.40 71.36±1.51 71.53±1.5144.87±1.46 45.12±0.82 0.12 -
+GENIUS [58]91.07±0.2093.79±0.09 70.96±0.03 70.91±0.72 45.29±0.81 44.96±1.02 - -
+LLM-AS-OPTIMIZERS [54] 90.15±1.20 93.51±0.75 70.75±0.89 70.47±0.64 42.29±2.23 43.20±2.47 - -
+Evoprompting [16] 90.38±0.33 93.11±0.90 70.47±0.23 70.39±0.5845.32±0.2645.15±0.51 - -
+LLMENAS 90.62±0.54 93.63±0.13 71.12±0.91 71.45±1.22 45.31±0.8245.56±0.56 0.100.0060
+Optimal*91.61 94.37 73.49 73.51 46.77 47.31 - -
+TABLE IV: Statistical Significance of LLMENAS vs. IS-
+DARTS and EGNAS on CIFAR-10
+Trial LLMENAS (%) IS-DARTS [25] (%) EGNAS [17] (%)
+1 97.56 97.20 97.32
+2 97.64 97.18 97.58
+3 97.54 97.10 97.28
+4 97.55 97.17 97.40
+5 97.58 97.12 97.42
+6 97.57 97.20 97.35
+7 97.62 97.16 97.20
+Mean(std) 97.58±0.0397.16±0.03 97.36±0.12
+p-value- 0.00058 0.0076
+F . Loss Landscape Visualization: Convergence to Flat Minima
+via LLM Guidance
+R-DARTS [88] and SDARTS [89] highlight that the geome-
+try of the convergence point is critical for stability. Specifically,
+architectural weights are expected to converge to aflat mini-
+mum, defined as a region where accuracy remains insensitive
+to parameter perturbations. We employ the random direction
+projection method [90] to visualize the loss landscape.
+Fig. 5 presents a comparative visualization of the loss
+TABLE V: Ablation Study on the Different EAs on CIFAR-
+10/100
+method Test error(%) Parameters(M)CIFAR-10 CIFAR-100
+LLMENAS 2.42 16.51 3.5
+LLMENAS-DE 2.58 16.88 3.9
+LLMENAS-DE w/o LLM 2.87 17.55 3.7
+LLMENAS-PSO 2.62 17.14 3.6
+LLMENAS-PSO w/o LLM 2.80 17.66 3.3
+TABLE VI: Ablation Study on the Impact of the proposed
+components on CIFAR-10/100
+method Test error(%) Parameters(M)CIFAR-10 CIFAR-100
+LLMENAS 2.42 16.51 3.5
+LLMENAS-V1 2.51 16.81 3.3
+LLMENAS-V2 3.19 18.41 2.6
+landscapes for three distinct search strategies: the Baseline
+(Fixed Fitness), the Adaptive Function Guided [17] approach,
+and LLMENAS.
+The Baseline method converges to a narrow basin charac-
+terized by dense, elliptical contour lines. As we move away
+from the center, the loss value shifts rapidly, indicating a
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 11
+Fig. 3: Impact of frequencyTon the LLM-based fitness
+design.
+ Fig. 4: Impact ofδon the LLM-based fitness design.
+Fig. 5:Loss Landscape Comparison on CIFAR-10.The white star (⋆) denotes the discovered optimal architecture. (Left)
+Baselineconverges to a Sharp Minimum. (Middle)Adaptive Function-Guidedsearch finds a slightly wider basin but retains
+steep gradients in peripheral regions. (Right)LLMENASconverges to a significantlyFlat Minimum, confirming that the
+LLM’s dynamically designed fitness strategies act as a powerful regularizer to escape narrow traps.
+sharp minimum. Such geometry implies that minor shifts
+between training and test distributions will lead to drastic error
+increases. The Adaptive strategy effectively widens the basin
+compared to the baseline, but as shown in the middle plot,
+the gradients in the corners remain steep and irregular. This
+suggests that while heuristic rules help escape the sharpest
+traps, they lack the high-level reasoning required to navigate
+towards the most robust global regions.
+In stark contrast, LLMENAS converges to aflat minimum.
+The central low-loss region is wide and expansive, and the
+contour lines are sparse. Even under significant perturbations,
+the loss remains relatively stable.
+G. Underlying Mechanism Analysis
+From an optimization perspective, the proposed LLM-
+guided fitness design can be interpreted as anadaptive regular-
+ization mechanismacting on the evolutionary search process.
+Rather than explicitly modifying gradients or network param-
+eters, the LLM intervenes at the fitness-construction level,
+dynamically reshaping the effective optimization landscape
+encountered by the evolutionary algorithm. This higher-level
+intervention allows the search process to adjust its inductive
+bias in response to trajectory-level signals such as stagnation,
+instability, or premature convergence.
+In deep learning theory [90], [91], flat minima are widely
+associated with robustness and improved generalization, as
+solutions located in wide basins exhibit reduced sensitivity
+to parameter perturbations. This perspective has been explic-
+itly emphasized in the neural architecture search literature,
+particularly by R-DARTS [88] and SDARTS [89], which
+highlight that the geometry of the convergence point is critical
+for optimization stability. Specifically, architectural weights
+are expected to converge to a flat minimum, defined as a
+region of the loss landscape where predictive performance
+remains insensitive to small parameter perturbations. Within
+LLMENAS, such regions are implicitly promoted through
+adaptive modulation of selection pressure. When the popu-
+lation is trapped in sharp local optima, the LLM reduces its
+relative advantage via fitness reformulation strategies. These
+operations effectively flatten narrow basins and encourage
+exploration toward wider and more stable regions of the search
+space.
+The LLM leverages trajectory-level information extracted
+from historical optimization processes to approximate when
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 12
+and how selection pressure should be relaxed or reinforced.
+Consequently, convergence toward flat minima emerges as a
+consistent outcome of trajectory-aware fitness funtion design.
+H. Ablation Study
+1) Analysis of the Number of Skip-Connections:To further
+investigate whether the search avoids degenerate local optima,
+we tracked the evolution of skip-connections during the search
+process. A well-known failure mode in differentiable NAS
+(e.g., DARTS) is the collapse into parameter-less operations
+(like skip-connections) because they offer a quick path to
+lower loss without learning valid features.
+As shown in Figure 2, the DARTS baseline (blue line)
+quickly collapses, saturating at the maximum of four skip-
+connections. Similarly, the fixed fitness function baseline
+(red line) becomes trapped, stabilizing at three. Even the
+adaptive fitness baseline (green line) accumulates excessive
+skip-connections over time. In contrast, LLMENAS (orange
+line) consistently maintains a low and stable number of
+skip-connections throughout the search. This proves that the
+trajectory-aware fitness strategyπ LLM successfully identifies
+and penalizes the ”path of least resistance.” By dynamically
+reshaping the fitness function when structural homogeneity is
+detected, LLMENAS forces the optimizer to explore complex
+operations (e.g., convolutions) that hold greater long-term
+potential, effectively preventing structural collapse.
+2)Impact of Components in the Proposed Method:To
+assess the contributions of each component in the proposed
+LLMENAS to the experimental performance, we conducted
+two ablation studies: (1) LLMENAS-V1, where we disabled
+the LLM self-improving mechanism; (2) LLMENAS-V2,
+where we disabled the fitness function designed by the LLM.
+The experiments were conducted on the CIFAR-10 dataset,
+where all obtained architectures were subsequently retrained
+for evaluation. As evidenced by the Table VI, disabling any
+component within the proposed algorithm leads to a no-
+table decline in the performance of the architectures obtained
+through the search process. In LLMENAS-V1, disabling the
+LLM self-improving mechanism resulted in an inability to
+adaptively refine the search strategy based on past proposed
+strategy. Consequently, the algorithm’s ability to converge to
+optimal regions within the search space was hindered, leading
+to a decline in performance. The impact of disabling the
+LLM-designed fitness function in LLMENAS-V2 is far more
+pronounced, with the test error increasing significantly to
+3.19%. This highlights its crucial role in the search process.
+A significant reduction is also observed in the parameter
+count of the discovered architecture, which decreased from
+3.5M in our full method to 2.6M. This is not a benefit but
+rather a clear symptom of failed exploration. Without the
+guidance from the LLM-designed fitness function, the search
+process defaults to an elite selection strategy. Such a strategy
+is highly susceptible to converging on local optima, in this
+case, overly simple and shallow architectures. These small
+models are easy to optimize for quick marginal gains, but lack
+the architectural complexity and capacity required for high
+performance.
+In contrast, the full LLMENAS framework uses the LLM
+to create a more robust fitness function that balances ex-
+ploitation with exploration. This guidance promotes a broader
+exploration of the search space, thereby mitigating the risk
+of the search collapsing into a local optimum. The resulting
+3.5M parameter model is a good example of a more effective
+search that successfully explored complex regions to find
+an outstanding and high-capacity architecture. Therefore, the
+LLM-designed fitness function is essential to escape local
+optima and discover truly novel and effective architectures.
+3)Impact of Key HyperparametersTandδon Per-
+formance:To analyze the impact of the LLM-based fitness
+design frequency T on experimental performance, this paper
+conducted comparative experiments on six versions with T =
+1, 3, 5, 10, 15, 20 on the CIFAR-10 dataset, as shown in
+the Fig . 3. We conducted a thorough analysis to investigate
+the impact of the LLM-based fitness function’s invocation
+frequency, controlled by the hyperparameter T, which denotes
+the interval in epochs between LLM queries. As illustrated in
+our experiments, a clear trade-off emerges between validation
+accuracy and the associated search cost. Our results indicate
+that the most frequent invocation setting, T=1, achieves the
+highest validation accuracy of 86.15%. While this frequent
+querying entails a higher computational load, we found the
+increase in search cost to be modest. Considering our primary
+goal of maximizing the search algorithm’s performance, we
+determined that this substantial gain in accuracy justifies
+the minor increase in computational overhead. Therefore, we
+selected T=1 as the default value in our study, as it achieves the
+best performance without incurring a prohibitive search cost.
+To analyze the impact of the hyperparameterδ, which controls
+the influence of prior knowledge on the fitness function based
+on LLM. For this, we conducted comparative experiments
+on the CIFAR-10 dataset withδset to{1,3,5,10,20}, and
+the results are shown in Figure 4. The analysis reveals that
+the effectiveness of the prior knowledge is sensitive to the
+value ofδ. Both low values (e.g.,δ= 1) and high values
+(e.g.,δ= 10,20) resulted in lower validation accuracy. The
+performance peaked atδ= 5, achieving the highest validation
+accuracy of86.15%. Crucially, this peak in performance does
+not come at the highest computational cost. While the search
+cost forδ= 5(approximately0.15GPU days) is on par with
+that forδ= 3, it is lower than the cost forδ= 1. Given that it
+achieves the best accuracy with a reasonable search cost, we
+setδ= 5as the default value for our study.
+4)Impact of different EAs in the Proposed Method:
+A key advantage of the proposed hierarchical framework is
+that the trajectory-aware fitness function designer operates
+independently of the specific solver used in the evolutionary
+search process. To validate this generalizability, we instanti-
+ated the framework with three distinct evolutionary strategies:
+CMA-ES, Differential Evolution (DE), and Particle Swarm
+Optimization (PSO). The results on CIFAR-10 and CIFAR-100
+are summarized in Table V. As shown in the table, enabling
+the LLM-based trajectory-aware fitness designer consistently
+improves performance across all three optimizers compared to
+their versions without LLM guidance. Specifically, the test er-
+ror drops significantly for DE (from 2.87% to 2.58%) and PSO
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 13
+(from 2.80% to 2.62%) when LLM’s guidance is active. This
+serves as strong empirical evidence that the trajectory-aware
+fitness function design mechanism is universally effective:
+by smoothing out sharp local optima, the LLM constructs a
+more navigable landscape that facilitates convergence for most
+EAs. While three optimizers benefit from LLM’s guidance,
+the CMA-ES variant achieves the lowest test error (2.42%).
+We attribute this to the unique synergy between landscape
+reshaping and covariance matrix adaptation. This could be
+attributed to the fact that CMA-ES excels at handling complex
+optimization tasks, thereby achieving better performance.
+In conclusion, our method demonstrates robustness and
+effectiveness across different heuristics, proving that LLM-
+guided evolutionary search consistently improves the perfor-
+mance of neural architecture search under various heuristic
+settings.
+V. CONCLUSION ANDFUTUREWORK
+In this paper, we introduced LLMENAS, a general hierar-
+chical optimization framework that transcends the limitations
+of traditional static NAS formulations. By positioning the
+Large Language Model as a trajectory-aware fitness designer.
+This hierarchical interaction, empowered by a closed-loop
+self-improving mechanism, effectively smoothes out local bar-
+riers and guides the evolutionary search toward promising
+regions. Extensive experiments demonstrate that LLMENAS
+not only achieves state-of-the-art performance across CIFAR-
+10, CIFAR-100, and ImageNet benchmarks but does so with
+remarkable efficiency (0.15 GPU days), validating that se-
+mantic reasoning can be seamlessly integrated into numerical
+optimization with negligible latency.
+Limitation and Future Work:The inclusion of historical
+code and strategies provides the necessary semantic context.
+However, we acknowledge a limitation inherent in the current
+input format. The LLM’s reliance on a scalar trajectory (δ-step
+loss) restricts it to phenomenological reasoning, precluding
+access to high-dimensional internal states such as architecture
+topology. Nevertheless, as our experiments demonstrated, this
+abstraction is sufficient for effectively navigating the evolving
+search landscape, so we reserve the integration of richer
+state representations (to enable mechanistic reasoning) for
+future work. The decision-making process of LLMs lacks
+the transparency inherent in traditional methods. We aim to
+address this by advancing our theoretical analysis to enhance
+the interpretability of the proposed approach in the future.
+In addition, we will include the extension of this framework
+to multi-objective optimization scenarios and investigating the
+application of the proposed method in other large-scale real-
+world tasks.
+REFERENCES
+[1] A. Krizhevsky, I. Sutskever, and G. E. Hinton, “Imagenet classification
+with deep convolutional neural networks,”Advances in neural informa-
+tion processing systems, vol. 25, 2012.
+[2] K. Simonyan and A. Zisserman, “Very deep convolutional networks for
+large-scale image recognition,”arXiv preprint arXiv:1409.1556, 2014.
+[3] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image
+recognition,” inProceedings of the IEEE conference on computer vision
+and pattern recognition, 2016, pp. 770–778.
+[4] G. Huang, Z. Liu, L. Van Der Maaten, and K. Q. Weinberger, “Densely
+connected convolutional networks,” inProceedings of the IEEE confer-
+ence on computer vision and pattern recognition, 2017, pp. 4700–4708.
+[5] H. Liu, K. Simonyan, and Y . Yang, “Darts: Differentiable architecture
+search,”arXiv preprint arXiv:1806.09055, 2018.
+[6] Y . Xue, W. Tong, F. Neri, P. Chen, T. Luo, L. Zhen, and X. Wang, “Evo-
+lutionary architecture search for generative adversarial networks based
+on weight sharing,”IEEE Transactions on Evolutionary Computation,
+vol. 28, no. 3, pp. 653–667, 2023.
+[7] H. Sheng, H.-L. Liu, Y . Lai, S. Zeng, and L. Chen, “Hierarchical encod-
+ing method for retinal segmentation evolutionary architecture search,”
+IEEE Transactions on Emerging Topics in Computational Intelligence,
+2024.
+[8] Z. Lu, R. Cheng, S. Huang, H. Zhang, C. Qiu, and F. Yang, “Surrogate-
+assisted multiobjective neural architecture search for real-time semantic
+segmentation,”IEEE Transactions on Artificial Intelligence, vol. 4, no. 6,
+pp. 1602–1615, 2022.
+[9] Y . Xue, C. Yao, M. Wahib, and M. Gabbouj, “Yolo-dkr: Differentiable
+architecture search based on kernel reusing for object detection,”Infor-
+mation Sciences, vol. 713, p. 122180, 2025.
+[10] L. Yao, H. Xu, W. Zhang, X. Liang, and Z. Li, “Sm-nas: Structural-to-
+modular neural architecture search for object detection,” inProceedings
+of the AAAI conference on artificial intelligence, vol. 34, no. 07, 2020,
+pp. 12 661–12 668.
+[11] E. Real, S. Moore, A. Selle, S. Saxena, Y . L. Suematsu, J. Tan, Q. V .
+Le, and A. Kurakin, “Large-scale evolution of image classifiers,” in
+International conference on machine learning. PMLR, 2017, pp. 2902–
+2911.
+[12] E. Real, A. Aggarwal, Y . Huang, and Q. V . Le, “Regularized evolution
+for image classifier architecture search,” inProceedings of the aaai
+conference on artificial intelligence, vol. 33, no. 01, 2019, pp. 4780–
+4789.
+[13] Y . Xue, C. Chen, and A. Słowik, “Neural architecture search based on
+a multi-objective evolutionary algorithm with probability stack,”IEEE
+Transactions on Evolutionary Computation, vol. 27, no. 4, pp. 778–786,
+2023.
+[14] X. Wang, W. Guo, J. Su, X. Yang, and J. Yan, “Zarts: On zero-
+order optimization for neural architecture search,”Advances in Neural
+Information Processing Systems, vol. 35, pp. 12 868–12 880, 2022.
+[15] M. U. Nasir, S. Earle, J. Togelius, S. James, and C. Cleghorn, “Ll-
+matic: neural architecture search via large language models and quality
+diversity optimization,” inProceedings of the Genetic and Evolutionary
+Computation Conference, 2024, pp. 1110–1118.
+[16] A. Chen, D. Dohan, and D. So, “Evoprompting: language models for
+code-level neural architecture search,”Advances in Neural Information
+Processing Systems, vol. 36, 2024.
+[17] Z. Cai, L. Chen, P. Liu, T. Ling, and Y . Lai, “Eg-nas: Neural architecture
+search with fast evolutionary exploration,” inProceedings of the AAAI
+Conference on Artificial Intelligence, vol. 38, no. 10, 2024, pp. 11 159–
+11 167.
+[18] X. Han, Y . Xue, Z. Wang, Y . Zhang, A. Muravev, and M. Gabbouj,
+“Sadenas: A self-adaptive differential evolution algorithm for neural
+architecture search,”Swarm and Evolutionary Computation, vol. 91, p.
+101736, 2024.
+[19] B. Zoph, “Neural architecture search with reinforcement learning,”arXiv
+preprint arXiv:1611.01578, 2016.
+[20] Z. Ding, Y . Chen, N. Li, D. Zhao, Z. Sun, and C. P. Chen, “Bnas:
+Efficient neural architecture search using broad scalable architecture,”
+IEEE Transactions on Neural Networks and Learning Systems, vol. 33,
+no. 9, pp. 5004–5018, 2021.
+[21] M. Dissem, M. Amayri, and N. Bouguila, “Neural architecture search for
+anomaly detection in time-series data of smart buildings: A reinforce-
+ment learning approach for optimal autoencoder design,”IEEE Internet
+of Things Journal, vol. 11, no. 10, pp. 18 059–18 073, 2024.
+[22] X. Chen, L. Xie, J. Wu, and Q. Tian, “Progressive differentiable archi-
+tecture search: Bridging the depth gap between search and evaluation,”
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 14
+inProceedings of the IEEE/CVF international conference on computer
+vision, 2019, pp. 1294–1303.
+[23] A. Zela, T. Elsken, T. Saikia, Y . Marrakchi, T. Brox, and F. Hutter, “Un-
+derstanding and robustifying differentiable architecture search,”arXiv
+preprint arXiv:1909.09656, 2019.
+[24] Y . Xue, X. Han, and Z. Wang, “Self-adaptive weight based on dual-
+attention for differentiable neural architecture search,”IEEE Transac-
+tions on Industrial Informatics, vol. 20, no. 4, pp. 6394–6403, 2024.
+[25] H. He, L. Liu, H. Zhang, and N. Zheng, “Is-darts: stabilizing darts
+through precise measurement on candidate importance,” inProceedings
+of the AAAI Conference on Artificial Intelligence, vol. 38, no. 11, 2024,
+pp. 12 367–12 375.
+[26] P. Ye, B. Li, Y . Li, T. Chen, J. Fan, and W. Ouyang, “b-darts: Beta-decay
+regularization for differentiable architecture search,” inproceedings of
+the IEEE/CVF conference on computer vision and pattern recognition,
+2022, pp. 10 874–10 883.
+[27] S. Jiang, Z. Ji, G. Zhu, C. Yuan, and Y . Huang, “Operation-level
+early stopping for robustifying differentiable nas,”Advances in Neural
+Information Processing Systems, vol. 36, pp. 70 983–71 007, 2023.
+[28] H. Xiao, Z. Wang, Z. Zhu, J. Zhou, and J. Lu, “Shapley-nas: Discovering
+operation contribution for neural architecture search,” inProceedings of
+the IEEE/CVF conference on computer vision and pattern recognition,
+2022, pp. 11 892–11 901.
+[29] Y . Xue and J. Qin, “Partial connection based on channel attention
+for differentiable neural architecture search,”IEEE Transactions on
+Industrial Informatics, vol. 19, no. 5, pp. 6804–6813, 2022.
+[30] Y . Sun, B. Xue, M. Zhang, G. G. Yen, and J. Lv, “Automatically
+designing cnn architectures using the genetic algorithm for image
+classification,”IEEE transactions on cybernetics, vol. 50, no. 9, pp.
+3840–3854, 2020.
+[31] Y . Xue and A. Zhu, “An effective surrogate-assisted rank method for
+evolutionary neural architecture search,”Applied Soft Computing, vol.
+167, p. 112392, 2024.
+[32] Y . Xue, B. Hu, and F. Neri, “A surrogate model with multiple com-
+parisons and semi-online learning for evolutionary neural architecture
+search,”IEEE Transactions on Emerging Topics in Computational
+Intelligence, 2025.
+[33] J. Huang, B. Xue, Y . Sun, M. Zhang, and G. G. Yen, “Split-level
+evolutionary neural architecture search with elite weight inheritance,”
+IEEE Transactions on Neural Networks and Learning Systems, 2023.
+[34] G. Li, D. Hoang, K. Bhardwaj, M. Lin, Z. Wang, and R. Mar-
+culescu, “Zero-shot neural architecture search: Challenges, solutions,
+and opportunities,”IEEE Transactions on Pattern Analysis and Machine
+Intelligence, 2024.
+[35] Y . Peng, A. Song, H. M. Fayek, V . Ciesielski, and X. Chang, “Swap-nas:
+Sample-wise activation patterns for ultra-fast nas,” inICLR, 2024.
+[36] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Aleman,
+D. Almeida, J. Altenschmidt, S. Altman, S. Anadkatet al., “Gpt-4
+technical report,”arXiv preprint arXiv:2303.08774, 2023.
+[37] J. Bai, S. Bai, Y . Chu, Z. Cui, K. Dang, X. Deng, Y . Fan, W. Ge,
+Y . Han, F. Huanget al., “Qwen technical report,”arXiv preprint
+arXiv:2309.16609, 2023.
+[38] A. Liu, B. Feng, B. Xue, B. Wang, B. Wu, C. Lu, C. Zhao, C. Deng,
+C. Zhang, C. Ruanet al., “Deepseek-v3 technical report,”arXiv preprint
+arXiv:2412.19437, 2024.
+[39] S. Holt, M. R. Luyten, and M. van der Schaar, “L2mac: Large language
+model automatic computer for extensive code generation,” inThe Twelfth
+International Conference on Learning Representations.
+[40] A. Zubiaga, “Natural language processing in the era of large language
+models,” p. 1350306, 2024.
+[41] F. Liu, T. Xialiang, M. Yuan, X. Lin, F. Luo, Z. Wang, Z. Lu, and
+Q. Zhang, “Evolution of heuristics: Towards efficient automatic algo-
+rithm design using large language model,” inForty-first International
+Conference on Machine Learning, 2024.
+[42] H. Ye, J. Wang, Z. Cao, F. Berto, C. Hua, H. Kim, J. Park, and
+G. Song, “Reevo: Large language models as hyper-heuristics with
+reflective evolution,”arXiv preprint arXiv:2402.01145, 2024.
+[43] C. Lu, S. Holt, C. Fanconi, A. Chan, J. Foerster, M. van der Schaar,
+and R. Lange, “Discovering preference optimization algorithms with and
+for large language models,”Advances in Neural Information Processing
+Systems, vol. 37, pp. 86 528–86 573, 2024.
+[44] F. Liu, X. Tong, M. Yuan, and Q. Zhang, “Algorithm evolution using
+large language model,”CoRR, 2023.
+[45] Z. Zheng, Z. Xie, Z. Wang, and B. Hooi, “Monte carlo tree search
+for comprehensive exploration in llm-based automatic heuristic design,”
+arXiv preprint arXiv:2501.08603, 2025.
+[46] X. Wu, D. Wang, C. Wu, L. Wen, C. Miao, Y . Xiao, and Y . Zhou, “Effi-
+cient heuristics generation for solving combinatorial optimization prob-
+lems using large language models,”arXiv preprint arXiv:2505.12627,
+2025.
+[47] S. Yao, F. Liu, X. Lin, Z. Lu, Z. Wang, and Q. Zhang, “Multi-objective
+evolution of heuristic using large language model,” inProceedings of
+the AAAI Conference on Artificial Intelligence, vol. 39, no. 25, 2025,
+pp. 27 144–27 152.
+[48] B. Romera-Paredes, M. Barekatain, A. Novikov, M. Balog, M. P. Kumar,
+E. Dupont, F. J. Ruiz, J. S. Ellenberg, P. Wang, O. Fawziet al.,
+“Mathematical discoveries from program search with large language
+models,”Nature, vol. 625, no. 7995, pp. 468–475, 2024.
+[49] A. Novikov, N. Vu, M. Eisenberger, E. Dupont, P.-S. Huang, A. Z.
+Wagner, S. Shirobokov, B. Kozlovskii, F. J. Ruiz, A. Mehrabianet al.,
+“Alphaevolve: A coding agent for scientific and algorithmic discovery,”
+Technical report, Google DeepMind, 05 2025. URL https://storage.
+googleapis . . . , Tech. Rep., 2025.
+[50] M. Du, Y . Chen, Z. Wang, L. Nie, and D. Zhang, “Large language mod-
+els for automatic equation discovery of nonlinear dynamics,”Physics of
+Fluids, vol. 36, no. 9, 2024.
+[51] X. Wu, S.-h. Wu, J. Wu, L. Feng, and K. C. Tan, “Evolutionary
+computation in the era of large language model: Survey and roadmap,”
+IEEE Transactions on Evolutionary Computation, 2024.
+[52] Y . Huang, X. Lv, S.-H. Wu, J. Wu, L. Feng, and K. C. Tan, “Advancing
+automated knowledge transfer in evolutionary multitasking via large
+language models,”CoRR, 2024.
+[53] Y . Huang, S. Wu, W. Zhang, J. Wu, L. Feng, and K. C. Tan, “Au-
+tonomous multi-objective optimization using large language model,”
+IEEE Transactions on Evolutionary Computation, 2025.
+[54] C. Yang, X. Wang, Y . Lu, H. Liu, Q. V . Le, D. Zhou, and X. Chen,
+“Large language models as optimizers,” inThe Twelfth International
+Conference on Learning Representations, 2024. [Online]. Available:
+https://openreview.net/forum?id=Bb4VGOWELI
+[55] F. Liu, X. Lin, S. Yao, Z. Wang, X. Tong, M. Yuan, and Q. Zhang,
+“Large language model for multiobjective evolutionary optimization,” in
+International Conference on Evolutionary Multi-Criterion Optimization.
+Springer, 2025, pp. 178–191.
+[56] L. Xie, G. Li, Z. Wang, E. Chung, and M. Gong, “Large language
+model-driven surrogate-assisted evolutionary algorithm for expensive
+optimization,”arXiv preprint arXiv:2507.02892, 2025.
+[57] H. Hao, X. Zhang, and A. Zhou, “Large language models as surrogate
+models in evolutionary algorithms: A preliminary study,”Swarm and
+Evolutionary Computation, vol. 91, p. 101741, 2024.
+[58] M. Zheng, X. Su, S. You, F. Wang, C. Qian, C. Xu, and S. Al-
+banie, “Can gpt-4 perform neural architecture search?”arXiv preprint
+arXiv:2304.10970, 2023.
+[59] X. Zhou, L. Feng, X. Wu, Z. Lu, and K. C. Tan, “Design principle
+transfer in neural architecture search via large language models,”arXiv
+preprint arXiv:2408.11330, 2024.
+[60] Z. Ji, G. Zhu, C. Yuan, and Y . Huang, “Rz-nas: Enhancing llm-guided
+neural architecture search via reflective zero-cost strategy,” inForty-
+second International Conference on Machine Learning.
+[61] Z. Yang, W. Zeng, S. Jin, C. Qian, P. Luo, and W. Liu, “Nader: Neural
+architecture design via multi-agent collaboration,” inProceedings of the
+Computer Vision and Pattern Recognition Conference, 2025, pp. 4452–
+4461.
+[62] H. Pham, M. Guan, B. Zoph, Q. Le, and J. Dean, “Efficient neural
+architecture search via parameters sharing,” inInternational conference
+on machine learning. PMLR, 2018, pp. 4095–4104.
+[63] G. Bender, P.-J. Kindermans, B. Zoph, V . Vasudevan, and Q. Le, “Under-
+standing and simplifying one-shot architecture search,” inInternational
+Conference on Machine Learning. PMLR, 2018, pp. 550–559.
+[64] N. Hansen, “The cma evolution strategy: A tutorial,”arXiv preprint
+arXiv:1604.00772, 2016.
+[65] M. Zhang, H. Li, S. Pan, X. Chang, C. Zhou, Z. Ge, and S. Su,
+“One-shot neural architecture search: Maximising diversity to overcome
+catastrophic forgetting,”IEEE Transactions on Pattern Analysis and
+Machine Intelligence, vol. 43, no. 9, pp. 2921–2935, 2020.
+[66] B. Baker, O. Gupta, N. Naik, and R. Raskar, “Designing neural
+network architectures using reinforcement learning,”arXiv preprint
+arXiv:1611.02167, 2016.
+[67] Y . Xu, L. Xie, X. Zhang, X. Chen, G.-J. Qi, Q. Tian, and H. Xiong,
+“Pc-darts: Partial channel connections for memory-efficient architecture
+search,”arXiv preprint arXiv:1907.05737, 2019.
+[68] X. Chu, T. Zhou, B. Zhang, and J. Li, “Fair darts: Eliminating unfair
+advantages in differentiable architecture search,” inEuropean conference
+on computer vision. Springer, 2020, pp. 465–480.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 15
+[69] X. Dong and Y . Yang, “Searching for a robust neural architecture in four
+gpu hours,” inProceedings of the IEEE/CVF conference on computer
+vision and pattern recognition, 2019, pp. 1761–1770.
+[70] S. Xie, H. Zheng, C. Liu, and L. Lin, “Snas: stochastic neural architec-
+ture search,”arXiv preprint arXiv:1812.09926, 2018.
+[71] R. Wang, M. Cheng, X. Chen, X. Tang, and C.-J. Hsieh, “Re-
+thinking architecture selection in differentiable nas,”arXiv preprint
+arXiv:2108.04392, 2021.
+[72] X. Chu, X. Wang, B. Zhang, S. Lu, X. Wei, and J. Yan, “Darts-:
+Robustly stepping out of performance collapse without indicators,” in
+International Conference on Learning Representations.
+[73] X. Chen, R. Wang, M. Cheng, X. Tang, and C.-J. Hsieh, “Drnas:
+Dirichlet neural architecture search,”arXiv preprint arXiv:2006.10355,
+2020.
+[74] Y . Sun, B. Xue, M. Zhang, G. G. Yen, and J. Lv, “Automatically
+designing cnn architectures using the genetic algorithm for image
+classification,”IEEE transactions on cybernetics, vol. 50, no. 9, pp.
+3840–3854, 2020.
+[75] Z. Lu, I. Whalen, Y . Dhebar, K. Deb, E. D. Goodman, W. Banzhaf,
+and V . N. Boddeti, “Multiobjective evolutionary design of deep convo-
+lutional neural networks for image classification,”IEEE Transactions on
+Evolutionary Computation, vol. 25, no. 2, pp. 277–291, 2020.
+[76] Z. Yang, Y . Wang, X. Chen, B. Shi, C. Xu, C. Xu, Q. Tian, and C. Xu,
+“Cars: Continuous evolution for efficient neural architecture search,”
+inProceedings of the IEEE/CVF conference on computer vision and
+pattern recognition, 2020, pp. 1829–1838.
+[77] C. Wei, C. Niu, Y . Tang, Y . Wang, H. Hu, and J. Liang, “Npenas:
+Neural predictor guided evolution for neural architecture search,”IEEE
+Transactions on Neural Networks and Learning Systems, vol. 34, no. 11,
+pp. 8441–8455, 2022.
+[78] J. Huang, B. Xue, Y . Sun, M. Zhang, and G. G. Yen, “Particle swarm
+optimization for compact neural architecture search for image classifica-
+tion,”IEEE Transactions on Evolutionary Computation, vol. 27, no. 5,
+pp. 1298–1312, 2022.
+[79] G. Yuan, B. Wang, B. Xue, and M. Zhang, “Particle swarm optimization
+for efficiently evolving deep convolutional neural networks using an
+autoencoder-based encoding strategy,”IEEE Transactions on Evolution-
+ary Computation, 2023.
+[80] J. Huang, B. Xue, Y . Sun, M. Zhang, and G. G. Yen, “Split-level
+evolutionary neural architecture search with elite weight inheritance,”
+IEEE Transactions on Neural Networks and Learning Systems, 2023.
+[81] T. GLM, A. Zeng, B. Xu, B. Wang, C. Zhang, D. Yin, D. Zhang,
+D. Rojas, G. Feng, H. Zhaoet al., “Chatglm: A family of large
+language models from glm-130b to glm-4 all tools,”arXiv preprint
+arXiv:2406.12793, 2024.
+[82] X. Dong and Y . Yang, “Nas-bench-201: Extending the scope of re-
+producible neural architecture search,” inInternational Conference on
+Learning Representations.
+[83] Z. Lu, I. Whalen, V . Boddeti, Y . Dhebar, K. Deb, E. Goodman, and
+W. Banzhaf, “Nsga-net: neural architecture search using multi-objective
+genetic algorithm,” inProceedings of the genetic and evolutionary
+computation conference, 2019, pp. 419–427.
+[84] H. Cai, L. Zhu, and S. Han, “Proxylessnas: Direct neural architecture
+search on target task and hardware,”arXiv preprint arXiv:1812.00332,
+2018.
+[85] B. Zoph, V . Vasudevan, J. Shlens, and Q. V . Le, “Learning transferable
+architectures for scalable image recognition,” inProceedings of the IEEE
+Conference on Computer Vision and Pattern Recognition, 2018, pp.
+8697–8710.
+[86] L. Li and A. Talwalkar, “Random search and reproducibility for neural
+architecture search,” inUncertainty in Artificial Intelligence. PMLR,
+2020, pp. 367–377.
+[87] M. Zhang, S. W. Su, S. Pan, X. Chang, E. M. Abbasnejad, and
+R. Haffari, “idarts: Differentiable architecture search with stochastic
+implicit gradients,” inInternational Conference on Machine Learning.
+PMLR, 2021, pp. 12 557–12 566.
+[88] A. Zela, T. Elsken, T. Saikia, Y . Marrakchi, T. Brox, and F. Hutter,
+“Understanding and robustifying differentiable architecture search,” in
+International Conference on Learning Representations.
+[89] X. Chen and C.-J. Hsieh, “Stabilizing differentiable architecture search
+via perturbation-based regularization,” inInternational conference on
+machine learning. PMLR, 2020, pp. 1554–1565.
+[90] H. Li, Z. Xu, G. Taylor, C. Studer, and T. Goldstein, “Visualizing the loss
+landscape of neural nets,”Advances in neural information processing
+systems, vol. 31, 2018.
+[91] N. S. Keskar, D. Mudigere, J. Nocedal, M. Smelyanskiy, and P. T. P.
+Tang, “On large-batch training for deep learning: Generalization gap
+and sharp minima,” inInternational Conference on Learning Represen-
+tations, 2017.
+Yutao Laireceived the B.S. degree in information
+and computing science in mathematics from the
+Guangdong University of Technology, Guangzhou,
+China, in 2020, where he is currently pursuing
+the Ph.D. degree with the School of Mathematics
+and Statistic. His research interests include bilevel
+optimization and neural architecture search.
+ZiCheng Caireceived his M.E. degree in big data
+technology and engineering from Guangdong Uni-
+versity of Technology, Guangzhou, China, in 2024.
+His research interests include evolutionary optimiza-
+tion and neural architecture search.
+Lei Chenreceived the B.S. degree in mathematics
+and applied mathematics from Henan University,
+Kaifeng, China, and the Ph.D. degree in control
+science and engineering from Guangdong University
+of Technology, in 2011 and 2019, respectively. He
+is currently an Associate Professor in the School of
+Mathematics and Statistics at the Guangdong Uni-
+versity of Technology. His current research interests
+include evolutionary multi-objective optimization,
+bi-level optimization, and its applications.
+Tongtao Lingreceived the B.E. degree in computer
+science and technology from Guangxi University,
+Nanning, China, in 2021, and the M.E. degree in big
+data technology and engineering from Guangdong
+University of Technology, Guangzhou, China, in
+2024. He is currently pursuing the Ph.D. degree in
+computer science at Southern University of Science
+and Technology, Shenzhen, China. His current re-
+search interests include neural networks and their
+applications in audio signal processing.
+Hai-Lin Liu(Senior Member, IEEE) is a Full
+Professor of the School of Mathematics and Statis-
+tics, Guangdong University of Technology. He re-
+ceived the B.S. degree in mathematics from Henan
+Normal University, Xinxiang, China, in 1984, the
+M.S. degree in applied mathematics from Xidian
+University, Xi’an, China, in 1989, and the Ph.D.
+degree in control theory and engineering from the
+South China University of Technology, Guangzhou,
+China, in 2002. He was a Postdoctoral Fellow with
+the Institute of Electronic and Information, South
+China University of Technology. He has published over 100 research papers
+in journals and conferences. His research interests include evolutionary
+computation and optimization, wireless network planning and optimization,
+and their applications. Prof. Liu currently serves as an Associate Editor of
+the IEEE Transactions on Emerging Topics in Computational Intelligence. He
+is also the editorial board member of Applied Soft Computing and Memetic
+Computing.
+This article has been accepted for publication in IEEE Transactions on Evolutionary Computation. This is the author's version which has not been fully edited and 
+content may change prior to final publication. Citation information: DOI 10.1109/TEVC.2026.3670336
+© 2026 IEEE. All rights reserved, including rights for text and data mining and training of artificial intelligence and similar technologies. Personal use is permitted,
+but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: SHENZHEN UNIVERSITY. Downloaded on March 13,2026 at 11:07:31 UTC from IEEE Xplore.  Restrictions apply. 

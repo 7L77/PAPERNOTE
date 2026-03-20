@@ -1,0 +1,58 @@
+adversarial example initialization method, to improve the quality of adversarial examples generated
+and overcome the catastrophic overfitting. Although these methods have achieved decent performance,
+they still need to train on the whole dataset with samples contributing little to the adversarial
+robustness [47], thus limiting the efficiency. Therefore, we mainly focus on the perspective about
+data filtering in this study, to further improve the efficiency of FAT.
+2.2 Decision Boundary Analysis
+The studies regarding decision boundary analysis mainly lie in three perspectives, i.e., enhancing the
+adversarial training, improving the adversarial attacks, and interpreting the decision mechanism of
+deep neural networks. In the first category, existing methods mainly focus on dynamically adjusting
+the decision boundary during the training [ 11, 42, 50, 4], to improve both natural accuracy and
+adversarial robustness of the model. In the second category, existing studies leverage the decision
+boundary information to enhance both white-box and black-box attacks based on learning [9, 43], to
+evaluate the adversarial robustness more accurately. In the third category, the mainstream direction is
+to explore the relationship between the data, features, and the decision boundary during the adversarial
+training [16, 37]. Then, the information about the features and decision boundary can be adopted to
+interpret the shift of decision boundary of the neural network during adversarial training. Different
+from these studies, we focus on data filtering from the decision boundary perspective in this work.
+Specifically, we estimate the vulnerability of data samples to determine vulnerable ones based on
+decision boundary analysis, to improve both efficiency and efficacy of FAT.
+2.3 Robust Neural Architecture Search (NAS)
+Robust NAS aims to automatically design robust neural architectures against adversarial at-
+tacks [24, 14, 18]. Generally, most robust NAS methods are constructed based on differentiable NAS
+methods [34, 5, 51], which need to optimize the trainable weights and architectures parameters in
+a supernet. To ensure the adversarial robustness of the derived architectures, robust NAS methods
+often adopt adversarial training techniques in the optimization of above variables. For instance,
+Mok et al. [36] adopt adversarial training to obtain the input-loss landscape, and then update the
+architecture parameters based on this indicator. Qian et al. [41] adopt adversarial training to update
+trainable weights and architecture parameters, to reduce the non-robust feature distortion and enhance
+the adversarial robustness of derived architectures. Ou et al. [38] propose a multi-objective search
+strategy to balance the losses of natural training and adversarial training. In our experiments, we
+replace the adversarial training in robust NAS with VDAT and other state-of-the-art FAT methods, to
+evaluate the scalability of VDAT in terms of searching for adversarially robust neural architectures.
+3 Preliminaries
+According to the common practice of adversarial training [27], we define the target neural network
+parameterized by θ as fθ: Rd → R. Given a data sample x ∈ X and the corresponding label
+y ∈ {1, 2, . . . , k}, the network can be further denoted as fθ(x) = arg max c∈{1,2,...,k} ϕc
+θ(x), where
+ϕc
+θ(x) denotes the logit for class c. Based on this, the decision margin My
+θ(x) of the data sample x
+can be denoted as Equation (1) according to the previous study [50].
+My
+θ(x) = ϕy
+θ(x) − max
+y′̸=y
+ϕy′
+θ (x) (1)
+The main goal of the proposed VDAT method is to detect the vulnerable data samples, i.e., data sam-
+ples having relatively smaller decision margin between themselves and the corresponding adversarial
+examples. Then, the data samples detected are collected to construct a subset of data for adversarial
+training, thus reducing the computational budget and improving the overall performance.
+4 Vulnerable Data-Aware Adversarial Training
+The overall framework of VDAT is shown in Figure 3. As can be seen, the proposed VDAT method
+works on the natural data samples, through adversarial perturbation, and two core components, i.e.,
+the margin-based vulnerability calculation and the vulnerability-aware data filtering, then the data
+samples for natural training and adversarial training are determined and adopted to train the neural
+network. The details of both core components are presented in the following sections.
+3

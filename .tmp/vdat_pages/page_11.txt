@@ -1,0 +1,48 @@
+References
+[1] Maksym Andriushchenko and Nicolas Flammarion. Understanding and improving fast ad-
+versarial training. Advances in Neural Information Processing Systems , 33:16048–16059,
+2020.
+[2] Nicholas Carlini and David Wagner. Towards evaluating the robustness of neural networks. In
+IEEE Symposium on Security and Privacy, pages 39–57. IEEE, 2017.
+[3] Erh-Chung Chen and Che-Rung Lee. Data filtering for efficient adversarial training. Pattern
+Recognition, 151:110394, 2024.
+[4] Min Chen, Weizhuo Gao, Gaoyang Liu, Kai Peng, and Chen Wang. Boundary unlearning:
+Rapid forgetting of deep networks via shifting the decision boundary. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 7766–7775, 2023.
+[5] Xin Chen, Lingxi Xie, Jun Wu, and Qi Tian. Progressive differentiable architecture search:
+Bridging the depth gap between search and evaluation. In Proceedings of the IEEE/CVF
+International Conference on Computer Vision, pages 1294–1303, 2019.
+[6] Yanbo Chen and Weiwei Liu. A theory of transfer-based black-box attacks: Explanation
+and implications. In Advances in Neural Information Processing Systems, volume 36, pages
+13887–13907, 2023.
+[7] Patryk Chrabaszcz, Ilya Loshchilov, and Frank Hutter. A downsampled variant of imagenet as
+an alternative to the cifar datasets. arXiv preprint arXiv:1707.08819, 2017.
+[8] Francesco Croce, Maksym Andriushchenko, Vikash Sehwag, Edoardo Debenedetti, Nicolas
+Flammarion, Mung Chiang, Prateek Mittal, and Matthias Hein. RobustBench: a standardized
+adversarial robustness benchmark. In Thirty-fifth Conference on Neural Information Processing
+Systems Datasets and Benchmarks Track (Round 2), 2021.
+[9] Francesco Croce and Matthias Hein. Minimally distorted adversarial examples with a fast
+adaptive boundary attack. In International Conference on Machine Learning, pages 2196–2205.
+PMLR, 2020.
+[10] Francesco Croce and Matthias Hein. Reliable evaluation of adversarial robustness with an
+ensemble of diverse parameter-free attacks. In International Conference on Machine Learning,
+pages 2206–2216. PMLR, 2020.
+[11] Jiequan Cui, Shu Liu, Liwei Wang, and Jiaya Jia. Learnable boundary guided adversarial
+training. In Proceedings of the IEEE/CVF International Conference on Computer Vision, pages
+15721–15730, 2021.
+[12] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. ImageNet: A large-scale
+hierarchical image database. In Proceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, pages 248–255. IEEE, 2009.
+[13] Hadi M Dolatabadi, Sarah M Erfani, and Christopher Leckie. Adversarial coreset selection for
+efficient robust training. International Journal of Computer Vision, 131(12):3307–3331, 2023.
+[14] Minjing Dong, Yanxi Li, Yunhe Wang, and Chang Xu. Adversarially robust neural architectures.
+IEEE Transactions on Pattern Analysis and Machine Intelligence, 47(5):4183–4197, 2025.
+[15] Xuanyi Dong and Yi Yang. NAS-Bench-201: Extending the scope of reproducible neural
+architecture search. In International Conference on Learning Representations, 2020.
+[16] Alhussein Fawzi, Seyed-Mohsen Moosavi-Dezfooli, Pascal Frossard, and Stefano Soatto. Em-
+pirical study of the topology and geometry of deep networks. In Proceedings of the IEEE
+Conference on Computer Vision and Pattern Recognition, pages 3762–3770, 2018.
+[17] Yuqi Feng, Zeqiong Lv, Hongyang Chen, Shangce Gao, Fengping An, and Yanan Sun. LR-
+NAS: Differentiable searching for adversarially robust lightweight neural architecture. IEEE
+Transactions on Neural Networks and Learning Systems, 36(3):5629–5643, 2025.
+11

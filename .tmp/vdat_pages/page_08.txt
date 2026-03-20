@@ -1,0 +1,77 @@
+Table 4: Experimental results of VDAT on CIFAR-10 under white-box attacks. The adversarial
+training methods are integrated into the corresponding robust NAS methods.
+Adversarial Attacks Search Cost
+Models Params Natural (%) FGSM (%) PGD 20(%) PGD100(%) C&W (%) AA (%) (GPU Days)
+DSRNA [24] 2.0M 80.93 54.49 49.11 48.89 38.92 44.87 0.80+ FGSM-SDI [28] 1.9M 86.32 55.38 43.62 43.04 16.17 41.64 0.53+ FGSM-PGK [27] 2.7M 85.98 59.40 50.65 50.13 52.64 48.05 0.43+ VDATPGD 3.2M 87.21 62.24 53.29 53.13 52.98 48.16 0.65+ VDATFGSM 3.4M 91.10 84.23 64.01 54.64 55.89 50.26 0.34
+AdvRush [36] 4.2M 87.30 60.87 53.07 52.80 45.13 50.05 1.22+ FGSM-SDI [28] 3.2M 86.42 59.66 50.78 50.24 28.06 47.89 0.74+ FGSM-PGK [27] 3.7M 86.28 59.26 50.31 49.74 51.86 47.15 0.59+ VDATPGD 3.5M 87.89 62.60 54.27 54.11 52.59 52.25 0.76+ VDATFGSM 3.6M 88.05 63.35 55.32 54.84 46.42 54.38 0.47
+RNAS [41] 3.5M 84.13 61.90 53.48 53.35 50.74 50.54 0.71+ FGSM-SDI [28] 4.3M 84.55 58.32 49.38 48.97 54.08 45.65 0.42+ FGSM-PGK [27] 3.3M 84.68 55.24 45.47 44.89 49.89 43.84 0.34+ VDATPGD 4.1M 87.24 62.23 54.09 53.96 54.70 51.86 0.68+ VDATFGSM 3.7M 87.18 62.99 55.43 55.13 54.61 53.54 0.27
+ARNAS [38] 4.5M 85.92 62.45 55.87 55.43 28.14 52.66 2.95+ FGSM-SDI [28] 5.0M 86.86 60.51 51.59 50.92 26.25 48.33 1.81+ FGSM-PGK [27] 3.7M 87.11 60.74 52.92 52.45 25.31 50.43 1.44+ VDATPGD 5.7M 88.88 63.88 56.85 56.43 38.24 54.73 2.22+ VDATFGSM 5.0M 89.34 65.67 57.15 56.81 30.34 56.11 1.15
+supernet. Specifically, VDATPGD will cause robust overfitting more easily than VDATFGSM during
+the training process of the supernet [ 53]. As indicated in the previous study [ 55], the overfitting
+can make the NAS algorithm add more parameter-free operations (e.g., skip connection) to the
+derived architecture. As a result, the architectures searched with VDATPGD demonstrate lower natural
+accuracy and adversarial accuracy than those searched with VDATFGSM. Please note that additional
+experimental results regarding robust NAS can be found in Appendix C.
+5.4 Visualizations of VDAT
+Visualizations of the Training Process.Because the data filtering in VDAT changes the training data
+for both natural training and adversarial training iteratively, we explore the convergence of VDAT
+by visualizing the training process, in order to show the reliability of VDAT. As can be seen from
+Figure 4, no matter which dataset or baseline model is adopted, the training of VDAT converges well.
+Please note that the significant accuracy improvement at the 100-th training epoch is mainly caused
+by the decay of the learning rate. This practice follows the convention of adversarial training [28].
+Besides, because the data filtering method can change the training data iteratively, VDAT does not
+suffer from the catastrophic overfitting [30] even though the FGSM-based adversarial training is
+combined with VDAT.
+0 20 40 60 80 100
+Epochs
+0
+20
+40
+60
+80Accuracy (%)
+Clean Validation Acc (VDAT_FGSM)
+Adv Validation Acc (VDAT_FGSM)
+Clean Validation Acc (VDAT_PGD)
+Adv Validation Acc (VDAT_PGD)
+(a) ResNet (C10)
+0 20 40 60 80 100
+Epochs
+0
+20
+40
+60
+80
+100Accuracy (%)
+Clean Validation Acc (VDAT_FGSM)
+Adv Validation Acc (VDAT_FGSM)
+Clean Validation Acc (VDAT_PGD)
+Adv Validation Acc (VDAT_PGD) (b) WideResNet (C10)
+0 20 40 60 80 100
+Epochs
+0
+20
+40
+60Accuracy (%)
+Clean Validation Acc (VDAT_FGSM)
+Adv Validation Acc (VDAT_FGSM)
+Clean Validation Acc (VDAT_PGD)
+Adv Validation Acc (VDAT_PGD) (c) ResNet (C100)
+0 20 40 60 80 100
+Epochs
+0
+20
+40
+60Accuracy (%)
+Clean Validation Acc (VDAT_FGSM)
+Adv Validation Acc (VDAT_FGSM)
+Clean Validation Acc (VDAT_PGD)
+Adv Validation Acc (VDAT_PGD) (d) WideResNet (C100)
+Figure 4: Visualizations of the training processes of VDATFGSM and VDATPGD on CIFAR-10 (C10)
+and CIFAR-100 (C100).
+Visualizations of the Vulnerability of Data Samples. To further show the effectiveness of VDAT
+regarding learning vulnerable samples, we visualize the normalized margin difference before and
+after training. A larger normalized margin difference indicates lower vulnerability. As shown in
+Figure 5, the distribution shifts to right after training with VDAT on all three datasets, demonstrating
+VDAT is indeed effective in learning vulnerable data samples robustly. Additional visualizations for
+the training process and the normalized margin difference can be found in Appendix D.
+8

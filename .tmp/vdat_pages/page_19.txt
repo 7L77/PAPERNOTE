@@ -1,0 +1,97 @@
+Table 16: Experimental results of VDAT with robust NAS methods on NAS-Bench-101 and NAS-
+Bench-201 benchmarks. The datasets are CIFAR-10, CIFAR-100, and ImageNet-16-120.
+NAS-Bench-101
+CIFAR-10 CIFAR-100 ImageNet-16-120
+Models Nat. FGSM PGD 20 AA Nat. FGSM PGD 20 AA Nat. FGSM PGD 20 AA
+AdvRush [36] 82.93 51.19 40.14 41.41 55.45 25.33 20.27 20.36 17.55 5.90 4.77 3.57
++ VDATFGSM 85.03 56.24 47.07 46.28 58.23 30.17 25.86 24.53 17.28 7.25 6.52 3.60
+RNAS [41] 83.28 50.93 39.41 41.14 55.19 26.28 21.64 21.30 17.52 5.75 4.45 3.52
++ VDATFGSM 85.05 56.61 47.50 46.82 59.33 28.75 23.81 22.81 17.62 7.15 6.43 3.48
+ARNAS[38] 82.46 54.91 48.80 46.57 54.22 29.79 26.09 23.78 17.52 6.73 5.78 4.05
++ VDATFGSM 84.08 55.93 47.89 46.72 56.37 29.99 26.61 24.10 17.77 7.22 6.23 4.35
+NAS-Bench-201
+CIFAR-10 CIFAR-100 ImageNet-16-120
+Models Nat. FGSM PGD 20 AA Nat. FGSM PGD 20 AA Nat. FGSM PGD 20 AA
+AdvRush [36] 59.31 35.58 33.26 30.94 30.17 15.52 14.71 12.65 9.58 5.30 5.13 3.47
++ VDATFGSM 85.06 59.43 51.75 50.10 58.41 30.67 26.20 24.72 16.42 8.78 8.50 2.75
+RNAS [41] 73.29 45.81 41.32 40.13 40.13 20.66 19.20 16.95 13.20 6.55 6.02 4.17
++ VDATFGSM 82.68 56.90 49.63 47.81 55.33 28.68 24.82 23.12 17.13 8.37 7.68 4.12
+ARNAS[38] 79.91 54.05 48.39 46.14 50.47 26.32 23.49 21.25 16.48 6.88 6.00 4.18
++ VDATFGSM 84.84 58.56 51.19 49.41 56.95 29.90 25.74 23.75 17.48 7.28 6.57 4.75
+C.4 Visualizations of the Search Process
+Because the data filtering method in VDAT changes the search data iteratively in the search process,
+we also explore the convergence of the search to reveal the reliability of VDAT in the scenario of
+robust NAS. Specifically, there are four indicators reported to show the convergence, i.e., the training
+and validation accuracy for the data in X Train
+nat , X Valid
+nat and the data in X Train
+adv , X Valid
+adv . The experimental
+results are shown in Figure 6. As can be seen, all four indicators converge effectively in the search
+process, demonstrating that VDAT will not affect the convergence of the robust NAS methods. Please
+note that the indicators drop at the 40-th epoch in Figure 6a. This is caused by the regularization in
+AdvRush and in line with the phenomenon in its original paper.
+0 10 20 30 40 50
+epoch
+30
+40
+50
+60
+70
+80
+90Accuracy (%)
+Natural Training Accuracy
+Natural Validation Accuracy
+Adversarial Training Accuracy
+Adversarial Validation Accuracy
+(a) AdvRush
+0 10 20 30 40 50
+epoch
+30
+40
+50
+60
+70
+80Accuracy (%)
+Natural Training Accuracy
+Natural Validation Accuracy
+Adversarial Training Accuracy
+Adversarial Validation Accuracy (b) DSRNA
+0 10 20 30 40 50
+epoch
+30
+40
+50
+60
+70
+80
+90Accuracy (%)
+Natural Training Accuracy
+Natural Validation Accuracy
+Adversarial Training Accuracy
+Adversarial Validation Accuracy (c) RNAS
+0 10 20 30 40 50
+epoch
+30
+40
+50
+60
+70
+80
+90Accuracy (%)
+Natural Training Accuracy
+Natural Validation Accuracy
+Adversarial Training Accuracy
+Adversarial Validation Accuracy (d) ARNAS
+Figure 6: Visualization for the search process of robust NAS methods after introducing VDAT.
+D Additional Visualizations for Adversarial Training
+In this section, we present additional visualizations regarding the adversarial training. The visualiza-
+tions come from two aspects which are same as those in the main text, i.e., the training process and
+the vulnerability of data samples. The details are presented in the following sections.
+D.1 Visualizations of the Training Process on ImageNet-1K
+Beyond the visualizations of the training process on CIFAR-10 and CIFAR-100, we also visualize the
+training process of VDATFGSM on ImageNet-1K in Figure 7. The natural accuracy and the adversarial
+accuracy on the test set are visualized. The adversarial accuracy is evaluated by the PGD10 adversarial
+attack. As can be seen from Figure 7, even though the data for natural training and adversarial training
+changes during the whole training process, both natural accuracy and adversarial accuracy converge
+19

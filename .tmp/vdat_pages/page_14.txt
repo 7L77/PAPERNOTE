@@ -1,0 +1,18 @@
+[52] Chris Ying, Aaron Klein, Eric Christiansen, Esteban Real, Kevin Murphy, and Frank Hutter.
+NAS-Bench-101: Towards reproducible neural architecture search. In International Conference
+on Machine Learning, pages 7105–7114. PMLR, 2019.
+[53] Chaojian Yu, Bo Han, Li Shen, Jun Yu, Chen Gong, Mingming Gong, and Tongliang Liu.
+Understanding robust overfitting of adversarial training and beyond. InInternational Conference
+on Machine Learning, pages 25595–25610. PMLR, 2022.
+[54] Sergey Zagoruyko and Nikos Komodakis. Wide residual networks. arXiv preprint
+arXiv:1605.07146, 2016.
+[55] Arber Zela, Thomas Elsken, Tonmoy Saikia, Yassine Marrakchi, Thomas Brox, and Frank
+Hutter. Understanding and robustifying differentiable architecture search. In International
+Conference on Learning Representations, 2020.
+[56] Hongyang Zhang, Yaodong Yu, Jiantao Jiao, Eric Xing, Laurent El Ghaoui, and Michael Jordan.
+Theoretically principled trade-off between robustness and accuracy. InInternational Conference
+on Machine Learning, pages 7472–7482. PMLR, 2019.
+[57] Jingfeng Zhang, Jianing Zhu, Gang Niu, Bo Han, Masashi Sugiyama, and Mohan Kankanhalli.
+Geometry-aware instance-reweighted adversarial training. In International Conference on
+Learning Representations, 2021.
+14

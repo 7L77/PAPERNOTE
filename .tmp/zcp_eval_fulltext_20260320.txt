@@ -1,0 +1,1239 @@
+
+
+===== PAGE 1 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652
+https://doi.org/10.1007/s11263-024-02265-7
+An Evaluation of Zero-Cost Proxies - from Neural Architecture
+Performance Prediction to Model Robustness
+Jovita Lukasik 1 · Michael Moeller 1 · Margret Keuper 2,3
+Received: 27 May 2024 / Accepted: 30 September 2024 / Published online: 9 December 2024
+© The Author(s) 2024
+Abstract
+Zero-cost proxies are nowadays frequently studied and used to search for neural architectures. They show an impressive ability
+to predict the performance of architectures by making use of their untrained weights. These techniques allow for immense
+search speed-ups. So far the joint search for well performing and robust architectures has received much less attention in
+the ﬁeld of NAS. Therefore, the main focus of zero-cost proxies is the clean accuracy of architectures, whereas the model
+robustness should play an evenly important part. In this paper, we analyze the ability of common zero-cost proxies to serve as
+performance predictors for robustness in the popular NAS-Bench-201 search space. We are interested in the single prediction
+task for robustness and the joint multi-objective of clean and robust accuracy. We further analyze the feature importance of the
+proxies and show that predicting the robustness makes the prediction task from existing zero-cost proxies more challenging.
+As a result, the joint consideration of several proxies becomes necessary to predict a model’s robustness while the clean
+accuracy can be regressed from a single such feature. Our code is available at https://github.com/jovitalukasik/zcp_eval.
+Keywords Neural architecture search · Zero-cost proxies · Robustness · Multi-objective
+1 Introduction
+Neural Architecture Search (NAS) (Elsken et al., 2019;
+White et al., 2023) seeks to automate the process of design-
+ing high-performing neural networks. This research ﬁeld has
+gained immense popularity in the last years, with only a few
+NAS papers in 2016 to almost 700 in 2022 (White et al.,
+2023). The ability of NAS to ﬁnd high-performing architec-
+tures, capable of outperforming hand-designed ones, notably
+on image classiﬁcation (Zoph and Le, 2017), makes this
+research ﬁeld highly valuable. However, classical approaches
+Communicated by Ullrich Köthe.
+B Jovita Lukasik
+jovita.lukasik@uni-siegen.de
+Michael Moeller
+michael.moeller@uni-siegen.de
+Margret Keuper
+keuper@uni-mannheim.de
+1 University of Siegen, Siegen, Germany
+2 University of Mannheim, Mannheim, Germany
+3 Max Planck Institute for Informatics, Saarland Informatics
+Campus, Saarbrücken, Germany
+like reinforcement learning (Zoph and Le, 2017;L ie ta l . ,
+2018) or evolutionary algorithms (Real et al., 2019)a r e
+expensive, which led to a focus-shift towards improving
+the search efﬁciency. Therefore different approaches such
+as one-shot methods (Liu et al., 2019) or performance pre-
+diction methods (White et al., 2021b) were introduced.
+However these methods face issues, when needing to be adapt
+larger search spaces and different and larger tasks. There-
+fore, zero-cost proxies (ZCP) (Mellor et al., 2021), as part
+of performance prediction strategies, were recently devel-
+oped. These proxies build upon fast computations, mostly
+in one single forward and backward pass on an untrained
+model, and attempt to predict the accuracy that the under-
+lying architecture will have after training, overcoming the
+issues of traditional predictions methods by allowing for an
+easy transfer to different search space and different tasks.
+In recent years, several zero-cost proxies and network fea-
+tures were introduced (Mellor et al., 2021; Abdelfattah et al.,
+2021; Roberts et al., 2021; Kadlecová et al., 2024), includ-
+ing simple architectural baselines as FLOPS or the number
+of parameters. NAS-Bench-Suite-Zero (Krishnakumar et al.,
+2022) provides a more in-depth analysis and evaluates 13 dif-
+ferent ZCPs on 28 different tasks to show the effectiveness
+as a performance prediction technique.
+123
+
+===== PAGE 2 =====
+
+2636 International Journal of Computer Vision (2025) 133:2635–2652
+So far, the main focus of NAS research was the result-
+ing performance of the architectures on a downstream task.
+Another important aspect of networks, namely their robust-
+ness, has been less addressed in NAS so far. Most works
+targeting both high accuracy and a robust network rely on
+one-shot methods (Hosseini et al., 2021; Mok et al., 2021).
+However, using only ZCPs as a performance prediction
+model for multi-objective tasks has not been addressed. The
+search for architectures that are robust against adversarial
+attacks is especially important for computer vision and image
+classiﬁcation since networks can be easily fooled when the
+input data is changed using slight perturbations that are even
+invisible to the human eye. This can lead to networks making
+false predictions with high conﬁdence.
+This aspect is particularly important in the context of NAS
+and ZCPs because the search for robust architectures is sig-
+niﬁcantly more expensive: the architecture’s robustness is
+evaluated against different adversarial attacks after the archi-
+tecture is trained (Goodfellow et al., 2015; Kurakin et al.,
+2017; Croce and Hein, 2020).
+In this paper, we therefore address the question: How
+transferable are the accuracy-focused ZCPs to the archi-
+tecture’s robustness? A high-performing architecture is not
+necessarily robust. Therefore, we analyze which ZCPs per-
+form well for predicting clean accuracy, which are good at
+predicting robustness, and which do well at both.
+For our evaluation, we leverage the recently published
+robustness datasets (Jung et al., 2023; Wu et al., 2024) which
+allows for easily accessible robustness evaluations on an
+established NAS search space (Dong and Y ang, 2020), for
+clean and adversarially trained networks. Since every ZCP
+provides a low-dimensional (scalar) measure per architec-
+ture, we understand each ZCP as a feature dimension in
+a concatenated feature vector and employ random forest
+regression as a predictor of clean and robust accuracy. This
+facilitates not only the evaluation of the performance or cor-
+relation of the different measures with the prediction target
+but also allows to gain direct access to every proxy’s feature
+importance compared with all others.
+Our evaluation of the most popular ZCPs allows us to
+make the following observations:
+– While the correlation of every single ZCP with the target
+is not very strong, the random forest regression allows
+predicting the clean accuracy with very good and the
+robust accuracy with good precision.
+– When analyzing the feature importance, ZCPs using
+Jacobian-based information generally carry the most
+employed information.
+– The feature importance distribution shows that clean
+accuracies can be predicted from one or few ZCPs while
+regressors trained to predict the robust accuracy tend to
+rely on all available information.
+2 Related Work
+2.1 Zero-Cost Proxies for NAS
+NAS is the process to automate the design of neural archi-
+tectures with the goal to ﬁnd a high-performing architecture
+on a particular dataset. In the last few years, this research
+ﬁeld gained immense popularity and is able to surpass hand-
+designed neural architectures on different tasks, especially
+on image classiﬁcation. See White et al. ( 2023) for a survey.
+For fast search and evaluation of found architectures, many
+NAS methods make use of performance prediction tech-
+niques via surrogate models. The surrogate model predicts
+the performance of an architecture, without the need of train-
+ing the architecture, with the goal to keep the query amount
+(i.e. the amount necessary training data to train the surro-
+gate model) low. Each query means one full training of the
+architecture, therefore, successful performance prediction-
+based NAS methods are able to use only a few queries. Wen
+et al. ( 2020); Ru et al. ( 2021); White et al. ( 2021a); Wu
+et al. ( 2021); Lukasik et al. ( 2022) show improved results
+using surrogate models keeping the query amount low. How-
+ever, these methods use the validation or test accuracy of
+the architecture as a target and require high computation
+time. In order to predict the performance of an architecture
+without full training, zero-cost proxies (ZCPs), measured on
+untrained architectures, can be used (Mellor et al., 2021).
+The idea is that these ZCPs, which often require only one
+forward and one backward pass on a single mini-batch, are
+somehow correlated with the resulting performance of the
+architecture after full training. Mellor et al. (2021) originally
+used ZCPs for NAS by analyzing the linear regions and how
+well they are separated. In contrast, Abdelfattah et al. (2021)
+uses pruning-at-initialization techniques (Lee et al., 2019;
+Wang et al., 2020; Tanaka et al., 2020) as ZCPs. The best
+performing ZCP in Abdelfattah et al. ( 2021) synflow is
+data-independent, which does not consider the input data for
+the proxy calculation. Another data-independent architecture
+was proposed by Lin et al. ( 2021). Other approaches use the
+neural tangent kernel for faster architecture search (Chen et
+al., 2021).
+The benchmark NAS-Bench-suite zero (Krishnakumar et
+al., 2022) compares different ZCPs on different NAS search
+spaces and shows how they can be integrated into different
+NAS frameworks. Other works include ZCPs into Bayesian
+optimization NAS approaches (as for example Shen et al.
+(2021); White et al. (2021b)) and one-shot architecture search
+(Xiang et al., 2021). Kadlecová et al. ( 2024) recently pro-
+posed neural graph features (GRAF), which are properties
+of the architectural topology, e.g. the minimal path from the
+input to the output. The combination of GRAF and previous
+ZCPs in an Bayesian optimization approach leads to a sample
+efﬁcient search method.
+123
+
+===== PAGE 3 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2637
+In contrast, this paper evaluates how well ZCPs can predict
+the robust accuracy of a model under adversarial attacks,
+and demonstrates (surprising) success in combining different
+ZCP features in a random-forest classiﬁer.
+2.2 Robustness in NAS
+Compared to searching for an architecture with the sin-
+gle objective of having a high performance, including the
+architecture’s robustness results in an even more challeng-
+ing task that requires a multi-objective search. Recent works
+that search for both high-performing and robust architec-
+tures combine both objectives in one-shot search approaches
+(Guo et al., 2020; Dong et al., 2020; Mok et al., 2021;H o s -
+seini et al., 2021). Dong et al. ( 2020) includes a parameter
+constraint in the supernet training in order to reduce the Lip-
+schitz constant. Also Hosseini et al. ( 2021) adds additional
+maximization objectives, the certiﬁed lower bound and Jaco-
+bian norm bound, to the supernet training. Mok et al. ( 2021)
+includes the loss landscape of the Hessian into the bi-level
+optimization approach from Liu et al. ( 2019). In contrast to
+these additional objectives, Guo et al. (2020) proposes adver-
+sarial training of the supernet training for increased network
+robustness. The ﬁrst robustness dataset (Jung et al., 2023)
+facilitates this research area. All 6 466 unique architectures
+in the popular NAS cell-based search space, NAS-Bench-
+201 (Dong and Y ang, 2020), are evaluated on four different
+adversarial attacks (FGSM (Goodfellow et al., 2015), PGD
+(Kurakin et al., 2017), APGD and Square (Croce and Hein,
+2020)) with different attack strengths on three different
+image datasets, CIFAR-10 (Krizhevsky, 2009), CIFAR-100
+(Krizhevsky, 2009), and ImageNet16-120 (Chrabaszcz et
+al., 2017). Based on the robustness dataset (Jung et al.,
+2023), Wu et al. ( 2024) construct NAS-RobBench-201,f o r
+which the 6 466 unique architectures are trained adver-
+sarially, i.e., 7-step L
+∞ PGD with step-size 2 /255, and
+perturbation ϵ = 8/255. Each architecture is evaluated on
+FGSM with L∞ ,ϵ ={ 3/255, 8/255}, PGD with L∞ ,ϵ =
+{3/255, 8/255}, 20-steps with step-size 2 .5 × ϵ/20, and
+AutoAttack (Croce and Hein, 2020) with ϵ = 8/255. We
+leverage both (Jung et al., 2023) and Wu et al. (2024) for our
+evaluation.
+This paper is a signiﬁcantly extended and cosolidated ver-
+sion of our previous conference publication Lukasik et al.
+(2023), where we evaluate the ability of ZCPs as predictors
+for a model’s robustness. We provide additional evaluations
+on the feature importance of ZCPs for adversarially trained
+neural networks (see Tables2, 3, 4,F i g s .8, 11). Furthermore,
+we add more zero-cost proxies from recently proposed graph
+features Kadlecová et al. ( 2024) into our evaluations (see
+Tables 6, 7, 8).
+3 Background on Zero-Cost Proxies
+As presented in NAS-Bench-Suite-Zero (Krishnakumar et
+al., 2022), we can differentiate the proxies into different
+types: Jacobian-based (⋆), pruning-based (♦), baseline (■),
+piecewise-linear ( ▼), Hessian-based ( •) zero-cost proxies
+and neural graph features (▶). In the following, we will pro-
+vide more information about these ZCPs, which we evaluate
+in this paper.
+3.1 Jacobian-Based
+Mellor et al. ( 2021) were the ﬁrst to introduce ZCPs into
+NAS, by analyzing the network behavior using local linear
+operations for each input xi ∈ RD in the training data mini-
+batch, which can be computed by the Jacobian of the network
+for each input. The idea is based on the fact that a resulting
+well-performing untrained network is supposed to be able to
+distinguish the local linear operations of different data points.
+For that, the metric jacov was introduced, which is using
+the correlation matrix of the Jacobian as a Gaussian kernel.
+The score itself is the Kullback–Leibler divergence between a
+standard Gaussian and a Gaussian with the mentioned kernel.
+Therefore, the higher the score, the better the architecture is
+likely to be.
+Building on that, Mellor et al. ( 2021) further introduced
+nwot (Neural Architecture Search without Training), which
+forms binary codes, depending on whether the rectiﬁed lin-
+ear unit is active or not, which deﬁne the linear region in
+the network. Similar binary codes for two input points indi-
+cate that it is more challenging to learn to separate these
+points. Lopes et al. ( 2021) developed nwot even further
+by introducing epe-nas (Efﬁcient Performance Estimation
+Without Training for Neural Architecture Search). The goal
+of epe-nas is to evaluate if an untrained network is able to dis-
+tinguish two points from different classes and equate points
+from the same class. This is measured by the correlation of
+the Jacobian ( jacov) for input data being from the same
+class. Therefore, the resulting correlation matrix can be used
+to analyze how the network behaves for each class and thus
+may indicate if this network can also distinguish between
+different classes.
+As an alternative to these methods, Abdelfattah et al.
+(2021) proposed a simple proxy,grad-norm, which is sim-
+ply the sum of the Euclidean norm of the weight gradients.
+So far, these Jacobian-based measurements focused on the
+correlation with the resulting clean performance of architec-
+tures. In this paper, we are also interested in the correlation
+and inﬂuence on the robust accuracy of the architecture.
+As also used in Jung et al. ( 2023), Hosseini et al. ( 2021)
+combined the search for a high-performing architecture that
+is also robust against adversarial attacks, by including the
+Frobenius norm of the Jacobian ( jacob-fro) into the
+123
+
+===== PAGE 4 =====
+
+2638 International Journal of Computer Vision (2025) 133:2635–2652
+search. As introduced in Hoffman et al. (2019) the change of
+the network output, when a perturbed data point xi + ϵ,ϵ ∈
+RD is the input to the network instead of the clean data
+point xi , can be used as a measurement for the robustness
+of the architecture: the larger the change, the more unstable
+is the network in case of perturbed input data. This change
+can be measured by the square of the Frobenius norm of
+the difference of the network’s prediction on perturbed and
+unperturbed data.
+3.2 Pruning-Based
+Pruning-based ZCPs are based on network pruning metrics,
+which identify the least important parameters in a network
+at initialization time. Lee et al. (2019) introduced a measure-
+ment, snip (Single-shot Network Pruning), which uses a
+connection sensitivity metric to approximate the change in
+the loss, when weights with a small gradient magnitude are
+pruned. Based on that, Wang et al. (2020) improves snip by
+approximating the change in the loss after weight pruning in
+their grasp (Gradient Signal Preservation) metric. Lastly,
+Tanaka et al. ( 2020) investigated these two pruning-based
+metrics in terms of layer collapse, and proposes synflow,
+which multiplies all absolute values of the parameters in the
+network, which is independent of the training data.
+In contrast to that, Turner et al. ( 2020) obtains and aggre-
+gates the Fisher information fisher for all channels in
+a convolution block, to identify the channel with the least
+important effect on the network’s loss.
+3.3 Piecewise Linear
+Lin et al. (2021) proposes thezen score, motivated the obser-
+vation that a CNN can be also seen as a composition of
+piecewise linear functions being conditioned on activation
+patterns. Therefore, they propose to measure the network’s
+ability to express complex functions by its Gaussian com-
+plexity. This score is data-independent since both the network
+weights and the input data are sampled from a standard Gaus-
+sian distribution.
+3.4 Hessian-based
+As mentioned in Sect. 3.1, the goal for ZCP research was
+mainly motivated by ﬁnding a measurement, which is corre-
+lated with the network’s performance after training. In this
+paper, we want to shift the focus towards the robustness of
+architectures, which is also a crucial aspect of neural archi-
+tectures. Mok et al. ( 2021) also included the robustness as a
+target for architecture search, by considering the smoothness
+of the loss landscape of the architecture. Zhao et al. ( 2020)
+investigated the connection between the smoothness of the
+loss landscape of a network and its robustness, and shows
+that the adversarial loss is correlated with the biggest eigen-
+value of the Hessian. A small Hessian spectrum implies a
+ﬂat minimum, whereas a large Hessian spectrum, implies a
+sharp minimum, which is more sensitive to changes in the
+input and therefore can be more easily fooled by adversarial
+attacks.
+3.5 Baselines
+In addition to the above mentioned developed ZCPs, basic
+network information have also been successfully used as
+ZCPs (Abdelfattah et al., 2021; Ning et al., 2021). The most
+common baseline proxies are the number of FLOPS (flops)
+as well as the number of parameters (params). In addition to
+these, Abdelfattah et al. (2021) also considers the sum of the
+L2-norm of the untrained network weights, l2-norm, and
+the multiplication of the network weights and its gradients,
+plain.
+3.6 Neural Graph Features
+V ery recently, proxies based on the architectural topology
+GRAF, which are very simple to compute, were proposed in
+(Kadlecová et al., 2024) for cell-based search spaces such as
+NAS-Bench-201(Dong and Y ang, 2020). Different features
+are calculated on the presence/absence of operations in each
+cell. In total, the following features are calculated for all
+possible operation subsets O
+′ ∈ O from the operation set O:
+– Number of times the operation o ∈ O is used in the cell
+– Minimum/Maximum path length from the input to the
+output node only using operations in predeﬁned O′ ∈ O
+– Input degree of the output node considering only opera-
+tions O′ ∈ O
+– Output degree of the input node considering only opera-
+tions O′ ∈ O
+– Mean of the input and output degree of the intermediate
+nodes considering only operations O′ ∈ O.
+4 Feature Collection and Evaluation
+In the following, we describe our evaluation setting.
+4.1 NAS-Bench-201
+NAS-Bench-201 (Dong and Y ang, 2020) is a cell-based
+search space (White et al., 2023), in which each cell has
+4 nodes and 6 edges. The node represents the architecture’s
+feature map and each edge represents one operation from a
+predeﬁned operation set. This operation set contains 5 dif-
+ferent operations: 1 × 1 convolution, 3 × 3 convolution, 3 ×
+123
+
+===== PAGE 5 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2639
+Fig. 1 Kendall tau rank correlation in absolute values between all zero-cost proxies computed on all architectures given in the robustness dataset
+(Jung et al., 2023) to the test accuracy and adversarial attacks for CIFAR-10
+3a v g.pooling, skip − connection, zero. The cells are inte-
+grated into a macro-architecture. The overall search space
+h a sas i z eo f5
+6 = 15 625 different architectures, from which
+6 466 architectures are unique and non-isomorphic. Isomor-
+phic architectures have the same information ﬂow in the
+network architecture, resulting in similar outcomes and only
+differ due to numerical reasons. All architectures are trained
+on three different image datasets, CIFAR-10 (Krizhevsky,
+2009), CIFAR-100 (Krizhevsky, 2009), and ImageNet16-
+120 (Chrabaszcz et al., 2017).
+4.2 Neural Architecture Design and Robustness
+Datasets
+The dataset by Jung et al. ( 2023) evaluated all the unique
+architectures in NAS-Bench-201 (Dong and Y ang, 2020)
+against three white-box attacks, i.e., FGSM (Goodfellow
+et al., 2015), PGD (Kurakin et al., 2017), APGD (Croce
+and Hein, 2020), as well as one black-box attack, Square
+Attack (Croce and Hein, 2020) to evaluate the adversarial
+robustness of the architectures, given by the different topolo-
+gies. In addition, all architectures were also evaluated on
+corrupted image datasets, CIFAR-10 C and CIFAR-100-C
+(Hendrycks and Dietterich, 2019). Along with these evalu-
+ations, the dataset also shows three different use cases, on
+how the data can be used: evaluation of ZCPs for robustness,
+NAS on robustness, and an analysis of how the topology and
+the design of an architecture inﬂuence its resulting robust-
+ness. This dataset also provides evaluations for the Frobenius
+norm from Sect. 3.1 and the biggest eigenvalue of the Hes-
+sian from Sect. 3.4 as two zero-cost proxies for their ﬁrst use
+case. Note, the latter proxy, the Hessian, was only evaluated
+on the CIFAR-10 image data (Krizhevsky, 2009).
+The dataset NAS-RobBench201 (Wu et al., 2024)t r a i n s
+all unique architectures adversarially and evaluates all archi-
+tectures on FGSM (Goodfellow et al., 2015), PGD (Kurakin
+et al., 2017), and AutoAttack (Croce and Hein, 2020) with
+different perturbation strengths. This dataset provides there-
+fore an extension of the robustness dataset by Jung et al.
+(2023).
+4.3 Collection
+Both datasets (Krishnakumar et al., 2022; Jung et al.,
+2023) provide us with the necessary proxies for the NAS-
+Bench-201 (Dong and Y ang,2020) search space evaluations.
+Therefore we will analyze 15 different proxies for 6 466
+architectures on three different image datasets for clean and
+adversarially trained networks (Jung et al., 2023; Wu et al.,
+2024).
+123
+
+===== PAGE 6 =====
+
+2640 International Journal of Computer Vision (2025) 133:2635–2652
+Fig. 2 Kendall tau rank correlation inabsolute valuesbetween all zero-
+cost proxies computed on all architectures given in the NAS-RobBench-
+201 dataset (Wu et al., 2024) to the validation accuracy and adversarial
+attacks for CIFAR-10, calculated with clean input image data (left)a n d
+perturbed input data ( right)
+5 Evaluations of Zero-Cost Proxies
+As presented in Sect. 4, we can directly gather all proxies.
+Having these at hand allows us to evaluate the correlation,
+inﬂuence and importance of each proxy not only on the clean
+accuracy of the architectures but also on their robust accuracy.
+5.1 Correlation
+Clean Trained Networks on the Robustness Dataset Fig. 1
+shows the Kendall tau rank correlation in absolute val-
+ues between each ZCP and all available accuracies, from
+clean validation accuracy to all adversarial attack accuracies
+(fgsm, pgd, aa-apgd-ce, aa-square)o nC I F A R - 1 0
+(Jung et al., 2023). The Jacobian-based proxies (especially
+jacov and nwot) and the baseline proxies show the highest
+correlation over all datasets, especially for the FGSM attack.
+Furthermore, the large correlation within the same attack
+over different strengths of ϵ values stays steady. However,
+the more difﬁcult the attack gets, from FGSM over PGD to
+APGD, the larger is the correlations decrease. Interestingly,
+the zen proxy has the lowest correlation with each accuracy.
+Adversarially Trained Networks in NAS-RobBench-201
+Fig. 2 shows the Kendall tau rank correlation in absolute val-
+ues between each ZCP and all available accuracies, from
+clean validation accuracy to all adversarial attack accuracies
+(fgsm, pgd, auto-attack) on clean CIFAR-10 (left) and
+PGD-perturbed CIFAR-10 (right) (Wu et al., 2024). Sim-
+ilar to the robustness dataset, the Jacobian-based proxies
+(jacov,nwot) and the baseline proxies (flops, params)
+show the highest correlation over all attacks and perturbations
+strengths. The hessian proxy shows a lower correlation
+that for the previous evaluated robustness dataset. Also here
+zen has the lowest correlation.
+The dataset NAS-RobBench-201 (Wu et al., 2024)p r o -
+vides the robustness accuracies of the architectures after
+adversarial training. Accordingly, we calculate the zero-cost
+proxies from Sect. 3 using perturbed input-data, instead of
+clean input data, to evaluate the inﬂuence on the correla-
+tion. We perturb the input data by a PGD L
+∞ attack, with
+ϵ = 8/255, step-size 2 /255 and 7 steps and recalculate
+each proxy. Interestingly using perturbed data for the proxy
+calculation does not have any inﬂuence on the correlation
+(cf. Fig. 2(right))
+5.2 Performance Prediction Using Random Forest
+So far the ZCPs in NAS-Bench-Suite-Zero are motivated
+by their correlation with the resulting clean accuracy of the
+architectures. Y et, how well can they be transferred to the
+more challenging task of robust accuracy and even more
+challenging than that, the multi-objective task? High clean
+accuracy does not necessarily mean that a network is also
+robust. Therefore we use all ZCPs from NAS-Bench-Suite-
+Zero (Krishnakumar et al., 2022) and the robustness dataset
+(Jung et al., 2023), which we already presented in Sect. 3 as
+feature inputs for the random forest prediction model, i.e.,
+each architecture a in the NAS-Bench-201 search space ( A)
+is represented by its zero-cost proxies, which is then fed as
+an input to the random forest with different robustness tar-
+gets (single and multi-objective) (cf. Figure3). We focus here
+on the random forest prediction model for several reasons.
+On the one hand, it is easy to train and works well without
+much effort for hyperparameter optimization, but on the other
+hand, the random forest provides interpretable results, which
+is particularly relevant for us. We use the default regression
+parameters, with 100 numbers of trees and the mean squared
+error as the target criterion and train the random forest regres-
+sion model on 3 different sample sizes (32, 128, 1 024) for
+each robustness dataset.
+5.2.1 Robustness Dataset
+For a better overview, we will consider the attack perturbation
+value of ϵ = 1/255 for all the following experiments on the
+robustness dataset (Jung et al., 2023).
+We analyze the prediction ability in Table 1 by means of
+the R
+2 score of the prediction model on the test datasets. As
+we can see, the random forest prediction model is able to
+predict the single accuracy (clean and robust) and the multi-
+objective accuracies in a proper way, for the largest train
+sizes, while the prediction of the clean accuracy seems to
+be the easiest task. Interestingly, the prediction ability in
+terms of R
+2 is similar small for both smaller sample sizes
+123
+
+===== PAGE 7 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2641
+(32 and 128). Furthermore, for the all sample sizes, the multi-
+objective tasks results in a better prediction ability than for
+the single robust objective, with the biggest difference being
+for the smallest sample size.
+5.2.2 NAS-RobBench-201 Dataset
+Next, we analyze the performance prediction ability for the
+NAS-RobBench-201 dataset (Wu et al.,2024) for clean input
+data (Table 2) and perturbed input data (Table 3). As we
+can see, predicting the adversarially trained robust accuracy
+seems to be a much easier task, than predicting the native
+robustness of the clean trained network from the previous sec-
+tion. This holds also for stronger perturbations ( ϵ = 8/255)
+as well as stronger attacks, as AutoAttack. However, turning
+to Table3 which present the prediction ability using perturbed
+input data for the proxy calculation, we can see a similar
+prediction behavior. Interestingly, using perturbed input data
+only improves the prediction ability on the ImageNet16-120
+dataset, especially for small sample sizes as 32. This improve-
+ment can be explained by the inﬂuence of the individual input
+features on the prediction, as well as the degree to which they
+have an effect. In this case, the proxy jacov has the biggest
+inﬂuence on the prediction, for both cases (clean input Table
+2, perturbed input Table 3), in terms of permutation impor-
+tance. However, in the case of perturbed input data, this proxy
+has a much larger impact on the prediction than in the case of
+clean input data. We will furthermore investigate the general
+importance of the features on the prediction in Sect. 5.3.
+5.2.3 Top 5 Architectures in the Test Set
+So far, we have shown that predicting the clean and robust
+accuracy is possible in a proper way even with a small sam-
+ple size. In the following, we are interested in answering
+the question: how crucial is the partition of the training and
+test set, i.e., what inﬂuence does it have, when the best ﬁve
+architectures are in the test set? To answer this question,
+we repeat the previous experiment with a sample size of
+128 for all image dataset on both robustness datasets (clean
+and adversarially trained), with the difference that the best 5
+architectures are in the test set, respectively for each objec-
+tive. Table 4 shows the results for the robustness dataset by
+Jung et al. ( 2023)( green shows improvements over Table
+1, and red deteriorations). The inﬂuence on the best archi-
+tectures being in the test dataset, has a more deteriorated
+inﬂuence for the CIFAR-10 dataset prediction, whereas for
+CIFAR-100 and ImageNet16-120, it shows mostly beneﬁcial
+results. Interestingly, the prediction ability for the APGD
+robustness accuracy as a single objective is improved over
+Table 1 for all three image datasets. Since APGD is the
+strongest considered white box attack, we hypothesize that
+this clear behavior might be due to a slightly lower evaluation
+noise.
+When we turn towards the NAS-RobBench-201 dataset
+(Wu et al., 2024), on which the prediction method already
+shows impressive prediction abilities in Table 2, the picture
+changes. Here (cf. Table 5) forcing the best ﬁve architectures
+to be in the test set has for almost all objectives a negative
+inﬂuence on the prediction ability.
+Fig. 3 Random forest regression model with zero-cost proxies as input and the objective being the architecture’s accuracy
+123
+
+===== PAGE 8 =====
+
+2642 International Journal of Computer Vision (2025) 133:2635–2652
+Table 1 Test R2 of the random forest prediction model for both single objective and multi objectives on the clean test accuracy and the robust test
+accuracy for ϵ = 1/255
+Test Accuracy ϵ = 1/255
+Train Size Dataset Single Objective Multi Objective
+Clean FGSM PGD APGD Squares Clean- Clean- Clean- Clean-
+FGSM PGD APGD Squares
+32 CIFAR-10 0.76 0.64 0.31 0.11 0.23 0.71 0.52 0.53 0.58
+CIFAR-100 0.77 0.31 0.25 0.32 0.08 0.55 0.52 0.56 0.46
+ImageNet16-120 0.64 0.13 0.54 0.56 0.52 0.36 0.58 0.59 0.58
+128 CIFAR-10 0.81 0.74 0.36 0.24 0.45 0.73 0.54 0.47 0.64
+CIFAR-100 0.85 0.47 0.32 0.33 0.24 0.58 0.56 0.57 0.53
+ImageNet16-120 0.77 0.30 0.57 0.60 0.54 0.51 0.68 0.79 0.66
+1 024 CIFAR-10 0.93 0.84 0.56 0.56 0.63 0.88 0.75 0.75 0.79
+CIFAR-100 0.95 0.64 0.55 0.61 0.52 0.80 0.76 0.78 0.74
+ImageNet16-120 0.87 0.53 0.78 0.81 0.67 0.70 0.82 0.84 0.78
+Table 2 Test R2 of the random forest prediction model for both single objective and multi objectives on the clean validation accuracy and the
+adversarially trained validation accuracy for FGSM and PGD, ϵ ∈{ 3/255, 8/255} respectively, and AutoAttack
+Train Size Dataset Single Objective Multi Objective
+Clean FGSM PGD AA Clean - FGSM Clean - PGD Clean -
+ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255 AA
+32 CIFAR-10 0.86 0.87 0.86 0.86 0.86 0.88 0.87 0.86 0.86 0.86 0.87
+CIFAR-100 0.78 0.80 0.81 0.80 0.81 0.81 0.79 0.80 0.78 0.80 0.81
+ImageNet16-120 0.52 0.54 0.61 0.54 0.66 0.67 0.52 0.57 0.52 0.58 0.60
+128 CIFAR-10 0.92 0.92 0.92 0.92 0.93 0.92 0.92 0.92 0.92 0.92 0.92
+CIFAR-100 0.89 0.90 0.92 0.90 0.92 0.93 0.89 0.90 0.89 0.90 0.91
+ImageNet16-120 0.75 0.77 0.80 0.76 0.80 0.79 0.75 0.77 0.75 0.78 0.76
+1024 CIFAR-10 0.96 0.96 0.97 0.96 0.97 0.96 0.96 0.96 0.96 0.96 0.96
+CIFAR-100 0.95 0.96 0.97 0.96 0.97 0.97 0.95 0.96 0.95 0.96 0.96
+ImageNet16-120 0.89 0.89 0.90 0.89 0.90 0.85 0.89 0.89 0.89 0.89 0.87
+5.2.4 Including Additional GRAF Features
+The recently proposed neural graph features (GRAF) (Kadle-
+cová et al., 2024) allow us to extend the input features for
+our prediction model. For NAS-Bench-201GRAF consists of
+191 features. For the robustness dataset (Jung et al., 2023),
+we perform the same experiment as in Sect. 5.2.1 with a
+sample size of 128, just that the input features to our pre-
+diction model are expanded by the GRAF features, and thus
+compare Table 6 with Table 1. As we can see, including
+additional network topology features improves the predic-
+tion ability almost everywhere. Interestingly, when including
+GRAF to the zero-cost proxies for the prediction task on
+NAS-RobBench-201 (Wu et al., 2024) (cf. Table 7), the pre-
+diction on CIFAR-10 faces a slight decrease. Note here, the
+test R
+2 decreases only by 0 .1. For the datasets CIFAR-100
+and ImageNet16-120 the same holds as for the robustness
+dataset: An increase in prediction. Important to mention
+here is that the R2 for the NAS-RobBench-201 dataset is
+already extremely high, which rather hinders the possibility
+to improve it by a big margin.
+5.2.5 Analysis Across Different Proxy Categories
+In the previous sections we have seen, that using the com-
+bination of zero-cost proxies allows for a good performance
+prediction of a network’s clean and robust accuracy. This
+leads to the next question, if we can also only use certain
+types of zero-cost proxies for performance prediction. Table
+8 shows the results, using the 6 different types ( Jacobian,
+Pruning, Piecewise-linear , Hessian, Baselines, GRAF )f o r
+the prediction task on the robustness dataset. We can see,
+that using only GRAF leads to good prediction abilities. Note
+here, that this particular category contains 191 features. The
+123
+
+===== PAGE 9 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2643
+Table 3 Test R2 of the random forest prediction model for both single objective and multi objectives on the clean validation accuracy and the
+adversarially trained validation accuracy for FGSM and PGD, ϵ ∈{ 3/255, 8/255}, and AutoAttack, using perturbed input data respectively
+Train Size Dataset Single Objective Multi Objective
+Clean FGSM PGD AA Clean - FGSM Clean - PGD Clean -
+ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255 AA
+32 CIFAR-10 0.84 0.86 0.86 0.86 0.86 0.86 0.85 0.86 0.85 0.86 0.86
+CIFAR-100 0.68 0.70 0.76 0.71 0.76 0.73 0.69 0.70 0.68 0.70 0.71
+ImageNet16-120 0.63 0.67 0.72 0.68 0.73 0.69 0.64 0.67 0.64 0.67 0.69
+128 CIFAR-10 0.91 0.92 0.93 0.92 0.93 0.93 0.92 0.92 0.92 0.92 0.92
+CIFAR-100 0.89 0.91 0.93 0.90 0.93 0.93 0.90 0.91 0.90 0.91 0.91
+ImageNet16-120 0.81 0.81 0.84 0.81 0.84 0.79 0.81 0.82 0.81 0.82 0.80
+1024 CIFAR-10 0.96 0.96 0.97 0.96 0.97 0.97 0.96 0.96 0.96 0.96 0.96
+CIFAR-100 0.96 0.96 0.97 0.96 0.97 0.97 0.96 0.96 0.96 0.96 0.96
+ImageNet16-120 0.89 0.89 0.91 0.90 0.91 0.87 0.89 0.90 0.89 0.90 0.88
+Table 4 Test R2 of the random forest prediction model on the Robust-
+ness Dataset (Jung et al., 2023)w i t hbest 5 architectures enforced to
+be in the test set ,a n d 128 training data
+Test Accuracy ϵ = 1/255
+Dataset Single Objective
+Clean FGSM PGD APGD Squares
+CIFAR-10 0.85 0.78 0.13 0.37 0.43
+CIFAR-100 0.82 0.44 0.40 0.51 0.23
+ImageNet16-120 0.80 0.30 0.69 0.69 0.60
+Multi Objective
+Clean-
+FGSM
+Clean-
+PGD
+Clean-
+APGD
+Clean-Squares
+CIFAR-10 0.67 0.49 0.52 0.59
+CIFAR-100 0.68 0.65 0.68 0.56
+ImageNet16-120 0.55 0.71 0.73 0.68
+second best category is the Jacobian category; using only
+{epe-nas, grad-norm, jacob-frobenius, jacov,
+nwot} as input features also allows for a good prediction.
+Interestingly, using only zen (Piecewise-linear proxy) or
+hessian hinders the prediction substantially. For low sam-
+ple sizes the Baseline category shows the best prediction
+ability for the clean accuracy and multi-objective task, while
+with increasing sample size GRAF becomes better.
+5.3 Feature Importance Based on Permutation
+Next, we are interested in the importance of the individ-
+ual feature inputs for the random forest prediction model.
+The permutation importance measures the prediction error
+of the trained random forest after permuting the features,
+Table 5 Test R2 of the random forest prediction model on the NAS-
+RobBench-201 Dataset (Wu et al., 2024)w i t hbest 5 architectures
+enforced to be in the test set ,a n d 128 training data
+Dataset Single Objective
+Clean FGSM PGD AA
+ϵ = 3/255ϵ = 8/255ϵ = 3/255ϵ = 8/255
+CIFAR-10 0.88 0.92 0.93 0.92 0.92 0.92
+CIFAR-100 0.83 0.84 0.86 0.84 0.88 0.89
+ImageNet16-120 0.73 0.76 0.78 0.76 0.81 0.70
+Multi Objective
+Clean - FGSM Clean - PGD Clean -
+ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255 AA
+CIFAR-10 0.89 0.90 0.89 0.90 0.90
+CIFAR-100 0.83 0.84 0.83 0.85 0.85
+ImageNet16-120 0.74 0.75 0.74 0.75 0.73
+which breaks the relationship between the feature input and
+the objective. Therefore, the more important a feature is for
+the prediction, the larger is the prediction error.
+Figure 4 visualizes the feature importance on the CIFAR-
+10 image datasets for all adversarial attacks with ϵ = 1/255
+for all three use cases: clean test accuracy, robust test accu-
+racy, both test and robust accuracy on the robustness dataset.
+The latter one is used as the bar plot alignment. As we can
+see, jacov is the most important feature for both the clean
+test accuracy and the multi-objective task, except for FGSM.
+Interestingly, the Top 5 most important ZCPs are all differ-
+ent for all considered adversarial attacks. Next we include
+the GRAF features as additional input features for our per-
+formance prediction model, as presented in Sect. 5.2.4, and
+evaluate the new set of input features for their importance. We
+123
+
+===== PAGE 10 =====
+
+2644 International Journal of Computer Vision (2025) 133:2635–2652
+Fig. 4 Permutation feature importance of the random forest predic-
+tion model trained on 1024 training data points provided in (Jung et al.,
+2023) with all zero-cost proxies as features and multi targets being clean
+test accuracy and different adversarial attacks accuracy for perturbation
+strength ϵ = 1/255 on CIFAR-10
+Fig. 5 Best 5 features based on their permutation feature importance of
+the random forest prediction model trained on 1024 training data points
+provided in Jung et al. ( 2023) with all zero-cost proxies and GRAF
+as features and multi targets being clean test accuracy and different
+adversarial attacks accuracy for perturbation strength ϵ = 1/255 on
+CIFAR-10
+plot the 5 most important features from a total of 206 in Fig.5.
+The behavior is different to the case of only using the 15
+ZCPs: For the multi-objective, clean and FGSM,ϵ = 3/255,
+jacob-fro is the most important feature, whereas flops
+is the most important feature for the single robust objective
+(only FGSM, ϵ = 1/255). Additionally, the most important
+features for the robust objectives are not important for the
+clean accuracy objective. We can also see, that there is only
+a slight decrease in importance. Furthermore, no GRAF fea-
+ture is in the top 5. Similar behavior holds for the Square
+attack. Whereas when we move the stronger attacks, PGD
+and APGD ,t h eGRAF feature, min-path-len-banned
+[1,4] is the most important feature for both robustness tar-
+gets, single and multi. This feature is the minimum length
+from the input to the output node, without the operations
+{zero, avg. pool.}. For both attacks, the pruning-based meth-
+ods synflow and fisher are among the most important
+features.
+If we look at the feature importance for CIFAR-100
+(Fig. 6), we can see that the Top 4 most important features
+for clean and robust accuracy are always the same, with the
+Jacobian-based ZCP nwot being the most important one.
+Note here, for CIFAR-100 the rank correlation decreases the
+most for more difﬁcult attacks.
+When we turn now to ImageNet16-120 in Fig. 7,t h em o s t
+important feature is always the Jacobian-based ZCP jacov,
+with zen and nwot being always in the three most important
+features
+123
+
+===== PAGE 11 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2645
+Table 6 Test R2 of the random forest prediction model on the Robust-
+ness Dataset (Jung et al., 2023) using zero-cost-proxies and GRAF ,
+trained on 128 training data
+Test Accuracy ϵ = 1/255
+Dataset Single Objective
+Clean FGSM PGD APGD Squares
+CIFAR-10 0.76 0.78 0.59 0.62 0.52
+CIFAR-100 0.89 0.65 0.65 0.66 0.40
+ImageNet16-120 0.83 0.48 0.66 0.73 0.62
+Dataset Multi Objective
+Clean- Clean- Clean- Clean-
+FGSM PGD APGD Squares
+CIFAR-10 0.77 0.62 0.61 0.65
+CIFAR-100 0.72 0.72 0.73 0.65
+ImageNet16-120 0.63 0.75 0.76 0.72
+Table 7 Test R2 of the random forest prediction model on the NAS-RobBench-201
+Dataset (Wu et al.,2024) using zero-cost-proxiesand GRAF, trained on128 training
+data
+Dataset Single Objective
+Clean FGSM PGD AA
+ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255
+CIFAR-10 0.91 0.91 0.92 0.91 0.92 0.91
+CIFAR-100 0.90 0.91 0.93 0.91 0.93 0.94
+ImageNet16-120 0.77 0.79 0.84 0.79 0.84 0.78
+Multi Objective
+Clean-FGSM Clean-PGD Clean-AA
+ϵ = 3/255 ϵ = 8/255 ϵ = 3/255 ϵ = 8/255
+CIFAR-10 0.91 0.91 0.91 0.91 0.91
+CIFAR-100 0.90 0.91 0.91 0.91 0.92
+ImageNet16-120 0.79 0.80 0.79 0.81 0.78
+We additionally investigate the permutation feature impor-
+tance for the NAS-RobBench-201 dataset in Fig. 8 on the
+example of CIFAR-10. At ﬁrst glance, we can see that the
+drop in importance from one feature to another is much
+smaller than in the previous setting. In addition, the feature
+importances for FGSM and PDG, ϵ = 3/255 are exactly
+the same with the same behaviour. For the stronger per-
+turbation ϵ = 8/255, the Top 4 most important features
+are always the same. For all cases, either jacob-fro
+or jacov is the most important feature. Here we also
+include the GRAF features as additional input features for the
+performance prediction model, as presented in Sect. 5.2.4,
+and evaluate the new set of input features for their impor-
+tance in Fig. 9. The Jacobian-based proxies jacob-fro,
+and javoc are the two most important features, which is
+similar to the prediction without the additional GRAF fea-
+tures. The evaluations on the robustness benchmark (cf.
+Figure 5) show that similar proxies are in the top 5 most
+important features across all attacks. The features “mini-
+mum length from the input to the output node”, without the
+operations {zero, avg. pool.}, min-path-len-banned
+[1,4], and max-op-on-path-allowed [2,3] ,
+max-op-on-path-allowed [0,2,3] , i.e., only con-
+sidering the path from input to output that only contains
+{conv 3× 3, conv 1× 1}, and {skip, conv 3× 3, conv 1× 1},
+respectively, are the most important GRAF features.
+In total for both robustness datasets, the same features are
+the most important for the clean accuracy are also important
+for the architecture’s robust accuracy.
+Interestingly, we can see that the task of robust accuracy
+prediction becomes more difﬁcult on all three image datasets
+and attacks (see smaller R
+2 values in Tables1, 2). In addition,
+Figs. 4, 6, and 7 give the impression that solely the most
+important feature could be used to predict the clean accuracy,
+but not the robust accuracy.
+Therefore, we evaluate the ability of using only the most
+important feature for the prediction task as input feature in
+Table 9 on the example of Jung et al. ( 2023). As we can
+see, the joint consideration of several proxies is necessary in
+terms of R
+2 to predict a model’s robustness, while the clean
+accuracy can be regressed from only one such feature.
+5.3.1 Feature Importance Excluding Top 1
+The previous section shows that only one proxy is not sufﬁ-
+cient to predict the robustness of an architecture. This leads to
+the next question if the regression model can still make good
+predictions, using all ZCPs but the most important one.
+The comparison of Table 1 with Table10 presents only a
+slight decrease in R
+2 values. The prediction ability for the
+clean accuracy and FGSM robust accuracy on CIFAR-10, as
+well as for the clean accuracy and PGD accuracy on CIFAR-
+100 even remained the same.
+5.3.2 Analysis Across Different Training Sizes
+Next, we investigate which proxies are the most impor-
+tant ones over different sample sizes. Figure 10 shows the
+permutation feature importance for the robustness dataset
+exemplary on FGSM, L
+∞ ,ϵ = 1/255 over the three train-
+ing data size (32 , 128, 1 024). For the small sample size 32,
+the baseline proxies, flops, params are the most impor-
+tant proxies for the multi-objective target, and also important
+for predicting the robust accuracy withsnip being the proxy
+with the highest importance. The Jacobian-based proxy how-
+ever, jacov, is by far the most important proxy for the
+clean accuracy target. For the sample size 128 also snip
+and flops are the most important proxies for both multi-
+123
+
+===== PAGE 12 =====
+
+2646 International Journal of Computer Vision (2025) 133:2635–2652
+Table 8 Test R2 of the random forest prediction model for both single objective and multi objectives on the clean test accuracy and the robust test
+accuracy for ϵ = 1/255, based on the different proxy categories
+Test Accuracy ϵ = 1/255
+Train Size Dataset Proxy Single Objective Multi Objective
+Clean FGSM PGD APGD Squares Clean- Clean- Clean- Clean-
+FGSM PGD APGD Squares
+32 CIFAR-10 Jacobian ⋆ 0.74 0 .52 0 .24 − 0.01 0.19 0.63 0 .48 0.32 0.52
+Pruning ♦ 0.44 0.52 − 0.13 − 0.07 − 0.14 0.45 0.28 0.18 0.26
+Piecewise-linear ▼ 0.11 − 0.20 − 0.66 − 0.51 − 0.08 − 0.04 − 0.28 − 0.20 0.01
+Hessian• − 0.31 − 0.14 − 0.44 − 0.54 − 0.37 − 0.23 − 0.37 − 0.43 − 0.34
+Baselines ■ 0.72 0.33 − 0.06 − 0.06 0.19 0.53 0.32 0.32 0.49
+GRAF ▶ 0.69 0.48 0.19 0.48 0 .28 0.56 0.40 0.54 0 .52
+CIFAR-100 Jacobian ⋆ 0.76 0.29 0.24 0.34 − 0.03 0.52 0.51 0.57 0.39
+Pruning ♦ 0.59 0.24 − 0.06 0.09 − 0.17 0.42 0.33 0.39 0.27
+Piecewise-linear ▼ − 0.05 − 0.27 − 0.25 − 0.13 − 0.35 − 0.16 − 0.15 − 0.09 − 0.20
+Baselines ■ 0.71 0.10 0.05 0.20 0.01 0.41 0.42 0.47 0.39
+GRAF ▶ 0.66 0.37 0 .38 0 .54 − 0.01 0.56 0 .56 0 .61 0 .40
+ImageNet16-120 Jacobian ⋆ 0.59 0.11 0.52 0.55 0.48 0.35 0.55 0.55 0.54
+Pruning ♦ 0.49 − 0.21 0.21 0.21 0.30 0.21 0.37 0.38 0.40
+Piecewise-linear ▼ − 0.05 − 0.21 − 0.05 − 0.03 − 0.06 − 0.13 − 0.05 − 0.04 − 0.05
+Baselines ■ 0.47 0.07 0.33 0.32 0.38 0.27 0.40 0.40 0.43
+GRAF ▶ 0.68 0 .21 0.49 0.56 0 .55 0 .52 0 .68 0 .67 0 .66
+128 CIFAR-10 Jacobian ⋆ 0.80 0.62 0.30 0.38 0.34 0.71 0 .55 0 .60 0.57
+Pruning ♦ 0.62 0.67 0.14 0.03 0.36 0.62 0.37 0.31 0.50
+Piecewise-linear ▼ 0.18 − 0.12 − 0.30 − 0.23 − 0.02 0.03 − 0.06 − 0.03 0.08
+Hessian• − 0.24 − 0.29 − 0.46 − 0.42 − 0.38 − 0.26 − 0.35 − 0.33 − 0.31
+Baselines ■ 0.73 0.39 − 0.05 − 0.09 0.28 0.55 0.34 0.31 0.52
+GRAF ▶ 0.73 0.66 0.51 0.57 0 .49 0.63 0.51 0.50 0.59
+CIFAR-100 Jacobian ⋆ 0.84 0.32 0.23 0.26 0.18 0.54 0.50 0.54 0.50
+Pruning ♦ 0.70 0.36 0.26 0.31 0.03 0.53 0.47 0.50 0.36
+Piecewise-linear ▼ − 0.01 − 0.33 − 0.25 − 0.17 − 0.37 − 0.17 − 0.13 − 0.09 − 0.19
+Baselines ■ 0.69 0.08 0.04 0.14 − 0.03 0.39 0.39 0.42 0.35
+GRAF ▶ 0.84 0 .60 0 .64 0 .64 0.38 0.74 0 .75 0.75 0 .62
+ImageNet16-120 Jacobian ⋆ 0.73 0.17 0.45 0.45 0.41 0.45 0.63 0.63 0.58
+Pruning ♦ 0.64 0.12 0.41 0.43 0.39 0.37 0.52 0.54 0.52
+Piecewise-linear ▼ − 0.20 − 0.43 − 0.44 − 0.41 − 0.35 − 0.32 − 0.32 − 0.31 − 0.28
+Baselines ■ 0.56 0.04 0.37 0.41 0.42 0.32 0.49 0.50 0.50
+GRAF ▶ 0.80 0 .45 0.75 0 .75 0.68 0.66 0 .77 0 .77 0 .74
+1024 CIFAR-10 Jacobian ⋆ 0.90 0.71 0.44 0.51 0.53 0.80 0.66 0.70 0.71
+Pruning ♦ 0.88 0.78 0.40 0.33 0.55 0.83 0.63 0.60 0.72
+Piecewise-linear ▼ 0.16 − 0.14 − 0.20 − 0.16 − 0.04 0.01 − 0.02 0.01 0.06
+Hessian• − 0.29 − 0.08 − 0.18 − 0.20 − 0.33 − 0.19 − 0.24 − 0.24 − 0.31
+Baselines ■ 0.81 0.44 0.11 0.21 0.34 0.62 0.46 0.51 0.57
+GRAF ▶ 0.96 0 .89 0.73 0 .79 0.69 0.90 0 .73 0 .86 0 .83
+CIFAR-100 Jacobian ⋆ 0.88 0.53 0.49 0.57 0.35 0.71 0.68 0.72 0.61
+Pruning ♦ 0.90 0.55 0.39 0.44 0.46 0.73 0.64 0.66 0.68
+Piecewise-linear ▼ 0.11 − 0.27 − 0.19 − 0.09 − 0.39 − 0.08 − 0.04 0.01 − 0.14
+123
+
+===== PAGE 13 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2647
+Table 8 continued
+Test Accuracy ϵ = 1/255
+Train Size Dataset Proxy Single Objective Multi Objective
+Clean FGSM PGD APGD Squares Clean- Clean- Clean- Clean-
+FGSM PGD APGD Squares
+Baselines ■ 0.75 0.25 0.27 0.36 0.16 0.50 0.52 0.57 0.45
+GRAF ▶ 0.95 0 .79 0.77 0.81 0.64 0.87 0 .85 0 .87 0.80
+ImageNet16-120 Jacobian ⋆ 0.85 0.49 0.77 0.80 0.67 0.67 0.81 0.83 0.76
+Pruning ♦ 0.70 0.26 0.50 0.53 0.48 0.47 0.59 0.61 0.59
+Piecewise-linear ▼ 0.05 − 0.23 − 0.01 0.06 − 0.06 − 0.09 0.02 0.05 − 0.01
+Baselines ■ 0.63 0.14 0.48 0.49 0.47 0.38 0.56 0.56 0.56
+GRAF ▶ 0.92 0 .74 0 .88 0 .88 0.84 0.81 0.89 0 .89 0 .87
+The bold type fonts shows the best value for each train size and dataset variant for different proxy categories
+objective prediction and robust accuracy prediction. Again,
+jacov is the most important proxy for the clean accuracy.
+As soon as the training size increases from 128 to 1 024,
+the importance of baseline proxies decreases substantially,
+and the pruning and Jacobian-based proxies, i.e., here snip
+and jacov, become the most important ones. Furthermore
+we can observe that, for the small sample sizes, there is
+no distinctive important feature for predicting the robust-
+ness as single and multi-objective targets, and rather a steady
+decrease in importance from one feature to the other. This pic-
+ture changes for large sample sizes, with mostly one feature
+being the most distinctive one, for each target respectively.
+When turning to the NAS-RobBench-201 dataset, the
+behavior changes (cf. Fig. 11). For each sample size jacov
+is the most important feature. Interestingly, for the small sam-
+ple size of 32, we can see that jacov is the most distinctive
+feature. This changes with increasing sample size to a more
+steady decrease of different feature importances.
+6 Conclusion
+In this paper, we presented an analysis of 15 zero-cost prox-
+ies and additional graph features with regards to their ability
+to act as performance prediction techniques for architecture
+robustness using a random forest. We made use of two pro-
+vided robustness datasets, the robustness dataset by Jung et
+al. ( 2023) and the adversarially trained robustness dataset
+by Wu et al. ( 2024), which allow for fast evaluations on the
+here-considered NAS-Bench-201 search space. Commonly,
+the zero-cost proxies are targeting the clean accuracy of archi-
+tectures in the literature. Therefore, our analysis shows that
+the prediction of robustness is a more difﬁcult task. Addition-
+ally, we investigated the feature importance of these zero-cost
+proxies and found that a single feature is not sufﬁcient to pre-
+dict the robustness, and that the regression model tends to rely
+on all available features.
+Limitations: This paper focuses only on adversarial attacks
+and no other types of distribution shifts such as considered in
+Koh et al. (2021); Y ao et al. (2022); Wiles et al. (2022). While
+this would indeed by very interesting, we have to leave such
+aspects to future work for the simple lack of available bench-
+marks comparable to Jung et al. ( 2023); Wu et al. ( 2024),
+that provide model evaluations on the considered distribu-
+tion shifts for a wide range of neural architectures that are
+trained in a comparable way.
+123
+
+===== PAGE 14 =====
+
+2648 International Journal of Computer Vision (2025) 133:2635–2652
+Fig. 6 Permutation feature importance of the random forest predic-
+tion model trained on 1024 training data points provided in Jung et al.
+(2023) with all zero-cost proxies as features and multi targets being
+clean test accuracy and different adversarial attacks accuracy for per-
+turbation strength ϵ = 1/255 on CIFAR-100
+Fig. 7 Permutation feature importance of the random forest predic-
+tion model trained on 1024 training data points provided in Jung et al.
+(2023) with all zero-cost proxies as features and multi targets being
+clean test accuracy and different adversarial attacks accuracy for per-
+turbation strength ϵ = 1/255 on ImageNet16-120
+123
+
+===== PAGE 15 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2649
+Fig. 8 Permutation feature importance of the random forest prediction model trained on 1024 training data points provided in Wu et al. ( 2024)
+with all zero-cost proxies as features and multi targets being clean test accuracy and different adversarial accuracies on CIFAR-10
+Fig. 9 Best 5 features based on their permutation feature importance of
+the random forest prediction model trained on 1024 training data points
+provided in Wu et al. ( 2024) with all zero-cost proxies and GRAF
+as features and multi targets being clean test accuracy and different
+adversarial attacks accuracy for perturbation strength ϵ = 1/255 on
+CIFAR-10
+Table 9 Test R
+2 of the random forest prediction model using the most important feature for both single objectives and multi objectives on the
+clean test accuracy and the robust test accuracy for ϵ = 1/255 on the robustness dataset for 1024 training data
+Test Accuracy ϵ = 1/255
+Dataset Single Objective
+Clean FGSM PGD APGD Squares
+CIFAR-10 jacov 0.78 snip 0.42 jacov − 0.37 jacov − 0.05 jacob-fro 0.17
+CIFAR-100 nwot 0.75 grad-norm 0.12 jacov 0.03 jacov 0.20 jacov − 0.08
+ImageNet16-120 jacov 0.56 jacov − 0.11 jacov 0.49 jacov 0.54 jacov 0.35
+Multi Objective
+Clean- Clean- Clean- Clean-
+FGSM PGD APGD Squares
+CIFAR-10 snip 0.30 jacov0.20 jacov 0.37 jacov 0.41
+CIFAR-100 nwot 0.40 jacov 0.38 jacov 0.46 nwot 0.27
+ImageNet16-120 jacov 0.22 jacov 0.53 jacov 0.55 jacov 0.46
+123
+
+===== PAGE 16 =====
+
+2650 International Journal of Computer Vision (2025) 133:2635–2652
+Table 10 Test R2 of the random forest prediction model using without the most important feature for both single objectives and multi objectives
+on the clean test accuracy and the robust test accuracy for ϵ = 1/255 on the robustness dataset for 1024 training data
+Test Accuracy ϵ = 1/255
+Dataset Single Objective
+Clean FGSM PGD APGD Squares
+CIFAR-10 0.93 0.84 0.51 0.48 0.63
+CIFAR-100 0.94 0.65 0.49 0.54 0.52
+ImageNet16-120 0.83 0.42 0.60 0.62 0.56
+Multi Objective
+Clean- Clean- Clean- Clean-
+FGSM PGD APGD Squares
+CIFAR-10 0.88 0.72 0.70 0.77
+CIFAR-100 0.80 0.72 0.74 0.74
+ImageNet16-120 0.63 0.72 0.73 0.71
+Fig. 10 Permutation feature importance of the random forest prediction model trained over different training data sizes provided in Jung et al.
+(2023)o n CIFAR-10 for FGSM, L∞ ,ϵ = 1/255
+Fig. 11 Permutation feature importance of the random forest prediction model trained over different training data sizes provided in Wu et al.
+(2024)o n CIFAR-10 for adversarially trained FGSM, L∞ ,ϵ = 3/255
+123
+
+===== PAGE 17 =====
+
+International Journal of Computer Vision (2025) 133:2635–2652 2651
+Acknowledgements The authors acknowledge support by the German
+Research Foundation research unit 5336 Learning to Sense. JL and MM
+acknowledge support by the Lamarr Institute for Machine Learning and
+Artiﬁcial Intelligence.
+Funding Open Access funding enabled and organized by Projekt
+DEAL.
+Open Access This article is licensed under a Creative Commons
+Attribution 4.0 International License, which permits use, sharing, adap-
+tation, distribution and reproduction in any medium or format, as
+long as you give appropriate credit to the original author(s) and the
+source, provide a link to the Creative Commons licence, and indi-
+cate if changes were made. The images or other third party material
+in this article are included in the article’s Creative Commons licence,
+unless indicated otherwise in a credit line to the material. If material
+is not included in the article’s Creative Commons licence and your
+intended use is not permitted by statutory regulation or exceeds the
+permitted use, you will need to obtain permission directly from the copy-
+right holder. To view a copy of this licence, visit http://creativecomm
+ons.org/licenses/by/4.0/.
+References
+Abdelfattah, MS., Mehrotra, A., Dudziak, L., & Lane, ND. (2021). Zero-
+cost proxies for lightweight NAS. In: Proc. of the International
+conference on learning representations (ICLR)
+Chen, W., Gong, X., & Wang, Z. (2021). Neural architecture search on
+imagenet in four GPU hours: A theoretically inspired perspective.
+In: Proc. of the international conference on learning representa-
+tions (ICLR)
+Chrabaszcz, P ., Loshchilov, I., & Hutter, F. (2017). A downsampled
+variant of imagenet as an alternative to the CIFAR datasets.
+arXiv:1707.08819
+Croce, F., & Hein, M. (2020). Reliable evaluation of adversarial robust-
+ness with an ensemble of diverse parameter-free attacks. In: Proc.
+of the international conference on machine learning (ICML)
+Dong, M, Li, Y , Wang, Y ., & Xu, C. (2020). Adversarially robust neural
+architectures. arXiv:2009.00902
+Dong X., & Y ang, Y . (2020). Nas-bench-201: Extending the scope of
+reproducible neural architecture search. In: Proc. of the interna-
+tional conference on learning representations (ICLR)
+Elsken, T., Metzen, J. H., & Hutter, F. (2019). Neural architecture search:
+As u r v e y .Journal of Machine Learning Research, 20 (55), 1–21.
+Goodfellow, IJ., Shlens, J., & Szegedy, C. (2015). Explaining and
+harnessing adversarial examples. In:Proc. of the international con-
+ference on learning representations (ICLR)
+Guo, M., Y ang, Y ., Xu, R., Liu, Z., & Lin, D. (2020). When NAS meets
+robustness: In search of robust architectures against adversarial
+attacks. In: Proc. of the IEEE conference on computer vision and
+pattern recognition (CVPR)
+Hendrycks, D., & Dietterich, T. (2019). Benchmarking neural network
+robustness to common corruptions and perturbations. In: Proc of
+the international conference on learning representations (ICLR)
+Hoffman, J., Roberts, DA., & Y aida, S. (2019). Robust learning with
+jacobian regularization. arXiv:1908.02729
+Hosseini, R., Y ang, X., & Xie, P . (2021). DSRNA: differentiable search
+of robust neural architectures. In: Proc. of the IEEE conference on
+computer vision and pattern recognition (CVPR)
+Jung, S., Lukasik, J., & Keuper, M. (2023). Neural architecture design
+and robustness: A dataset. In:Proc. of the international conference
+on learning representations (ICLR)
+Kadlecová, G., Lukasik, J., Pilát, M., Vidnerová, P ., Safari M., Neruda,
+R., & Hutter, F. (2024). Surprisingly strong performance prediction
+with neural graph features. 2404.16551
+Koh, PW., Sagawa, S., Marklund, H., Xie, SM., Zhang, M., Balsub-
+ramani, A., Hu W., Y asunaga, M., Phillips, RL., Gao, I., Lee, T.,
+David, E., Stavness, I., Guo, W., Earnshaw, B., Haque, I., Beery,
+SM., Leskovec, J., Kundaje, A., Pierson, E., Levine, S., Finn, C.,
+& Liang, P . (2021). Wilds: A benchmark of in-the-wild distribu-
+tion shifts. In: Proceedings of the 38th international conference
+on machine learning, PMLR, proceedings of machine learning
+research vol 139 pp 5637–5664
+Krishnakumar, A., White, C., Zela, A., Tu, R., Safari, M., & Hutter, F.
+(2022). Nas-bench-suite-zero: Accelerating research on zero cost
+proxies. In: Advances in Neural Information Processing Systems
+(NeurIPS)
+Krizhevsky, A. (2009). Learning multiple layers of features from tiny
+images. Tech. rep.: University of Toronto.
+Kurakin, A., Goodfellow, IJ., & Bengio, S. (2017). Adversarial machine
+learning at scale. In:Proc. of the international conference on learn-
+ing representations (ICLR)
+Lee, N., Ajanthan, T., & Torr, PHS. (2019). Snip: single-shot network
+pruning based on connection sensitivity. In: Proc. of the interna-
+tional conference on learning representations (ICLR)
+Li, Y ., Vinyals, O., Dyer, C., Pascanu, R., & Battaglia, PW. (2018).
+Learning deep generative models of graphs. arXiv:1803.03324
+Lin, M., Wang, P ., Sun, Z., Chen, H., Sun, X., Qian, Q., Li, H., &
+Jin, R. (2021). Zen-nas: A zero-shot NAS for high-performance
+image recognition. In: Proc. of the IEEE international conference
+on computer vision (ICCV)
+Liu, H., Simonyan, K., & Y ang, Y . (2019). Darts: Differentiable
+architecture search. In: Proc. of the International Conference on
+Learning Representations (ICLR)
+Lopes, V ., Alirezazadeh, S., & Alexandre, LA. (2021). EPE-NAS:
+efﬁcient performance estimation without training for neural archi-
+tecture search. In: International conference on artiﬁcial neural
+networks (ICANN)
+Lukasik, J., Jung, S., & Keuper, M. (2022). Learning where to look -
+generative NAS is surprisingly efﬁcient. In: Proc. of the European
+conference on computer vision (ECCV)
+Lukasik, J., Moeller M., & Keuper, M. (2023). An evaluation of zero-
+cost proxies - from neural architecture performance prediction
+to model robustness. Proc of the German Conference on Pattern
+Recognition (GCPR)
+Mellor, J., Turner, J., Storkey, AJ., & Crowley, EJ. (2021). Neural
+architecture search without training. In: Proc. of the international
+conference on machine learning (ICML)
+Mok, J., Na, B., Choe, H., & Y oon, S. (2021). Advrush: Searching
+for adversarially robust neural architectures. In: Proc. of the IEEE
+international conference on computer vision (ICCV)
+Ning, X., Tang C., Li W., Zhou Z., Liang S., Y ang H., Wang Y (2021)
+Evaluating efﬁcient performance estimators of neural architec-
+tures. In: Advances in Neural Information Processing Systems
+(NeurIPS)
+Real E., Aggarwal A., Huang Y ., Le QV (2019) Regularized evolution
+for image classiﬁer architecture search. In: Proc. of the conference
+of artiﬁcial intelligence (AAAI)
+Roberts N., Khodak M., Dao T., Li L., Ré C., Talwalkar A (2021)
+Rethinking neural operations for diverse tasks. In: Advances in
+neural information processing systems (NeurIPS)
+Ru B., Wan X., Dong X., Osborne M (2021) Interpretable neural archi-
+tecture search via bayesian optimisation with weisfeiler-lehman
+kernels. In: Proc. of the international conference on learning rep-
+resentations (ICLR)
+Shen, Y ., Li Y ., Zheng J., Zhang W., Y ao P ., Li J., Y ang S., Liu J., & Cui,
+B. (2021). Proxybo: Accelerating neural architecture search via
+bayesian optimization with zero-cost proxies. arXiv:2110.10423
+123
+
+===== PAGE 18 =====
+
+2652 International Journal of Computer Vision (2025) 133:2635–2652
+Tanaka, H., Kunin, D., Y amins, DLK., & Ganguli, S. (2020). Pruning
+neural networks without any data by iteratively conserving synap-
+tic ﬂow. In: Advances in neural information processing systems
+(NeurIPS)
+Turner, J., Crowley, EJ., O’Boyle, MFP ., Storkey, AJ., & Gray, G.
+(2020). Blockswap: Fisher-guided block substitution for network
+compression on a budget. In: Proc. of the international conference
+on learning representations (ICLR)
+Wang, C., Zhang, G., & Grosse, RB. (2020). Picking winning tickets
+before training by preserving gradient ﬂow. In: Proc. of the inter-
+national conference on learning representations (ICLR)
+W e n ,W . ,L i u ,H . ,C h e n ,Y . ,L i ,H H . ,B e n d e r ,G . ,&K i n d e r m a n s ,P .
+(2020). Neural predictor for neural architecture search. In: Proc.
+of the European conference on computer vision (ECCV)
+White C., Neiswanger W., & Savani, Y . (2021a). Bananas: Bayesian
+optimization with neural architectures for neural architecture
+search. In: Proc. of the conference of artiﬁcial intelligence (AAAI)
+White, C., Zela, A., Ru, B., Liu, Y ., & Hutter, F. (2021b). How pow-
+erful are performance predictors in neural architecture search? In:
+Advances in neural information processing systems (NeurIPS)
+White, C., Safari, M., Sukthanker, R., Ru, B., Elsken, T., Zela, A., Dey,
+D., & Hutter, F. (2023). Neural architecture search: Insights from
+1000 papers. arXiv:2301.08727
+Wiles, O., Gowal, S., Stimberg, F., Rebufﬁ, SA., Ktena, I., Dvijotham,
+KD., & Cemgil, A T. (2022). A ﬁne-grained analysis on distribu-
+tion shift. In: International conference on learning representations
+(ICLR)
+Wu, J., Dai, X., Chen, D., Chen, Y ., Liu, M., Y u, Y ., Wang, Z., Liu, Z.,
+Chen, M., & Y uan, L. (2021). Stronger nas with weaker predictors.
+In: Advances in neural information processing systems (NeurIPS)
+Wu, Y ., Liu, F., Simon-Gabriel, C., Chrysos, GG., & Cevher, V . (2024).
+Robust NAS under adversarial training: benchmark theory, and
+beyond. CoRR arXiv:2403.13134
+Xiang, L., Dudziak, L., Abdelfattah, MS., Chau, T., Lane, ND., &
+Wen, H. (2021). Zero-cost proxies meet differentiable architec-
+ture search. arXiv:2106.06799
+Y ao, H., Choi, C., Cao, B., Lee, Y ., Koh, PWW., & Finn, C. (2022). Wild-
+time: A benchmark of in-the-wild distribution shift over time. In:
+Advances in neural information processing systems (NeurIPS)
+Zhao, P ., Chen, P ., Das, P ., Ramamurthy, KN., & Lin, X. (2020).
+Bridging mode connectivity in loss landscapes and adversarial
+robustness. In: Proc. of the international conference on learning
+representations (ICLR)
+Zoph, B., & Le, QV . (2017). Neural architecture search with reinforce-
+ment learning. In:Proc. of the international conference on learning
+representations (ICLR)
+Publisher’s Note Springer Nature remains neutral with regard to juris-
+dictional claims in published maps and institutional afﬁliations.
+123

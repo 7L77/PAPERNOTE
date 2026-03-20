@@ -1,4 +1,4 @@
-﻿---
+---
 title: "Per-Architecture Training-Free Metric Optimization for Neural Architecture Search"
 method_name: "PO-NAS"
 authors: [Anonymous Author(s)]

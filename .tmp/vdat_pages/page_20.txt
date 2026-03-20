@@ -1,0 +1,57 @@
+well in the training process. More importantly, the catastrophic overfitting phenomenon also does
+not occur in the training process on ImageNet-1K. These observations indicate that VDAT enjoys
+promising convergence on the large-scale dataset, i.e., ImageNet-1K. Meanwhile, VDAT also does not
+suffer from the catastrophic overfitting on the large-scale dataset, demonstrating the decent reliability
+of VDAT.
+0 10 20 30 40 50 60
+Epochs
+0
+20
+40
+60Accuracy (%)
+Clean Validation Acc
+Adv Validation Acc
+Figure 7: Visualization of the training processes of VDATFGSM on ImageNet-1K.
+D.2 Visualizations of the Vulnerability of Data Samples
+In this part, we present additional visualizations of the vulnerability of data samples. Specifically, we
+visualize the normalized margin difference (larger margin difference indicate lower vulnerability)
+and the corresponding number of data samples on CIFAR-10 and CIFAR-100. The baseline model
+correlated to these results is WideResNet34-10 and the training method is VDATFGSM. The visual-
+izations are presented in Figure 8. As can be seen, the distribution shifts to right after the training
+process of VDATFGSM on both CIFAR-10 and CIFAR-100. This phenomenon indicates VDATFGSM
+can indeed lower the vulnerability of data samples when the baseline model is WideResNet34-10.
+0.2 0.3 0.4 0.5 0.6 0.7 0.8
+Normalized Margin Difference
+0
+2000
+4000
+6000
+8000
+10000Number of Samples
+Before Training
+After Training
+(a) CIFAR-10
+0.2 0.3 0.4 0.5 0.6 0.7 0.8
+Normalized Margin Difference
+0
+2000
+4000
+6000
+8000
+10000
+12000
+14000
+16000Number of Samples
+Before Training
+After Training (b) CIFAR-100
+Figure 8: Visualizations of the normalized margin difference of data before and after training by
+VDATFGSM. The baseline model is WideResNet34-10.
+Besides, we also conduct the same kind of visualizations for the adversarial training method VDATPGD
+in Figure 9. It is obvious that the visualizations in Figure 9 are similar to those in Figures 5 and
+8. Therefore, it is illustrated that VDATPGD can also lower the vulnerability of data samples after
+training, thus the effectiveness of VDAT is further demonstrated.
+E Additional Parameter Studies and Ablation Studies
+In this section, we present additional parameter studies and ablation studies to further demonstrate
+the effectiveness of the designed components in VDAT. These results are divided into four parts, i.e.,
+the parameter study and ablation study in the scenario of robust NAS, the ablation study regarding
+20

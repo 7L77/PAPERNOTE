@@ -1,0 +1,83 @@
+Natural Data…… Vulnerability CalculationData Filtering𝑥ଵ𝑥ଵᇱ𝑥ଶ𝑥ଶᇱ𝑥௡ᇱ𝑥௡
+Adversarial Perturbation
+VulnerabilityCalculation
+0.24 0.55 0. 43……Vulnerability of Samples
+Data Filtering
+NatTrainAdvVDAT𝑥ଵ𝑥ଵᇱ𝑥ଶ𝑥ଶᇱ𝑥௡ᇱ𝑥௡
+∆𝑀ଵ∆𝑀ଶ∆𝑀௡……Soft Margin Transformation
+𝑉ఏ(𝑥ଵ) 𝑉ఏ(𝑥ଶ) 𝑉ఏ(𝑥௡)……Hard MarginsVulnerability of Samples
+…𝑉ఏ(𝑥ଵ)ProbabilityCalculation𝑃ఏ(𝑥) ≤ Rand(0,1)𝑃ఏ(𝑥) > Rand(0,1)
+Natural Training SamplesAdversarial Training Samples𝑉ఏ(𝑥ଶ)𝑉ఏ(𝑥௡)
+…𝑃ఏ(𝑥ଵ)𝑃ఏ(𝑥ଶ)𝑃ఏ(𝑥௡)
+Figure 3: The illustration about the overall framework of VDAT. After adding adversarial perturbations
+to generate adversarial examples, the margin-based vulnerability calculation and the vulnerability-
+aware data filtering are performed sequentially.
+4.1 Margin-based Vulnerability Calculation
+After generating adversarial examples X ′ in the first step of VDAT, the margin-based vulnerability
+calculation will play the role in calculating the vulnerability of each sample in X . Specifically, the
+vulnerability Vθ(xi) of xi is represented by the difference between the logit margins of both natural
+sample xi ∈ X and the corresponding adversarial example x′
+i ∈ X ′, as shown in Equation (2):
+Vθ(xi) = − | M y
+θ(xi) − My
+θ(x′
+i) | (2)
+where y denotes the true label of the data sample xi. Besides, the physical significance of the
+subtraction is the margin difference in the decision space between xi and x′
+i. The larger absolute
+value of that subtraction denotes the larger margin difference, indicating the natural data is harder to
+be attacked and has lower vulnerability.
+However, both My
+θ(xi) and My
+θ(x′
+i) are hard margins formulated by the maximum operator. In
+this way, the logit margin is calculated only based on logits of the class y and the class with the
+largest logit given by the model fθ. Unfortunately, there existing targeted adversarial attacks [35],
+and the adversarial example xi can be misclassified into each possible class based on such kind of
+attacks. Therefore, formulating the logit margin with only one class y′ ̸= y cannot well cover all
+possible situations. To this end, we formulate the soft margin S y
+θ (xi, τ) and S y
+θ (x′
+i, τ) for both xi
+and x′
+i motivated by [50]. The detailed formulation is shown in Equations (3) and (4), where τ is a
+pre-determined hyperparameter.
+S y
+θ (xi) = ϕy
+θ(xi) − 1
+τ log
+X
+y′̸=y
+exp(τ ϕy′
+θ (xi)) (3)
+S y
+θ (x′
+i) = ϕy
+θ(x′
+i) − 1
+τ log
+X
+y′̸=y
+exp(τ ϕy′
+θ (x′
+i)) (4)
+Based on the soft margins, the vulnerability of the data sample xi can be rewritten as Equation (5).
+Vθ(xi) = − | S y
+θ (xi) − S y
+θ (x′
+i) | (5)
+In the following, we discuss the motivation of adopting the margin difference instead of the pure
+margin of the single data sample. The reason is that the pure margin only reflects the output situation
+of the model and cannot represent the information of decision boundary [50]. In contrast, adopting
+the margin difference can avoid the above problem, this is because the pure margin of adversarial
+examples carries the decision boundary information [29]. Specifically, the decision boundary [33]
+is characterized based on a certain data sample ˆx, the true label ˆy of ˆx, and another label y′ ̸= ˆy. If
+this data sample satisfies ϕˆy
+θ(ˆx) = ϕy′
+θ (ˆx), then we assume that the data sample ˆx is on the decision
+boundary between classes ˆy and y′. In practice, the problem is that the sample ˆx often cannot be
+accurately found [50]. Fortunately, previous studies [9] state that the adversarial attack can push the
+sample towards the decision boundary, thus the logit margin of adversarial examples can well reflect
+the decision boundary information in some cases. Based on this, we adopt the margin difference to
+calculate the vulnerability in this study.
+4

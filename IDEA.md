@@ -16,7 +16,6 @@
 	 - 较高的：Grasp **395.9**、Snip **326.5**、ZiCo **372.8**
 
 
-
 ### 动机：
 
 **要想在不训练网络的前提下更准确地判断架构优劣，必须从多个互补维度综合评估**。
@@ -48,6 +47,42 @@ AZ-NAS 的进化算子仍是传统 top-k 变异范式，探索效率上有上限
 
 AZ-NAS 的复杂度项主要是 FLOPs，和真实部署约束（轻量+鲁棒）耦合不够。  
 	后文补上：LRNAS 把参数预算和鲁棒目标一起放进搜索目标（Shapley + 预算约束）
+
+
+### 尝试过的思路
+#### 对az_nas的表达性进行改造
+每层先做特征协方差谱熵（eigvalsh 后归一化熵），层分数累加成 expressivity
+
+落盘了 expressivity_norm（归一化表达性），同时保留 expressivity_hist 和 az_channel_list。
+	采集在 :494-496，写入 metrics 在 :512。
+	expressivity_norm = mean(H_l / log(C_l))
+```
+for feat_i in layer_features:
+	feat = ensure_4d(feat_i.detach().clone())
+	b, c, h, w = feat.size()
+	channel_counts.append(int(c))
+	# 协方差矩阵 sigma = torch.mm(feat.transpose(1, 0), feat)/ feat.size(0)
+	feat = feat.permute(0, 2, 3, 1).contiguous().view(b * h * w, c)
+	feat = feat - feat.mean(dim=0, keepdim=True)
+	sigma = torch.mm(feat.transpose(1, 0), feat) / feat.size(0)
+	s = torch.linalg.eigvalsh(sigma)
+	s = torch.clamp(s, min=0)
+	denom = s.sum()
+	if denom <= 0:
+		score = 0.0
+	else:
+		prob_s = s / denom
+		score = (-prob_s) * torch.log(prob_s + 1e-8)
+		score = score.sum().item()
+	expressivity_scores.append(float(score))
+
+chans = np.asarray(channel_counts, dtype=float)
+denom = np.log(np.maximum(chans, 2.0)) + 1e-9
+expressivity_norm = float(np.mean(expressivity_scores_arr / denom))
+```
+
+
+
 
 
 
@@ -275,9 +310,27 @@ NEAR 不仅能用于选架构，还可以用于选择**激活函数**和**权重
 
 
 ## REP
-问题：REP 把“鲁棒性提升”从黑盒正则化目标转为“鲁棒搜索基元”的可解释构建过程：先采样鲁棒基元，再用距离正则提升其被选概率，从而同时兼顾自然精度与对抗鲁棒性。
+问题：
+1. 只追鲁棒性容易牺牲自然精度，二者平衡不清晰。
+2. 现有 robust NAS 多是“往目标函数里加鲁棒正则”的黑盒优化，**可解释性差**：很难说清楚“到底哪些结构元素让模型更鲁棒”。
 
-动机：用搜索空间中的基元解释“为什么架构更鲁棒”
+答案：REP 把“鲁棒性提升”从黑盒正则化目标转为“鲁棒搜索基元”的可解释构建过程：先采样鲁棒基元，再用距离正则提升其被选概率，从而同时兼顾自然精度与对抗鲁棒性。
+	 REP 不是直接改网络权重训练策略，而是改“架构参数 alpha 的优化偏好”
+
+动机：
+1. 用搜索空间中的基元解释“为什么架构更鲁棒”
+	把“鲁棒性提升”从黑盒正则，转成可解释的“**鲁棒搜索基元**”视角
+2. 先从搜索轨迹里找出与鲁棒性提升稳定相关的基元，再在搜索中提升这些基元的选择概率
+3. 在提升鲁棒性的同时，尽量保留自然精度，并且以插件方式兼容 DARTS 等可微 NAS。
+
+衍生的问题
+1. **攻击依赖强**：鲁棒基元是按 FGSM/PGD 评出来的，容易对特定攻击和强度过拟合。
+2. **采样规则偏启发式**：B1/B2 用相邻架构差分，缺少统计显著性或因果保证。
+3. **额外开销不低**：每遇到新 genotype 就要做对抗验证，比很多轻量 proxy 方法更重。
+
+**攻击无关的鲁棒基元学习**  
+    把单攻击评分改成 multi-threat 分布鲁棒目标（FGSM/PGD/APGD/C&W联合），减少攻击偏置。
+
 
 
 
@@ -679,6 +732,16 @@ RobNet 的一个经验结论就是：**更 dense 的连接模式通常更鲁棒*
 
 
 **FSP matrix** 这种“层间表征流动/一致性”可以作为 robustness indicator
+
+
+
+## LRNAS
+
+LRNAS 本身把“primitive 的价值”用 Shapley（或其无偏估计）来衡量，这是一个天然可推广到层（layer）或层间交互（layer–layer interaction）的框架；
+
+**REP 的“基元采样 + 概率增强”思想也可以较直接地改造成**以层/层交互为粒度的 proxy-driven 聚合
+
+
 
 
 # 理论

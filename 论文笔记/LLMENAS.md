@@ -38,6 +38,14 @@ created: 2026-03-13
 ### 要解决的问题
 - 传统 [[Evolutionary Neural Architecture Search]] 的交叉与变异操作通常依赖随机或人工规则，容易陷入局部最优，搜索效率也偏低。
 
+### 提出的问题
+
+its low output diversity often traps the search process in **local optima**
+in complex search spaces, the LLM’s inherent propensity for **hallucination** can yield invalid architectures.
+Combining the strength of evolutionary algorithms with the efficiency of gradient-based methods presents a highly promising direction【进化算法的优势与基于梯度的方法的结合】
+	**requires careful coordination** of exploration and exploitation during the search process
+
+
 ### 现有方法局限
 - 纯进化策略：探索能力受启发式规则限制。
 - 纯强化学习/梯度搜索：计算开销大或搜索偏置明显。
@@ -109,6 +117,9 @@ $$
 ## 关键图表与结果
 ### Figure references
 - Fig. 1: LLMENAS 总体框架（搜索循环 + 评估流程）。
+
+![[Pasted image 20260319231646.png]]
+
 - Fig. 2: LLM prompt 设计与交叉/变异模板。
 - Fig. 3: 不同规模 LLM 对搜索效果的影响趋势。
 - Fig. 4: 搜索阶段效率对比（样本数与 GPU days）。
@@ -150,3 +161,51 @@ $$
 - [[One-shot NAS]]
 - [[Surrogate Predictor]]
 - [[LLM-guided Search]]
+
+
+## 解释论文
+
+### propose
+通用的分层优化框架a general hierarchical optimization framework
+	dynamically designs fitness functions
+a self-improving mechanism
+
+### LLM-based Neural Architecture Search
+Zheng et al. [58] introduced an innovative approach called GPT4 Enhanced Neural Architecture Search (GENIUS)
+	which harnesses the generative power of GPT-4 as a black-box optimizer to search promising architectures.
+
+Chen et al. [16] proposed combining evolutionary prompt engineering with soft prompt tuning, which consistently identifies diverse and highperforming models.
+
+### Problem Formulation: A Hierarchical Optimization Framework
+1. 传统 NAS 用固定 fitness function，不会随搜索过程变化，容易停在局部最优。
+
+a hierarchical optimization framework
+1. 把问题建成“上下两层优化”：
+    - 下层：进化算法按当前 fitness 演化种群（马尔可夫转移）。
+    - 上层：LLM 看历史轨迹 Hg​，动态生成下一代 fitness function。
+2. 目标是让这个“LLM 设计 fitness 的策略”最小化下一步最优架构的验证损失（等价于提高后续搜索质量）。
+
+
+#### DARTS
+DARTS 是方法（以及其常用 cell 搜索空间）。
+	NAS-Bench-301 (NB301) 是基于 **DARTS 搜索空间**做的 surrogate benchmark（用代理模型近似评估），不是 DARTS 的子模块
+
+NB201 NB301 RB201
+1. NB201：小而全的 tabular benchmark，空间固定（15625 编码），评估结果可查表，适合可复现对比。
+2. NB301：大空间（DARTS 风格，超大规模），靠 surrogate 近似真实训练，适合更“真实”的大空间搜索评估。
+3. RobustBench：DARTS 空间里一批已做对抗训练的架构集合（偏鲁棒性评测）。
+4. NAS-Rob-Bench-201 (RB201)：基于 NB201 空间的鲁棒版基准（6466 非同构架构，含 clean + PGD/FGSM 等鲁棒指标）。
+
+In the search space of DARTS, the cell is composed of N nodes and E edges, forming a directed acyclic graph (DAG)
+	可微 NAS 的标准表述：把 cell 看成 DAG，每条边不是硬选一个算子，而是对候选算子做 softmax 加权混合；然后通过双层优化，一边在训练集上学 supernet 权重 w，一边在验证集上学架构参数 alpha。这一节真正想强调的是：这种连续松弛虽然高效，但也让 alpha 和 w 紧耦合，容易偏向 skip 这类无参数操作，进而出现 collapse 或陷入局部最优。所以作者写 III.B，本质是在回答“为什么后面要从 DARTS 式梯度搜索，转向 CMA-ES + LLM 动态设计 fitness”。
+
+搜索阶段
+
+1. 在 DARTS 这类可微 NAS 里，softmax 混合候选算子、同时优化 w 和 alpha，是为了让“架构选择”变得可导，这一步属于 **search phase**。
+2. 搜索结束后，会把连续的 alpha **离散化**，例如每条边选权重最大的那个算子，得到最终架构。
+3. 得到最终架构后，通常进入 **evaluation / retrain phase**：  
+    这时不再保留 mixed op，也不再学 alpha，而是把选出来的离散网络从头训练，只学普通网络权重。
+
+所以你可以这么记：
+- search phase：学 w + alpha，边上是 mixed ops。
+- final training phase：只学最终网络的权重，不再学 alpha

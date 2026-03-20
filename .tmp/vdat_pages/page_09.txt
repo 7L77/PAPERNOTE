@@ -1,0 +1,88 @@
+0.3 0.4 0.5 0.6 0.7 0.8
+Normalized Margin Difference
+0
+2000
+4000
+6000
+8000
+10000Number of Samples
+Before Training
+After Training
+(a) CIFAR-10
+0.3 0.4 0.5 0.6 0.7 0.8
+Normalized Margin Difference
+0
+2000
+4000
+6000
+8000
+10000Number of Samples
+Before Training
+After Training (b) CIFAR-100
+0.3 0.4 0.5 0.6 0.7
+Normalized Margin Difference
+0
+100000
+200000
+300000
+400000
+500000
+600000Number of Samples
+Before Training
+After Training (c) ImageNet-1K
+Figure 5: Visualizations of the normalized margin difference of data before and after training by
+VDATFGSM. The baseline models are ResNet18 (CIFAR-10/100) and ResNet50 (ImageNet-1K).
+5.5 Parameter Studies and Ablation Studies
+Parameter Studies. We conduct parameter studies for the hyperparameter τ and the interval T .
+As shown in Table 5, the performance raises when τ increases from 0.05 to five, and then slightly
+decreases when τ increases from five to 500, illustrating the validity of setting τ to five. Moreover, as
+shown in Table 6, both natural accuracy and adversarial accuracy decrease whenT becomes larger,
+but the training cost becomes lower. To balance the accuracy and training cost, we choose to set T to
+10 as default.
+Table 5: Parameter study for the hyperparameter τ
+on CIFAR-10. The baseline model for adversarial
+training is ResNet18.
+τ Natural (%) PGD20(%) PGD50(%)
+0.05 (×0.01) 85.88 48.53 48.41
+0.5 (×0.1) 85.96 53.95 53.90
+5 (Default) 86.32 56.30 56.23
+50 (×10) 86.25 54.14 54.00
+500 (×100) 86.32 53.27 53.12
+Table 6: Parameter study for the interval T on
+CIFAR-10. The training cost is measured in
+GPU hours.
+T Natural (%) PGD50(%) Cost
+2 (×0.2) 91.37 58.57 1.47
+5 (×0.5) 88.39 54.74 1.20
+10 (Default) 86.32 56.23 1.04
+20 (×2) 82.94 44.95 0.69
+50 (×5) 81.81 43.91 0.63
+Ablation Studies. The ablation studies mainly focus on the filtering method, the kinds of adversarial
+perturbation adopted before the vulnerability calculation, the soft margin along with the temperature
+parameter τ adopted, and the different adversarial training frameworks.
+As can be seen in Table 7, when our filtering method is removed or replaced by the random filtering,
+both natural and adversarial accuracy drops, demonstrating the effectiveness of the filtering method
+designed. Furthermore, as shown in Table 8, the natural accuracy and adversarial accuracy do not
+show significant changes when changing the types of adversarial attacks, but the search cost increases
+when changing FGSM to PGD. Therefore, we choose FGSM attack as default.
+Table 7: Ablation study for the filtering method
+on CIFAR-10. The baseline model for training is
+ResNet18.
+Filtering? Natural (%) PGD20 (%) PGD 50 (%)
+Without 73.81 41.55 41.26
+Random 85.96 50.96 48.84
+VDAT 86.32 56.30 56.23
+Table 8: Ablation study for the kind of adver-
+sarial perturbation adopted before the vulner-
+ability calculation.
+Perturbation Natural (%) PGD50(%) Cost
+PGD10 85.96 58.03 1.10
+PGD20 85.96 58.50 1.34
+FGSM 86.32 56.23 1.04
+Moreover, we conduct ablation studies regarding the soft margin along with the temperature parameter
+τ. The effectiveness of the above design is evaluated under the targeted attacks. Specifically, we
+train ResNet18 on CIFAR-10 with two types of margins, i.e., the pure margin in Equation (2) and the
+soft margin with different values of τ. For evaluation, the targeted adversarial attacks are variants of
+the PGD adversarial attack, i.e., PGD (Random) and PGD (Least Likely). PGD (Random) indicates
+that the target labels are chosen randomly. PGD (Least Likely) indicates that the target label is the
+9

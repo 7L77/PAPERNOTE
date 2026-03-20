@@ -10,7 +10,7 @@ year: 2025
 venue: NeurIPS
 tags: [nas-method, zh, training-free-nas, zero-cost-proxy, llm, actor-critic]
 created: 2026-03-16
-updated: 2026-03-16
+updated: 2026-03-20
 ---
 
 # APD 中文条目
@@ -141,4 +141,3 @@ Sources:
 - NeurIPS 页面: https://nips.cc/virtual/2025/poster/120003
 - 代码: https://github.com/yohbii/APD
 - 本地实现: D:/PRO/essays/code_depots/Revolutionizing Training-Free NAS Towards Efficient Automatic Proxy Discovery via Large Language Models
-

@@ -11,6 +11,7 @@ arxiv_html: ""
 local_pdf: D:/PRO/essays/papers/Revolutionizing Training-Free NAS Towards Efficient Automatic Proxy Discovery via Large Language Models.pdf
 local_code: D:/PRO/essays/code_depots/Revolutionizing Training-Free NAS Towards Efficient Automatic Proxy Discovery via Large Language Models
 created: 2026-03-16
+updated: 2026-03-20
 ---
 
 # 论文笔记：APD
@@ -160,4 +161,3 @@ s_{\mathrm{APD}}=
 - [[Chain-of-Thought Prompting]]
 - [[Spearman's Rank Correlation]]
 - [[Kendall's Tau]]
-

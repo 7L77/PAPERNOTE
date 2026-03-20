@@ -1,0 +1,46 @@
+B More Details of Experimental Settings
+In this section, we present additional details about the experimental settings. Specifically, the details
+are mainly from three aspects, i.e., the experimental settings for the adversarial training, robust NAS,
+and evaluations.
+B.1 Experimental Settings for Adversarial Training
+We determine the experimental settings by following the conventions in the FAT community [28, 27].
+For the adversarial training on CIFAR-10 and CIFAR-100, the total epoch is set to 110. Meanwhile,
+the batch size is set to 128, the learning rate is set to 0.1, the momentum is set to 0.9, and the weight
+decay is set to 10−4. The learning rate is decayed by the factor 0.1 at the 100-th and 105-th epochs,
+respectively. As for the adversarial training on ImageNet-1K, the total epoch is set to 60. Besides, the
+batch size is set to 512, while the momentum, the weight decay, and the learning rate are set to the
+same values as those on CIFAR-10 and CIFAR-100. The learning rate is decayed by the factor 0.1 at
+the 20-th and 40-th epochs, respectively. Please note that all the experiments are performed on the
+NVIDIA RTX 3090 GPU.
+B.2 Experimental Settings for Robust NAS
+The total number of epoch for search is set to 50 for all four robust NAS methods. As for the other
+hyperparameters, we following the original settings of these robust NAS methods in their seminal
+papers [36, 24, 41, 38].
+B.3 Experimental Settings for Evaluations
+The experimental setting for evaluations consists of two parts. The first part mainly focuses on the
+adversarial training of neural architectures derived by robust NAS methods. The second part mainly
+focuses on the settings of adversarial attacks for evaluations.
+B.3.1 Settings for Training Architectures Searched
+The experimental settings for the adversarial training follow the convention in the previous study [22,
+17, 19]. The PGD adversarial training is adopted to train the derived architectures [35] on CIFAR-10,
+CIFAR-100, and ImageNet-16-120 [7]. Besides, the FGSM-based FAT method [48] is adopted to
+train neural architectures on ImageNet-1K. The detailed experimental settings for adversarial training
+are presented in Table 11.
+Table 11: The experimental settings for the adversarial training on CIFAR-10, CIFAR-100, ImageNet-
+16-120, and ImageNet-1K.
+Items CIFAR ImageNet-16-120 ImageNet-1K
+Optimizer SGD SGD SGD
+Momentum 0.9 0.9 0.9
+Epochs 200 200 40
+Learning Rate 0.1 0.1 0.1
+Learning Rate Decay (100, 150) (100, 150) (20, 30)
+Weight Decay 10 −4 10−4 10−4
+PGD Step 7 7 /
+FGSMϵ / / 4/255
+PGDϵ 8/255 8/255 /
+PGD Step Size 0.01 0.01 /
+B.3.2 Settings for Adversarial Attacks
+Furthermore, the experimental settings for the adversarial attacks also follow the convention [41, 38].
+The details for the adopted FGSM [21], PGD [35], C&W [2], and AutoAttack (AA) [10] adversarial
+attacks are shown in Table 12.
+16

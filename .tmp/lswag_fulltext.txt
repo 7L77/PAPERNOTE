@@ -1,0 +1,1115 @@
+L-SW AG: Layer-Sample Wise Activation with Gradients information for
+Zero-Shot NAS on Vision Transformers
+Sofia Casarin1, Sergio Escalera2,3, Oswald Lanz1
+1Free University of Bozen-Bolzano, Bolzano, Italy
+2Computer Vision Center, Barcelona, Spain
+3Universitat de Barcelona, Barcelona, Spain
+scasarin@unibz.it, sergio@maia.ub.es, lanz@inf.unibz.it
+Abstract
+Training-free Neural Architecture Search (NAS) effi-
+ciently identifies high-performing neural networks using
+zero-cost (ZC) proxies. Unlike multi-shot and one-shot NAS
+approaches, ZC-NAS is both (i) time-efficient, eliminating
+the need for model training, and (ii) interpretable, with
+proxy designs often theoretically grounded. Despite rapid
+developments in the field, current SOTA ZC proxies are typ-
+ically constrained to well-established convolutional search
+spaces. With the rise of Large Language Models shaping
+the future of deep learning, this work extends ZC proxy ap-
+plicability to Vision Transformers (ViTs). We present a new
+benchmark using the Autoformer search space evaluated on
+6 distinct tasks and propose Layer-Sample Wise Activation
+with Gradients information (L-SWAG), a novel, generaliz-
+able metric that characterizes both convolutional and trans-
+former architectures across 14 tasks. Additionally, previous
+works highlighted how different proxies contain comple-
+mentary information, motivating the need for a ML model to
+identify useful combinations. To further enhance ZC-NAS,
+we therefore introduce LIBRA-NAS (Low Information gain
+and Bias Re-Alignment), a method that strategically com-
+bines proxies to best represent a specific benchmark. Inte-
+grated into the NAS search, LIBRA-NAS outperforms evo-
+lution and gradient-based NAS techniques by identifying an
+architecture with a 17.0% test error on ImageNet1k in just
+0.1 GPU days.
+1. Introduction
+Neural Architecture Search (NAS) optimizes neural net-
+works for a given task and constraint replacing the costly
+trial and error design process [56]. Over the course of the
+years, it has gained attention for its ability to discover better
+performing and more efficient neural networks compared
+to hand-crafted ones [16, 29, 30, 37, 39, 45, 48]. With the
+advent of Large Language Models (LLM)s ruling the deep
+learning world with high accuracy, NAS is not seen any-
+more as a na¨ıve tool for boosting performance. It finds im-
+portant applicability in real-world scenarios with hardware-
+aware models requiring pruning, different resource con-
+straints, and memory footprint optimization [27].
+Despite its advantages, the major drawback of NAS usu-
+ally resides in the computationally demanding search pro-
+cess. The first proposed multi-shot NAS methods involved
+training multiple candidate networks, requiring up to 28
+days on 800 GPUs [56]. Subsequent one-shot approaches
+accelerated NAS by sharing candidate operations through
+a super-network ([4, 5, 8, 12, 50, 52]). Weight-sharing
+([6, 11, 17, 40]) further advanced by sharing also the pa-
+rameters across different operations, improving memory ef-
+ficiency. Although the differentiable process reduced opti-
+mization time to a few GPU hours for tasks like Cifar-10,
+full training of the super-network is still required. Predictor-
+based methods remove the training of neural networks,
+avoiding the main drawbacks of heavy time and GPU re-
+source consumption. They achieve highly accurate perfor-
+mance estimation ([29, 32]), but still require training the
+predictor [15, 44] over a NAS benchmark obtained through
+a costly data collection step constituted of thousands of net-
+works trained until convergence.
+Zero-shot NAS methods therefore emerged with the
+promise of fully removing the data collection step by char-
+acterizing Deep Neural Networks (DNNs) through proxy
+metrics, an estimate of the performance of DNNs based
+on heuristic and theoretical results. This paper focuses
+on zero-shot NAS, which as pointed out in [27], brings
+two major advantages: (i) time efficiency, as model train-
+ing is eliminated, and (ii) interpretability, as the design
+of a proxy metric is usually inspired by some theoretical
+analysis of DNNs which helps in understanding the rea-
+son for their success. Since the first proposed metric [2],
+many proxies have been introduced in the literature. They
+usually characterize neural networks under three principles:
+This CVPR paper is the Open Access version, provided by the Computer Vision Foundation.
+Except for this watermark, it is identical to the accepted version;
+the final published version of the proceedings is available on IEEE Xplore.
+4441
+
+
+(i) trainability ([25, 26, 54]), (ii) generalization [10, 18],
+and (iii) expressivity ([2, 28, 33, 36]). Most recent works
+often propose new metrics grounded in either theoretical
+frameworks [2, 7, 34] or heuristic approaches [33, 55]. This
+frequently results in a large variety of metrics that leave
+unclear the reasons for their effectiveness. Moreover, de-
+spite a few efforts [22], these proxies are often evaluated
+on different setups, hindering their true contribution and
+relations with respect to the state-of-the-art. Evaluation is
+typically performed on a few search spaces ( e.g., NAS
+Bench201 [13]), which provides limited insight since most
+metrics show strong correlation results within these spaces.
+Therefore, different from other studies, we first of all
+test all existing metrics under the same setup and include
+in our analysis the ViT search space. Our first goal is to
+expand the scope of applicability of proxy metrics, open-
+ing the road to nowadays topics, like video understanding,
+which could be addressed with ViTs. Our experiments re-
+veal that in the ViT search space, many ZC-proxies strug-
+gle to outperform basic metrics like # Parameters. In re-
+sponse, we introduce the Layer Sample-Wise Activation
+with Gradients (L-SW AG) metric, which not only surpasses
+# Parameters on the ViT search space but also outperforms
+existing metrics across several benchmarks, including the
+challenging TransNasBench [14], where most other metrics
+fall short. To properly handle the different characteristics
+of search-spaces we developed Low Information Gain and
+Bias Re-alignment (LIBRA)-NAS, a novel ensemble algo-
+rithm. Observations indicate that certain search spaces may
+favor gradient-based metrics, while others are better suited
+to gradient-free ones. Some metrics tend to introduce a
+strong bias toward cell size, while others penalize networks
+that converge quickly. Additionally, different proxy metrics
+often contain complementary information highly dependent
+on the chosen benchmark [22]. This phenomenon motivates
+the need for a ML model that can identify effective combi-
+nations of proxy metrics based on the specific requirements
+of each benchmark. To summarize, our contributions are:
+• We train and evaluate 2000 ViT architectures on six dif-
+ferent tasks, and evaluate all existing ZC-proxy metrics
+on this new benchmark, adapting metrics formulated only
+for ReLU networks also to GeLU ones.
+• We present L-SW AG metric, which captures a layer-wise
+trainability and expressivity of DNNs and positively cor-
+relates on the ViT search space, improving state-of-the-art
+Spearman ρ correlation on several benchmarks.
+• We propose LIBRA, a new ensemble algorithm to be used
+when exceptionally high correlation, not currently attain-
+able by a single proxy, is needed. LIBRA combines met-
+rics based on complementary proxy information and on
+benchmark biases. In the NAS search, LIBRA beats pre-
+vious RL and evolution methods finding an architecture
+with 17.0 % test error on ImageNet1k in 0.1 GPUdays.
+2. Related works
+Zero-shot NAS designs proxies that can rank architectures’
+accuracy given the network at the initialization. They re-
+quire only a single forward pass through the network, tak-
+ing a few seconds [33], and do not involve parameters up-
+date nor gradient descent. Existing works usually focus on
+proxies related to (i) expressivity, reflected by the number
+of linear regions over the input space in ReLU networks
+(Sec. 2.2), ii) generalization and, (iii) trainability through
+gradient properties (Sec. 2.1). Recent works address a
+deeper understanding of existing proxies and propose new
+aggregation methods to get a more comprehensive charac-
+terization of DNNs through proxy combination (Sec. 2.3).
+2.1. Gradient based proxies
+Inspired by pruning-at-initialization techniques, [1] formu-
+lates a proxy that estimates each weight parameter’s impor-
+tance by analyzing its gradient. GradSign [54] analyzes the
+sample-wise optimization landscape and defines a proxy for
+the upper bound of the loss. Fisher [42] uses approximated
+second-order gradients ( i.e. empirical Fisher Information
+Matrix EFIM) at a random initialization point. Although it
+correlates well on certain search spaces where other mea-
+sures fail (e.g. Tnb101-micro
+AE), the EFIM is a valid ap-
+proximation only if the model’s parameters are a Maximum
+Likelihood Estimation, an invalid assumption at a random
+initialization point, as highlighted in [54]. SNIP [25] in-
+tegrates the values of the parameters to gradients proper-
+ties, GraSP [43] considers both the first order and the sec-
+ond order derivatives of the gradients, while JacobCov [31]
+leverages gradients over the input data instead of param-
+eters. GSNR [41] proposes a proxy based on the gradi-
+ent Signal to Noise Ratio (SNR) theoretically proved to be
+linked to generalization and convergence. ZiCO [26] char-
+acterizes network trainability, convergence, and generaliza-
+tion through the mean and the standard deviation of gra-
+dients. Our L-SW AG measure is strictly related to [26],
+but differently from ZiCO, we (i) discard the mean of gra-
+dients through theoretical (Sec. 3.1) and empirical moti-
+vations (Tab. 3) and (ii) provide a layer-wise formulation,
+showing (Fig. 2b) how specific layers statistics are more in-
+formative than others. Finally, (iii) our metric does not fail
+on the ViT search space. As shown in Fig. 3, we attribute the
+success to the inclusion in SW AG of an expressivity term.
+2.2. Gradient-free proxies
+Gradient-free proxies entirely remove backward propaga-
+tion and focus on the expressivity or topology properties
+of DNNs represented as graphs. [33, 36] study the num-
+ber of linear regions after ReLU activations. NWOT [33]
+computes the Hamming distance between binary codes
+(rows in a standard activation pattern) obtained from ReLU
+patterns and defines a metric “distinctive for DNNs that
+4442
+
+
+Figure 1. Our approach applies to different task types of architectures. L-SW AG takes as input a batch of images and a DNN, extracts the
+gradient statistics, and counts the # of linear regions in a layer-wise fashion. The relevant layers are identified una-tantum, before running
+the metric and are specific for each benchmark. L-SW AG outputs a rank of the architectures. LIBRA takes as input the pre-computed ZC-
+proxy metrics for a given benchmark. It has three steps: (i) selects the best performing one according to their correlation ρ. (ii) Computes
+the information we gain over the validation accuracy y given zbest and each other zi, and selects the z leading to the lowest validation
+accuracy. (iii) Select z3 with the closest bias to y. LIBRA outputs the 3 identified metrics.
+perform well”. Despite the empirical proof of correla-
+tion, NWOT struggles in search-spaces with lower accu-
+racies. Zen-Score [28] is an almost ZC proxy metric. It
+measures expressivity through a few forward inferences on
+randomly initialized networks using random Gaussian in-
+puts. As highlighted in [28], it is not mathematically de-
+fined on irregular search spaces as DARTS [30] and Rand-
+wire [47]. Finally, NAS-Graph [20] converts DNNs into
+graphs and uses the average degree of nodes as a proxy.
+2.3. Metric aggregation methods
+NAS-Bench-SuiteZero [22] evaluates for the first time
+many proxy metrics under a great variety of tasks through
+fair conditions and a unified codebase. We extend this ef-
+fort by including recently proposed metrics ([23, 26, 36])
+and a ViT search space over six different tasks. Nas-Bench-
+SuiteZero uses correlation analysis and information theory
+to identify complementary information and biases in each
+proxy. Differently, we propose a way of integrating met-
+rics that does not involve a predictor (that cannot be consid-
+ered zero-shot) and formulate a “bias matching” technique
+which we empirically show improves over the authors “bias
+mitigation”. Te-NAS [7] uses both the number of linear re-
+gions [19, 49] and the condition number of Neural Tangent
+Kernel (NTK) [21, 24]. However, not only calculating NTK
+is computationally demanding [35], but a recent work [34]
+proves how the hypothesis of NTK theory does not apply to
+modern DNNs. Therefore no foundations are available on
+why NTK at initialization should be used. Moreover, Te-
+NAS exploits the # of linear regions on what [36] calls a
+“standard activation pattern” which has proven to fail on
+input of large dimensions. T-CET [46] revisits existing met-
+rics providing new theoretical insights to formulate a new
+proxy comprising compressibility, orthogonality and topol-
+ogy of neural networks. They integrate a layer-wise NWOT
+formulation into the SNR, offering a new interpretation of
+ZiCO’s σ component from a compressibility perspective.
+This approach helps explain why ZiCO’s theoretical foun-
+dations, developed for linear networks, hold for more com-
+plex nonlinear networks but does not address the need for
+ZiCO’sµ component. In this study, we show why µ should
+be discarded, giving theoretical and empirical proof. Differ-
+ently from T-CET, we provide a clear heuristic to select the
+needed layers for σ computations. AZ-NAS [23] advocates
+for using an ensemble of proxies instead of a single one
+and introduces four proxies tackling: expressivity, trainabil-
+ity, progressivity, and complexity. In AZ-NAS a ViT search
+space is included in the experiments. However, the evalua-
+tion is done by integrating the proxy directly into the NAS
+search, which, in our view, does not adequately assess the
+effectiveness of the proxies. The ViT search space [9] is
+known to yield well-performing subnetworks, all achieving
+between the best accuracy and within 2% of the best accu-
+racy. As a result, the ability of metrics to guide the search
+is difficult to evaluate, as random search also yields strong
+performance (cf . supp. material). In contrast, we also con-
+duct a correlation analysis with the validation accuracies ob-
+tained by training 2,000 networks on each task.
+3. Method
+In this section, we describe the overall framework depicted
+in Fig. 1. Our first goal is to efficiently rank architec-
+tures on a ViT search-space, keeping strong performance
+and good generalization on commonly deployed search
+spaces. To achieve this we formulate L-SW AG, capturing
+trainability and expressivity for ReLU and GeLU networks
+(Sec. 3.1). We present its key components and show the
+benefits of a layer-wise formulation. Our second goal is to
+4443
+
+
+design a ML model to properly combine existing metrics
+depending on the characteristics of the considered bench-
+mark. To this aim, we introduce LIBRA-NAS (Sec. 3.2),
+which analyses complementary information and biases.
+3.1. L-SW AG-Score
+The design of our metric is motivated by three main findings
+mapped in the blue components:
+L-SW AG=
+Λ ˆL
+z }| {
+ˆLX
+l=ˆl
+log
+
+X
+w∈θl
+1p
+Var(|∇wL(Xi, yi; Θ)|)
+
+ ×
+Ψ ˆL
+N ,θ
+z
+}| {
+ˆA
+ˆL
+N ,θ
+
+
+(1)
+where Θ denotes the initial parameters,θl the parameters of
+the lth layer, w represents each element in θl, ˆL an interme-
+diate layer in the network with maximum depth L, Xi, yi
+the input batch and corresponding labels from the training
+set, and Ψ ˆL
+N ,θ the component defined in Definition 2. The
+first finding is related to the formulation of Λ in Eq. (1)
+and to the presence of 1 instead of µ proposed by [26] at
+the numerator. We first analyzed ZiCO, which in essence,
+advocates for choosing a candidate that maximizes the ex-
+pected gradient in each of its layers, while keeping variance
+low. This choice is motivated in [26] by Theorem 3.1, which
+proves a bound on the empirical error of a linear regressor.
+We argue that, while the latter principle is correct (further
+motivated by Theorem 3.3 and 3.5 in [26]), the former is
+not. Given a training set S with M samples:
+S =
+
+(xi, yi) | i = 1, . . . , M, xi ∈ Rd, y i ∈ R,
+∥xi∥ = 1, |yi| ≤ R, M > 1} (2)
+with R > 0 and ||·|| denoting the L2-norm of a given vector,
+xi ∈ Rd the ith input samples normalized by its L2-norm,
+and yi the corresponding label. Let’s define a linear model
+f = aT x optimized with an MSE-based loss function L:
+min
+a
+X
+i
+L(yi, f(xi; a)) = min
+a
+X
+i
+1
+2(aT xi − yi)2 (3)
+where a ∈ Rd is the initial weight vector of f. Let’s denote
+with g(xi) the gradient of L w.r.t a, and as gj(xi) the j-th
+element of g(xi). The mean value µj and standard devia-
+tion σj of g(xi) are obtained as follows:
+µj = 1
+M
+MX
+i
+gj(xi) σj =
+vuu
+t
+1
+M
+MX
+i
+(gj(xi) − µj)2 (4)
+Theorem 1. Given the linear regressor f(a, x) with train-
+able parameters a = (aj)M
+j=1, let g(xi) = ( gj(xi))d
+j=1 be
+the gradient of a w.r.t. to xi, and ˆa = a − ηP
+i gj(xi)
+the updated parameters with learning rate η. Denote µj =
+1
+M
+P
+i gj(xi), σj =
+pP
+i(gj(xi) − µj)2. Then, for any η,
+the total training loss Lf(X, y; ˆa) = 1
+2
+P
+i(ˆa⊤xi − yi)2
+of f is bounded by:
+Lf(X, y; ˆa) ≤ 1
+2
+
+M
+dX
+j=1
+
+σ2
+j + ((M η − 1)µj)2
+
+ .
+(5)
+Proof. cf . supplementary material.
+No other theorems in [26] support the need forµ for non-
+linear networks, and as we show in Tab. 3 (and with an em-
+pirical validation of Th. 1 in supp. material) our formulation
+in Eq. (1) with 1 instead of µ benefits performance.
+Layer contribution. Our summation in Eq. (1) starts with
+ˆl and ends with ˆL, two intermediate layers in the network.
+This differs from usual formulations [26, 54, 55] which usu-
+ally treats equally the statistics of all layers in a network.
+However, previous studies already highlighted how not all
+layers bring equal contributions in terms of gradient statis-
+tics. In [38], the authors emphasize that “trained DNNs
+are more sensitive to weights in the lower (initial) layers.”.
+In [3] several experiments show a larger standard deviation
+of gradient for lower layers. In [55] the authors highlight
+how ZiCO has a “heavy reliance on the # of layers”. All
+these hints motivated us in analyzing the statistics of the
+gradients layer-wise, to answer the following question:Can
+we remove some layers from the statistic extraction? Are
+all layers of equal importance? Our approach simply con-
+sists of plotting the statistics of the gradients for 1000 ran-
+domly sampled DNNs at initialization. Fig. 2b reflects what
+is the mean intensity and standard deviation of theσj of the
+gradient through percentiles, where a percentile is obtained
+following this rule:
+perc = int
+ l
+D *100 //
+ 100
+PERC BINS
+
+(6)
+with l = 1, . . . , L, and PERC BINS = 10 , to properly aver-
+age results of DNNs with different depths. We also checked
+the influence of depth by clustering networks based on L,
+as the influence of σj may vary, but we did not find sig-
+nificantly different behaviors ( cf . S.M.). All benchmarks
+share the same behavior and report spikes on specific per-
+centiles (see Fig. 2b, and S.M for all benchmark results).
+We found that by considering as ˆl and ˆL the beginning and
+the end of spikes respectively, a huge improvement in terms
+of rank correlation is experienced. This can be visualized
+in Fig. 2a, where selecting only specific percentiles, large
+improvements, depicted by yellow regions, in the rank cor-
+relation are experienced. This layer-wise selection more-
+over speeds-up the metric calculation (see Tab. 3).
+Expressivity. Inspired by [33, 36], we assess the expres-
+sivity of DNNs over a batch of input samples. To this aim,
+we deploy the cardinality of activation patterns of ReLU
+and, for the first time, of GeLU networks on a layer-wise
+partition.
+Definition 1. (Sample-Wise Activation Patterns). Given a
+ReLU or GeLU deep neural network
+N , a set θ of randomly
+initialized parameters, and a batch of inputs with S sam-
+ples, the set of layer-wise sample-wise activation patterns
+4444
+
+
+(a) Normalized Spearman ρ correlation for each selected percentile. Larger
+values occur in correspondence to the spikes of the σ statistics of the gradient
+in the below graph.
+0 20 40 60 80 100
+−2
+0
+2
+4
+6
+8
+Depth Percentile (%)
+log(σ) (Mean ± Std)
+Statistics across 1000 networks
+TNB101M ACRO − Autoenc
+TNB101M ICRO − Autoenc
+(b) Average gradient statistics across 1000 networks sampled from the Au-
+toencoder Micro/Macro search spaces.
+Figure 2. Empirical motivation for our layer selection strategy.
+ˆA ˆL
+N ,θ is defined as follows:
+ˆA
+ˆL
+N ,θ =
+n
+p(l) : p(l) = 1(p(l)
+s )S
+s=1, l ∈ {1, . . . , ˆL}
+o
+(7)
+where p(l)
+s denotes a single-post activation value from the
+sth sample at the lth intermediate value. ˆL ∈ 1, . . . , Lwith
+L layers in the network.
+1(p(v)
+s )S
+s=1 is a vector containing binarised post-
+activation values across all samples inS. We can now define
+the layer-wise SW AP-Score:
+Definition 2. Given a layer-wise SWAP setˆA ˆL
+N ,θ, the layer-
+wise SWAP-Score Ψ of a network N with a set θ of ran-
+domly initialized parameters is defined as the cardinality of
+the set:
+Ψ
+ˆL
+N ,θ =
+
+ˆA
+ˆL
+N ,θ
+
+
+(8)
+On a practical basis, layer-wise SW AP represents the
+“practical expressivity” of each layer. To summarize, L-
+SW AG combines through multiplication a layer-wise train-
+ability measure Λ ˆL and an expressivity measure Ψ ˆL
+N ,θ. The
+reason for multiplying and not adding them is deeply moti-
+vated in [46] and summarize in our supp. material. As we
+will show in Sec. 4, both components are needed to perform
+well on standard benchmarks, and on ViT search space.
+3.2. LIBRA-NAS
+This section introduces our Low Information gain and Bias
+Re-Alignment (LIBRA) (Algorithm 1) for NAS which we
+deploy to merge different proxies. Given a set of pre-
+Algorithm 1: LIBRA
+1 Input: Set of proxies Z with their correlation ρ over
+benchmark Bij = (search space Si, dataset Dj),
+and bval, the bias of the validation accuracy on Bij.
+2 Output: Subset Zlibra for Bij.
+3 for each Bij do
+4 Select the proxy zk with the highest correlation
+ρbest;
+5 Initialize empty lists, IG list and B list;
+6 for zh ∈ {Z \ zk} do
+7 if ρbest − 0.1 < ρ h ≤ ρbest then
+8 Compute Information Gain IG(zh)
+according to Eq. (9);
+9 Add IG(zh) to IG list;
+10 z1 ← zk;
+11 z2 ← arg minIG list;
+12 for zh ∈ {Z \ {z1, z2}} do
+13 if ρbest − 0.1 < ρ h ≤ ρbest then
+14 Compute the bias bzh for zh;
+15 Add |bval − bzh | to B list;
+16 z3 ← arg minB list;
+computed proxies Z and pre-computed bias values b, eas-
+ily obtainable thanks to works like [22] and ours, LIBRA-
+NAS outputs three proxies which are useful combinations
+to boost the performance on a given benchmark Bij. The
+bias, although in principle could be of any kind e.g. # of
+convolutional layers, # of skip connection, etc., in our im-
+plementation is represented by the # of parameters. Each
+bias value is computed by checking the Pearson correlation
+between the rank induced by the validation accuracy/proxy
+metric considered, and the rank induced by the bias ( cf .
+supp material for values). Following the entropy and infor-
+mation gain definition provided [22], given a search space
+S, let Y be the uniform distribution of validation accuracies
+over S, and y be a random sample from Y. Now let Z be
+the uniform distribution for the proxies andz a sample from
+it. Given the entropy functionH(·) the information gain be-
+tween two proxies is obtained with:
+IG(zj) = H(y|zi) − H(y|zi, zj). (9)
+The proposed algorithm selects the best proxy metric for
+the given Bij. Subsequently, among those performing in
+the specified range (0.1 in our case, empirically selected) it
+computes IG(zj) and selects the one leading to the lowest
+information gain. Intuitively, IG represents the additional
+4445
+
+
+information gained about y when zj is disclosed, given that
+the values of zi are already known. While the motivation
+for minimizing this value is largely heuristic, we suggest
+that minimizing (rather than maximizing) it yields optimal
+results. This approach can be thought of as analogous to
+“overfitting”, as we are selecting metrics that capture the
+same aspects of the search space. Then, the third metric
+is chosen among the top-performing ones sharing a simi-
+lar bias the validation accuracy has. Other approaches miti-
+gate the bias by removing it [22]. We rather show with ab-
+lations Tab. 4 it gives the best performance indulging the
+same bias the metric we are estimating has.
+4. Experiments
+We conduct the following experiments: (i) evaluation of
+Spearman ρ correlation of L-SW AG on multiple NAS
+benchmarks, including the ViT search space 4.1, (ii) evalu-
+ation of LIBRA-NAS ρ on state-of-the-art benchmarks and
+comparison with other proxy-merging methods, (iii) illus-
+tration of L-SW AG-based and LIBRA-based zero-shot NAS
+on Cifar-10 and ImageNet Sec. 4.2, (iv) ablations of each
+component for both contributions Sec. 4.3.
+Experimental Settings. We compare L-SW AG with all
+metrics considered in [22] and with recent SOTA ap-
+proaches ZiCO, SW AP and reg
+SW AP. LIBRA is evaluated
+against all existing, to the best of our knowledge, types of
+zero-shot merging techniques. Our codebase is based on
+NASBench-SuiteZero, and all experiments were run on a
+single RTX 3090Ti. The gradient statistics extraction takes
+31 mins for 1000 ViTs with # params. ∈15-35M, on Ima-
+geNet with 224 ×224 resolution. The memory occupation
+is∼10 GB. After selecting the layers, the L-SW AG cal-
+culation takes ∼4 minutes. All main results are obtained
+on 1000 architectures using a batch of 64 for all bench-
+marks but TransBench-101, which for high memory usage
+required a batch of 32. Results for the whole search-space
+can be found in the supp. material.
+Datasets. We evaluate our proxies across different tasks:
+NASBench-201 (Cifar-10, Cifar-100 and ImageNet16-
+120), NASBench-101 [51] (Cifar-10), NASBench-301 [53]
+(Cifar-10), TransNAS-Bench-101 Micro and Macro [14]
+(Jijsaw, Object and Scene Classification, Autoencoder,
+Room Layout, Surface Normal, Semantic Segmenta-
+tion). We chose these benchmarks following [22]. We re-
+produced all results as many works [7, 23, 26, 36, 46] did
+not run experiments on TransBench-101, NasBench-301
+and NasBench-101. L-SW AG and all metrics are then also
+evaluated 2000 multiple times trained networks sampled
+from the Autoformer [9] Small search-space. These net-
+works were trained on: ImageNet, Cifar10, Cifar100, Pets,
+SVHN, and Spherical-Cifar100. We included a ViT search
+space to expand the scope of applicability of proxy metrics
+(cf . supp. material for details on the training procedure for
+ViT architectures and full description of datasets).
+4.1. L-SW AG Ranking Consistency
+We show in Fig. 3 and Fig. 4 a quantitative comparison be-
+tween L-SW AG and state-of-the-art ZC proxies. Fig. 3 de-
+tails the Spearman’s ρ correlation over every benchmark,
+while Fig. 4 highlights the average performance across
+benchmarks, proving the better performance consistency of
+L-SW AG with an average correlation of ρl−swag = 0 .72
+over the second best ρnwot = 0 .62. All values were ob-
+tained selecting specific percentiles based on the principle
+illustrated in Sec. 3.1. We can see that L-SW AG achieves
+the best ranking consistency across several benchmarks,
+outperforming others by a large margin. In particular,
+we improve over tnb101 Macro jigsaw/normal, on nb101,
+nb301, on tnb101 Micro room/jigsaw. We also noticed how-
+ever, that despite improving by a fair margin with respect to
+most ZC proxies on tnb101
+micro autoencoder, our result
+still underperforms fisher in this complex task. Focusing
+on competitors strictly related to our measure,i.e. ZiCo and
+SW AP, a difference is experienced particularly on tnb101
+Macro object/room/jigsaw, where ZiCO does not correlate,
+and on tnb101 Micro (for all tasks), where SW AP’s ρ di-
+minishes. In comparison to the second-best metric, NWOT
+(excluding FLOPs), we observe that NWOT’s performance
+drops significantly when shifting from a Macro to a Micro
+search space, whereas this drop is much less pronounced
+with L-SW AG. A similar trend is observed with SW AP,
+which is not surprising given the close relationship between
+these metrics. We suggest that NWOT’s decline in perfor-
+mance is due to its reliance solely on data separability and
+the assumption that this characteristic correlates with “well-
+performing networks.” Within the Autoformer search space,
+L-SW AG is the only metric that consistently outperforms or
+matches the performance of the competitive, simple proxy
+of parameter/FLOP count. It also shows improvement over
+the more commonly used NB201 search space, though we
+consider this search space less informative, as most metrics
+perform well in it. When integrated into the NAS frame-
+work (Tab. 2), L-SW AG identifies better architectures than
+its competitors at significantly lower costs, regardless of
+the specific task or search space. This demonstrates the
+method’s adaptability across diverse network architectures.
+4.2. Searching with LIBRA-NAS
+We now evaluate the performance of other ensembling
+methods and compare them with LIBRA. As shown
+in Tab. 1, LIBRA outperforms other methods by a large
+margin in 13 out of 19 tasks. In four tasks, it achieves com-
+parable performance to the competitive AZ-NAS, while in
+the less informative NB201 search space, AZ-NAS slightly
+surpasses LIBRA on CIFAR-10 and ImageNet16-120. We
+excluded the method introduced in [22] from our com-
+parison, as it requires training a predictor with 100 net-
+works and therefore does not qualify as a pure ZC proxy
+4446
+
+
+Figure 3. Spearman rank correlation coefficient between ZC proxy values and validation accuracies. Results were obtained from 5 multiple
+runs. Rows and columns are ordered based on the mean scores.
+NB201 NB101 NB301 TNB101-Micro TNB101-Macro
+C10 C100 IN16-120 C10 C10 AE Room Obj. Scene Jig. Norm. Segm. AE Room Obj. Scene Jig. Norm. Segm.
+TE-NAS 0.70 0.67 0.64 0.12 0.37 -0.41 0.51 0.37 0.25 0.13 0.10 0.34 -0.55 0.05 0.13 0.28 0.65 0.61 0.03
+T-CET 0.77 0.80 0.81 0.23 0.42 0.31 0.34 0.49 0.70 0.54 0.46 0.64 0.27 0.23 0.49 0.63 0.44 0.44 0.59
+AZ-NAS 0.91 0.90 0.89 0.54 0.70 0.31 0.53 0.58 0.79 0.41 0.60 0.72 0.52 0.65 0.90 0.82 0.77 0.85 0.77
+LIBRA (ours) 0.89 0.90 0.87 0.77 0.74 0.45 0.57 0.61 0.79 0.60 0.76 0.87 0.83 0.64 0.92 0.91 0.82 0.85 0.83
+Table 1. Spearman ρ over different benchmarks on 1000 networks, obtained from multiple runs. All numbers were obtained in our
+experiments as in the original papers many experiments were run only for NB201, without specifing the # test architectures, or directly to
+search the architecture on specific search-spaces reporting thus only the found test accuracy.
+plaingraspfisherepe
+nas
+grad
+norm snip
+synflowl2
+normparams
+zenjacovflops
+reg
+swap ziconwotswapswag
+0
+0.2
+0.4
+0.6
+Average Correlation ρ
+Figure 4. Average Spearman ρ coefficient of ZC proxies across
+different search spaces.
+method. To search DNNs without training, we incorporate
+LIBRA into zero-shot search algorithms. Specifically, we
+apply a pruning-based algorithm [7] for the DARTS search
+space and an evolutionary algorithm for the Autoformer
+search space. When deployed in the NAS search, LIBRA
+outperforms training-based methods while significantly re-
+ducing search time. This is particularly evident on the more
+complex ImageNet task, where LIBRA identifies a network
+with 83% test accuracy in just two hours, compared to
+CIFAR-10, where gains are smaller but still notable.
+4.3. Ablation
+Influence of each L-SW AG component.In Tab. 3 we ab-
+late every component on a variety of search-spaces. We did
+Bij NAS Method Search
+approach
+Params
+(M)
+Search Time
+(GPU days)
+Test
+Error (%)
+DARTS
+Cifar-10
+PC-DARTS gradient 3.6 0.1 2.57
+AmoebaNet-A evolution 3.2 3150 3.34
+ENAS RL 4.6 0.5 2.89
+SynFlow TF 5.08 0.11 7.85
+AZ-NAS TF 4.1 0.4 2.55
+SW AG TF 3.6 0.01 2.47
+LIBRA TF 3.1 0.08 2.45
+DARTS
+IMNET1k
+PC-DARTS gradient 5.3 3.8
+24.2
+AmoebaNet-C evolution 6.4 3150 24.3
+NASNet-A RL 5.3 2000 26.0
+SynFlow TF 6.3 0.5 30.1
+AZ-NAS TF 6.2 0.7 23.6
+SW AG TF 5.8 0.11 23.4
+LIBRA TF 5.7 0.3 23.1
+AutoFormer
+Small
+IMNET1k
+Autoformer evolution 22.9 24
+18.3
+AZ-NAS TF 23.8 0.07 17.8
+TF-TAS TF 23.9 0.5 18.1
+SW AG TF 23.7 0.05 17.8
+LIBRA TF 23.1 0.1 17.0
+Table 2. Search results in DARTS and Autoformer searh space.
+TF = training free, RL = reinforcement learning, Bij = benchmark
+for search-space i in dataset j.
+not limited the ablation on NB201, as each component of
+L-SW AG has a different impact strength depending on the
+considered benchmark. For example, the first block, which
+4447
+
+
+analyzes each component independently, highlights that re-
+moving the mean has a stronger impact on TNB101’s Mi-
+cro and Macro search spaces. Meanwhile, considering an
+interval of layers and including the expressivity term sig-
+nificantly affects TNB101 Macro, with a smaller impact on
+TNB101 Micro. Comparing the last rows of the 1st and 2nd
+blocks, we can observe how layer selection also improves
+consistently Ψ’s correlation across all search spaces. Al-
+though NB201 is included for completeness, it provides
+limited insights aside from showing a steady gain when
+removing µ and selecting layers. Across search spaces, a
+general trend emerges: choosing specific layers for gra-
+dient statistics has a strong positive effect on the Macro
+search space, while layer selection in the computation of
+Ψ proves more beneficial for the Micro search space. Tab. 3
+no µ ˆL Ψ NB201 Micro Macro
+C10 C100 In16-120 AE Jig. Norm. AE Jig. Norm.
+0.75 0.80 0.78 0.16 0.53 0.68 0.19 0.05 0.53
+✓ 0.78 0.81 0.79 0.19 0.54 0.68 0.20 0.40 0.64
+✓ 0.77 0.81 0.79 0.18 0.53 0.69 0.24 0.32 0.61
+✓ 0.71 0.75 0.71 0.01 0.38 0.53 0.71 0.74 0.79
+✓ ✓ 0.79 0.82 0.80 0.28 0.56 0.73 0.37 0.56 0.80
+✓ ✓ 0.79 0.82 0.80 0.27 0.55 0.71 0.74 0.75 0.81
+✓ ✓ 0.79 0.77 0.75 0.11 0.45 0.55 0.76 0.76 0.82
+✓ ✓ ✓ 0.79 0.83 0.80 0.31 0.58 0.75 0.79 0.78 0.84
+Table 3. Ablation study for each component of L-SW AG. The
+tick on “no µ” denotes not having the mean of gradients, which is
+the proof for the conclusion we drew with Theorem 1, ˆL ablates
+selecting percentiles, Ψ ablates the expressivity term. The row
+with no ticks stands for log( µ
+σ ) for all layers up to depth L.
+ablates the presence of the ˆL found according to our method
+(Sec. 3.1), but we obviously ablated different values for ˆL.
+A visual summary is depicted in Fig. 2a, which describes
+the evolution of the ρ correlation depending on the selected
+percentile (cf . supp. material for full quantitative results).
+LIBRA ablation study. Tab. 4a presents a com-
+parison of methods for combining the first two metrics,
+while Tab. 4b evaluates the impact of adding a third met-
+ric, z3, selected via bias matching. Various approaches were
+tested for selecting z1 and z2, based on patterns observed
+in Fig. 3. For instance, using gradient-free ZC proxies yields
+a clear advantage on TNB101-Macro, whereas gradient-
+based metrics perform slightly better on TNB101-Micro.
+We assessed whether categorizing ZC proxies by type pro-
+duced larger gains compared to minimizingIG Eq. (9). Ad-
+ditionally, we compared these strategies withIG maximiza-
+tion and random selection. Selecting z2 according to the
+LIBRA strategy consistently outperformed other methods,
+with the performance margin varying by benchmark. For
+NB301, where no specific metric type is favored, this mar-
+gin is notably larger, while it narrows in search spaces that
+favor either gradient-free or gradient-based proxies. Lastly,
+we tested methods for selecting z3, finding bias matching to
+be the most effective, followed by bias minimization.
+Bij
+2 ∇
+free
+2 ∇
+based
+∇ free + ∇
+based
+2
+random
+best +
+max IG
+best +
+min IG
+NB201In16-120 0.77 0.80 0.86 0.62 0.64 0.86
+NB301C10 0.63 0.53 0.56 0.57 0.53 0.71
+Microscene 0.73 0.73 0.74 0.41 0.62 0.77
+Macroscene 0.89 0.15 0.22 0.45 0.60 0.90
+(a) 1 st column combines 2 best gradient free metrics, the 2 nd two best
+gradient based, 3rd a gradient based and a gradient free with high ρ on the
+Bi,j. 4th random samples two metrics. Details on the selected proxies are
+provided in the supp. material.
+w/o b w/ random z3 w/ b minimization w/ b matching
+NB201In16-120 0.86 0.85 0.85 0.87
+NB301C10 0.71 0.44 0.71 0.74
+Microscene 0.77 0.72 0.79 0.79
+Macroscene 0.90 0.20 0.87 0.91
+(b) Ablations on the inclusion of the bias. The 2 nd column chooses z3
+randomly, 3rd column chooses z3 among well-performing ones, and mini-
+mizes its bias, 4th column, deployed in LIBRA, selects z3 accoding to Al-
+gorithm 1.
+Table 4. LIBRA component ablations.
+5. Conclusions
+We proposed L-SW AG, a new ZC-proxy capturing expres-
+sivity and trainability of DNNs for ConvNets and ViT, and
+LIBRA-NAS, a new ensemble algorithm to properly com-
+bine proxy metrics on a given benchmark. To this aim,
+we built a new benchmark composed of 2000 trained ViT
+models on six different tasks, and adapted previously in-
+troduced SOTA metrics to properly work on GeLU net-
+works. To motivate the need of L-SW AG we evaluated all
+previously introduced ZC-proxies, under the same setup,
+on all benchmarks including our new Autoformer search
+space. We showed how L-SW AG achieves the best rank-
+ing consistency across several benchmarks. To motivate the
+need of LIBRA-NAS, we compared with other ML metric-
+aggregation methods and integrated LIBRA in the NAS
+search. In just 0.1 GPU days, LIBRA finds an architec-
+ture with a 17.0 % test error on ImageNet1k, outperforming
+evolution and gradient-based NAS competitors.
+Limitations and Future work. Our work makes
+progress towards expanding ZC-proxies to the ViT search
+space and toward providing a ML algorithm for combina-
+tion of proxies. However, there are still some limitations.
+First, our LIBRA evaluation is limited to an empirical anal-
+ysis. Second, future work may extend L-SW AG to work on
+the video domain and for different input modalities.
+Acknowledgement
+This work has been partially supported by the project
+IN2814 of Free University of Bozen-Bolzano, by the Span-
+ish project PID2022-136436NB-I00 and by ICREA under
+the ICREA Academia programme.
+4448
+
+
+References
+[1] Mohamed S. Abdelfattah, Abhinav Mehrotra, Łukasz
+Dudziak, and Nicholas D. Lane. Zero-cost proxies for
+lightweight nas. In International Conference on Learning
+Representations (ICLR), 2021. 2
+[2] Kanika Bhardwaj, Ge Li, and Radu Marculescu. How does
+topology influence gradient propagation and model perfor-
+mance of deep networks with densenet-type skip connec-
+tions? In IEEE Conference on Computer Vision and Pattern
+Recognition (CVPR), virtual, 2021. Computer Vision Foun-
+dation / IEEE. 1, 2
+[3] Johan Bjorck, Carla Pedro Gomes, and Bart Selman. Under-
+standing batch normalization. In Neural Information Pro-
+cessing Systems, 2018. 4
+[4] Han Cai, Ligeng Zhu, and Song Han. Proxylessnas: Direct
+neural architecture search on target task and hardware. InIn-
+ternational Conference on Learning Representations , 2019.
+1
+[5] Han Cai, Chuang Gan, Tiark Wang, Zhekai Zhang, and Song
+Han. Once-for-all: Train one network and specialize it for ef-
+ficient deployment. InInternational Conference on Learning
+Representations, 2020. 1
+[6] Wuyang Chen, Xinyu Gong, Xianming Liu, Qian Zhang,
+Yingyan Li, and Zhangyang Wang. Fasterseg: Searching
+for faster real-time semantic segmentation. In International
+Conference on Learning Representations, 2020. 1
+[7] Wei Chen, Xinxin Gong, and Zhiyuan Wang. Neural archi-
+tecture search on imagenet in four gpu hours: A theoretically
+inspired perspective. In International Conference on Learn-
+ing Representations (ICLR), 2021. 2, 3, 6, 7
+[8] Xin Chen, Lingxi Xie, Jun Wu, and Qi Tian. Progres-
+sive differentiable architecture search: Bridging the depth
+gap between search and evaluation. In Proceedings of the
+IEEE/CVF International Conference on Computer Vision ,
+pages 1294–1303, 2019. 1
+[9] Xiang Chen, Yiming Wu, Zhiqiang Liu, Ying Wei, Wuyang
+Zhuang, Shih Yan, Ying Zheng, Zhiqiang Yang, Wenqi
+Zhang, and Liying Xie. Autoformer: Searching transform-
+ers for visual recognition. In Proceedings of the IEEE/CVF
+International Conference on Computer Vision (ICCV), pages
+1771–1780, 2021. 3, 6
+[10] Lucas Chizat, Emmanuel Oyallon, and Francis R. Bach. On
+lazy training in differentiable programming. In Advances
+in Neural Information Processing Systems 32: Annual Con-
+ference on Neural Information Processing Systems (NeurIPS
+2019), pages 2933–2943, Vancouver, BC, Canada, 2019. 2
+[11] Xiangxiang Chu, Bo Zhang, and Ruijun Xu. Fairnas: Re-
+thinking evaluation fairness of weight sharing neural archi-
+tecture search. In Proceedings of the IEEE/CVF Interna-
+tional Conference on Computer Vision, pages 12239–12248,
+2021. 1
+[12] Xuanyi Dong and Yi Yang. Searching for a robust neu-
+ral architecture in four gpu hours. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 1761–1770, 2019. 1
+[13] Ximing Dong and Yiming Yang. Nas-bench-201: Extending
+the scope of reproducible neural architecture search. arXiv
+preprint arXiv:2001.00326, 2020. 2
+[14] Yawen Duan, Xin Chen, Hang Xu, Zewei Chen, Xiaodan
+Liang, Tong Zhang, and Zhenguo Li. Transnas-bench-101:
+Improving transferability and generalizability of cross-task
+neural architecture search. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition ,
+pages 5251–5260, 2021. 2, 6
+[15] Łukasz Dudziak, Thomas Chau, Mohamed S. Abdelfattah,
+Royson Lee, Hyeji Kim, and Nicholas D. Lane. Brp-nas:
+prediction-based nas using gcns. In Proceedings of the 34th
+International Conference on Neural Information Processing
+Systems, Red Hook, NY , USA, 2020. Curran Associates Inc.
+1
+[16] Thomas Elsken, Jan Hendrik Metzen, and Frank Hutter.
+Neural architecture search: A survey. The Journal of Ma-
+chine Learning Research, 2019. 1
+[17] Zichao Guo, Xiangyu Zhang, Haoyuan Mu, Wen Heng,
+Zechun Liu, Yichen Wei, and Jian Sun. Single path one-
+shot neural architecture search with uniform sampling. In
+European Conference on Computer Vision, pages 544–560.
+Springer, 2020. 1
+[18] Hyeonjeong Ha, Minseon Kim, and Sung Ju Hwang. Gen-
+eralizable lightweight proxy for robust nas against diverse
+perturbations. In Advances in Neural Information Process-
+ing Systems 36: Annual Conference on Neural Information
+Processing Systems (NeurIPS 2024), 2024. 2
+[19] Boris Hanin and David Rolnick. Complexity of linear
+regions in deep networks. In Proceedings of the Inter-
+national Conference on Machine Learning (ICML) , pages
+2596–2604, 2019. 3
+[20] Zhenhan Huang, Tejaswini Pedapati, Pin-Yu Chen, Chun-
+heng Jiang, and Jianxi Gao. Graph is all you need?
+lightweight data-agnostic neural architecture search without
+training, 2024. 3
+[21] Arthur Jacot, Franck Gabriel, and Cl ´ement Hongler. Neu-
+ral tangent kernel: Convergence and generalization in neural
+networks. In Advances in Neural Information Processing
+Systems (NeurIPS), 2018. 3
+[22] Arjun Krishnakumar, Colin White, Arber Zela, Renbo Tu,
+Mahmoud Safari, and Frank Hutter. NAS-bench-suite-zero:
+Accelerating research on zero cost proxies. In Thirty-
+sixth Conference on Neural Information Processing Systems
+Datasets and Benchmarks Track, 2022. 2, 3, 5, 6
+[23] Junghyup Lee and Bumsub Ham. Az-nas: Assembling zero-
+cost proxies for network architecture search. In Proceedings
+of the IEEE/CVF Conference on Computer Vision and Pat-
+tern Recognition (CVPR), 2024. 3, 6
+[24] Jaehoon Lee, Lechao Xiao, Samuel Schoenholz, Yasaman
+Bahri, Roman Novak, Jascha Sohl-Dickstein, and Jeffrey
+Pennington. Wide neural networks of any depth evolve as
+linear models under gradient descent. In Advances in Neural
+Information Processing Systems (NeurIPS), 2019. 3
+[25] Namhoon Lee, Thalaiyasingam Ajanthan, and Philip Torr.
+SNIP: Single-shot network pruning based on connection sen-
+sitivity. In International Conference on Learning Represen-
+tations (ICLR), 2019. 2
+4449
+
+
+[26] Guihong Li, Yuedong Yang, Kartikeya Bhardwaj, and Radu
+Marculescu. Zico: Zero-shot NAS via inverse coefficient of
+variation on gradients. In ICLR. OpenReview.net, 2023. 2,
+3, 4, 6
+[27] Guihong Li, Duc Hoang, Kartikeya Bhardwaj, Ming Lin,
+Zhangyang Wang, and Radu Marculescu. Zero-shot neu-
+ral architecture search: Challenges, solutions, and opportu-
+nities. IEEE Transactions on Pattern Analysis and Machine
+Intelligence, 46(12):7618–7635, 2024. 1
+[28] Min Lin, Peng Wang, Zhiwei Sun, Haoyu Chen, Xiaogang
+Sun, Qiang Qian, Huchuan Li, and Rong Jin. Zen-nas: A
+zero-shot nas for high-performance image recognition. In
+Proceedings of the IEEE/CVF International Conference on
+Computer Vision (ICCV), pages 347–356, 2021. 2, 3
+[29] Chenxi Liu, Barret Zoph, Maxim Neumann, Jonathon
+Shlens, Wei Hua, Li-Jia Li, Li Fei-Fei, Alan Yuille, Jonathan
+Huang, and Kevin Murphy. Progressive neural architecture
+search. In Proceedings of the European Conference on Com-
+puter Vision (ECCV), 2018. 1
+[30] Hanxiao Liu, Karen Simonyan, and Yiming Yang.
+Darts: Differentiable architecture search. arXiv preprint
+arXiv:1806.09055, 2018. 1, 3
+[31] Vitor Lopes, Sina Alirezazadeh, and Luis A. Alexandre. Epe-
+nas: Efficient performance estimation without training for
+neural architecture search. In International Conference on
+Artificial Neural Networks. Springer, 2021. 2
+[32] Renqian Luo, Fei Tian, Tao Qin, Enhong Chen, and Tie-Yan
+Liu. Neural architecture optimization. In Advances in Neu-
+ral Information Processing Systems (NeurIPS), pages 7816–
+7827, 2018. 1
+[33] James Mellor, James Turner, Amos Storkey, and Emma J.
+Crowley. Neural architecture search without training. In In-
+ternational Conference on Machine Learning (ICML), pages
+7588–7598. PMLR, 2021. 2, 4
+[34] Jisoo Mok, Byunggook Na, Ji-Hoon Kim, Dongyoon Han,
+and Sungroh Yoon. Demystifying the neural tangent ker-
+nel from a practical perspective: Can it be trusted for neural
+architecture search without training? In 2022 IEEE/CVF
+Conference on Computer Vision and Pattern Recognition
+(CVPR), pages 11851–11860, 2022. 2, 3
+[35] Xuefei Ning, Changcheng Tang, Wenshuo Li, Zixuan Zhou,
+Shuang Liang, Huazhong Yang, and Yu Wang. Evaluating ef-
+ficient performance estimators of neural architectures. InAd-
+vances in Neural Information Processing Systems (NeurIPS),
+pages 12265–12277, 2021. 3
+[36] Yameng Peng, Andy Song, Haytham M. Fayek, Vic Ciesiel-
+ski, and Xiaojun Chang. SW AP-NAS: Sample-wise activa-
+tion patterns for ultra-fast NAS. In The Twelfth International
+Conference on Learning Representations, 2024. 2, 3, 4, 6
+[37] Hieu Pham, Melody Guan, Barret Zoph, Quoc V Le, and Jef-
+frey Dean. Efficient neural architecture search via parameter
+sharing. In International Conference on Machine Learning,
+pages 4095–4104. PMLR, 2018. 1
+[38] Maithra Raghu, Ben Poole, Jon Kleinberg, Surya Ganguli,
+and Jascha Sohl-Dickstein. On the expressive power of deep
+neural networks. In Proceedings of the 34th International
+Conference on Machine Learning, pages 2847–2854. PMLR,
+2017. 4
+[39] Esteban Real, Alok Aggarwal, Yanping Huang, and Quoc V
+Le. Large-scale evolution of image classifiers. In Interna-
+tional Conference on Machine Learning. PMLR, 2017. 1
+[40] Dimitrios Stamoulis, Xiaohan Ding, Di Wang, Dionysios
+Lymberopoulos, Bodhi Priyantha, Han Shi, and Diana Mar-
+culescu. Single-path nas: Designing hardware-efficient con-
+vnets in less than 4 hours. arXiv preprint arXiv:1904.02877,
+2019. 1
+[41] Zihao Sun, Yu Sun, Longxing Yang, Shun Lu, Jilin Mei,
+Wenxiao Zhao, and Yu Hu. Unleashing the power of gra-
+dient signal-to-noise ratio for zero-shot nas. In Proceedings
+of the IEEE/CVF International Conference on Computer Vi-
+sion (ICCV), 2023. 2
+[42] Lucas Theis, Iryna Korshunova, Ali Tejani, and Ferenc
+Husz´ar. Faster gaze prediction with dense networks and
+fisher pruning. CoRR, abs/1801.05787, 2018. 2
+[43] Chaoqi Wang, Guodong Zhang, and Roger B. Grosse. Pick-
+ing winning tickets before training by preserving gradient
+flow. In International Conference on Learning Representa-
+tions (ICLR). OpenReview.net, 2020. 2
+[44] Wei Wen, Hanxiao Liu, Hai Li, Yiran Chen, Gabriel Bender,
+and Pieter-Jan Kindermans. Neural predictor for neural ar-
+chitecture search. arXiv preprint arXiv:1912.00848 , 2019.
+1
+[45] Bichen Wu, Xiaoliang Dai, Peizhao Zhang, Yanghan Wang,
+Fei Sun, Yiming Wu, Yuandong Tian, and Peter Vajda.
+Fbnet: Hardware-aware efficient convnet design via dif-
+ferentiable neural architecture search. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 2019. 1
+[46] Lichuan Xiang, Rosco Hunter, Minghao Xu, Łukasz
+Dudziak, and Hongkai Wen. Exploiting network compress-
+ibility and topology in zero-cost NAS. In AutoML Confer-
+ence 2023, 2023. 3, 5, 6
+[47] Saining Xie, Alexander Kirillov, Ross Girshick, and Kaim-
+ing He. Exploring randomly wired neural networks for im-
+age recognition. In Proceedings of the IEEE/CVF Interna-
+tional Conference on Computer Vision (ICCV), pages 1284–
+1293, 2019. 3
+[48] Sirui Xie, Hehui Zheng, Chenxi Liu, and Liang Lin. Snas:
+Stochastic neural architecture search. In International Con-
+ference on Learning Representations, 2019. 1
+[49] Huan Xiong, Lei Huang, Mengyang Yu, Li Liu, Fan Zhu, and
+Ling Shao. On the number of linear regions of convolutional
+neural networks. In Proceedings of the International Con-
+ference on Machine Learning (ICML), pages 10514–10523,
+2020. 3
+[50] Yuhui Xu, Lingxi Xie, Xiaopeng Zhang, Xin Chen, Guo-
+Jun Qi, Qi Tian, and Hui Xiong. Pc-darts: Partial channel
+connections for memory-efficient architecture search. arXiv
+preprint arXiv:1907.05737, 2019. 1
+[51] Chris Ying, Aaron Klein, Esteban Real, Eric Christiansen,
+Kevin P. Murphy, and Frank Hutter. Nas-bench-101: To-
+wards reproducible neural architecture search. In Interna-
+tional Conference on Machine Learning, 2019. 6
+[52] Arber Zela, Thomas Elsken, Tilak Saikia, Yahya Marrakchi,
+Thomas Brox, and Frank Hutter. Understanding and ro-
+4450
+
+
+bustifying differentiable architecture search. arXiv preprint
+arXiv:1909.09656, 2019. 1
+[53] Arber Zela, Julien Siems, Lucas Zimmer, Jovita Lukasik,
+Margret Keuper, and Frank Hutter. Surrogate nas bench-
+marks: Going beyond the limited search spaces of tabular
+nas benchmarks, 2022. 6
+[54] Zheng Zhang and Zhijian Jia. GradSign: Model performance
+inference with theoretical insights. In International Confer-
+ence on Learning Representations (ICLR), 2022. 2, 4
+[55] Fangqin Zhou, Mert Kilickaya, Joaquin Vanschoren, and
+Ran Piao. Hytas: A hyperspectral image transformer archi-
+tecture search benchmark and analysis. InProceedings of the
+European Conference on Computer Vision (ECCV), 2024. 2,
+4
+[56] Barret Zoph and Quoc V . Le. Neural architecture search with
+reinforcement learning. In ICLR. OpenReview.net, 2017. 1
+4451
