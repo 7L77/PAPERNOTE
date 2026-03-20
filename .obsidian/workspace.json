@@ -214,6 +214,7 @@
   },
   "active": "077418b39299f54d",
   "lastOpenFiles": [
+    "papers/Vulnerable Data-Aware Adversarial Training.pdf",
     "code_depots/Zero-Shot Neural Architecture Search Challenges, Solutions, and Opportunities/requirement.txt",
     "code_depots/Zero-Shot Neural Architecture Search Challenges, Solutions, and Opportunities/main.py",
     "论文笔记/_概念/Neural Graph Features (GRAF)_ch.md",
@@ -250,7 +251,6 @@
     "papers/Feng 等 - Vulnerable Data-Aware Adversarial Training.pdf",
     "code_depots/Loss Functions for Predictor-based Neural Architecture Search",
     "papers/Kang 等 - Revolutionizing Training-Free NAS Towards Efficient Automatic Proxy Discovery via Large Language Mo.pdf",
-    "papers/Kang - Revisiting Neural Networks for Few-Shot Learning A Zero-Cost NAS Perspective.pdf",
     "code_depots/Group Fisher Pruning for Practical Network Compression/resources/structures.png",
     "code_depots/Group Fisher Pruning for Practical Network Compression/resources/sota.png",
     "code_depots/Group Fisher Pruning for Practical Network Compression/resources/speed_up.png",
