@@ -100,6 +100,8 @@ generated_by: dailypaper-skills
 - [[论文笔记/NAS方法/Task Adaptation RL-NAS Transfer_ch|Task Adaptation RL-NAS Transfer_ch]]
 - [[论文笔记/NAS方法/UP-NAS|UP-NAS]]
 - [[论文笔记/NAS方法/UP-NAS_ch|UP-NAS_ch]]
+- [[论文笔记/NAS方法/VDAT|VDAT]]
+- [[论文笔记/NAS方法/VDAT_ch|VDAT_ch]]
 - [[论文笔记/NAS方法/VKDNW|VKDNW]]
 - [[论文笔记/NAS方法/VKDNW_ch|VKDNW_ch]]
 - [[论文笔记/NAS方法/Variation-Matters|Variation-Matters]]
