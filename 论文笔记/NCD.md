@@ -106,6 +106,8 @@ y = \sum (W \odot M \odot X),\quad M(i,j,k)\sim Bernoulli(1-\alpha)
 ## 论文与代码对照
 - 目前未在 ICCV 论文页和补充材料中看到官方仓库链接（检查日期：2026-03-14）。
 - 论文给出了完整方法与附录算法描述，可按文中公式和 Algorithm 1 复现主流程。
+- 论文方法对应的关键算法位于 **Supplementary 的 Algorithm 1**：  
+  https://openaccess.thecvf.com/content/ICCV2025/supplemental/Kang_Beyond_the_Limits_ICCV_2025_supplemental.pdf
 
 ## 批判性思考
 ### 优点

@@ -128,3 +128,70 @@ $$
 - [[Gram Matrix]]
 - [[Network Expressivity]]
 - [[Neural Tangent Kernel]]
+
+## Code Snippets and Operations
+
+### A) Feature Extraction Path (layer activations -> SVD)
+File: `D:/PRO/essays/code_depots/Dextr/NASLib/naslib/predictors/pruners/measures/dextr.py`
+
+```python
+def forward_hook(module, data_input, data_output):
+    fea = data_output[0].clone().detach()
+    n = torch.tensor(fea.shape[0])
+    fea = fea.reshape(n, -1)
+    s = torch.linalg.svdvals(fea)
+    svd = torch.min(s) / torch.max(s)  # inverse condition signal
+    svd[torch.isnan(svd)] = 0
+    svd[torch.isinf(svd)] = 0
+    result_list.append(svd)
+```
+
+### B) Curvature Path (curve input -> first/second derivatives)
+File: `D:/PRO/essays/code_depots/Dextr/NASLib/naslib/predictors/pruners/measures/dextr_utils/no_free_lunch_architectures/length.py`
+
+```python
+theta = torch.linspace(0, 2 * np.pi, n_interp).cuda(non_blocking=True)
+curve_input = ...
+output = network(curve_input[_idx:_idx+batch_size])
+v = autograd.grad(output[:, index].sum(), theta, create_graph=True, retain_graph=True)[0]
+a = autograd.grad(v.sum(), theta, create_graph=True, retain_graph=True)[0]
+kappa += (vv**(-3/2) * (vv * aa - va ** 2).sqrt()).sum().item()
+```
+
+### C) Final Fusion (aligned with Eq. 8)
+File: `D:/PRO/essays/code_depots/Dextr/NASLib/naslib/predictors/pruners/measures/dextr.py`
+
+```python
+results = torch.log(1 + torch.sum(torch.tensor(result_list)))
+curvature = torch.log(1 + torch.tensor(curvature))
+dextr = results * curvature / (results + curvature)
+```
+
+### D) Practical Operations
+1. NB201 correlation runs:
+```bash
+cd D:/PRO/essays/code_depots/Dextr/NASBench201/correlation
+python NAS_Bench_201.py --start 0 --end 1000 --dataset cifar10 --measure dextr
+python NAS_Bench_201.py --start 0 --end 1000 --dataset cifar100 --measure dextr
+python NAS_Bench_201.py --start 0 --end 1000 --dataset ImageNet16-120 --measure dextr
+```
+
+2. NASLib benchmark entry scripts:
+```bash
+bash NASLib/scripts/cluster/benchmarks/run_nb101.sh correlation dextr
+bash NASLib/scripts/cluster/benchmarks/run_nb301.sh correlation dextr
+bash NASLib/scripts/cluster/benchmarks/run_tnb101.sh correlation dextr
+```
+
+3. DARTS search entry:
+```bash
+cd D:/PRO/essays/code_depots/Dextr/NASBench201
+bash exp_scripts/zerocostpt_darts_pipeline.sh
+```
+
+## Dextr 用两路信号打分：
+层特征的“逆条件数”表示收敛/泛化潜力；
+  1/ntk
+输出轨迹的外在曲率表示表达性；
+  
+最后做对数压缩后调和式融合。

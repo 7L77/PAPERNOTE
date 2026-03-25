@@ -254,17 +254,112 @@ m.register_backward_hook(get_counting_backward_hook(2**len(modules)))
 3. 可选 `split_data` 分块以缓解显存压力（OOM 时在外层自动增大分块数）  
    代码：`foresight/pruners/measures/act_grad_cor_weighted.py:57-64`，`foresight/pruners/predictive.py:63-72`
 
+```
+    s = []
+    N = inputs.shape[0]
+    for sp in range(split_data):
+        net.zero_grad()
+        net.K = np.zeros((N//split_data, N//split_data))
+        #net.N = 0
+
+        st=sp*N//split_data
+        en=(sp+1)*N//split_data
+
+        outputs = net(inputs[st:en])
+        loss = loss_fn(outputs, targets[st:en])
+        loss.backward()
+        #if net.N != 0:
+        #    s.append(hooklogdet(net.K / net.N))
+        s.append(hooklogdet(net.K))
+    #act_grad_cor_weighted = np.mean(s)
+    act_grad_cor_weighted = np.prod(s)
+
+
+```
+
+
 ### Step 5: log-det 打分并返回 WRCor 分数
 
 1. 对聚合矩阵 `K` 计算 `np.linalg.slogdet(K)` 的 log-det  
    代码：`foresight/pruners/measures/act_grad_cor_weighted.py:37-39`
+```
+    def hooklogdet(K):
+        s, ld = np.linalg.slogdet(K)
+        return ld
+
+```
 2. 当前实现把每个 split 的得分收集到 `s` 后取 `np.prod(s)` 作为最终 `act_grad_cor_weighted`  
    代码：`foresight/pruners/measures/act_grad_cor_weighted.py:70-74`
+```
+        s.append(hooklogdet(net.K))
+    #act_grad_cor_weighted = np.mean(s)
+    act_grad_cor_weighted = np.prod(s)
+
+```
 
 ### Step 6: 在搜索中作为单指标或投票指标使用
 
 1. 直接作为排序分数参与 random / RL / evolution 搜索的 `best` 更新  
    代码：`search.py:226-233,386-393,520-537`
+```
+        for i in tqdm(range(self.N)):
+            arch     = self.sample_arch()
+            measures, eval_time = self.eval_arch(arch)
+            total_eval_time += eval_time
+            cur = (arch, measures)
+            history.append(cur)
+            best = cur if best is None else max([cur, best], key=cmp_to_key(self.cmp))
+        return best, history, total_eval_time
+
+
+        for i in tqdm(range(self.N)):
+            log_prob, arch = self.select_generate()
+            measures, eval_time = self.eval_arch(arch)
+            total_eval_time += eval_time
+            cur = (arch, measures)
+            history.append(cur)
+            best = cur if best is None else max([cur, best], key=cmp_to_key(self.cmp))
+
+            reward = sum([(measures[k]-measures_mean[j])/measures_std[j] for j, k in enumerate(self.measures)])
+            if not (np.isnan(reward) or np.isinf(reward)):
+                self.baseline.update(reward)
+                if self.search_space == 'nasbench101':
+                    policy_loss = (-log_prob[0] * (reward - self.baseline.value())).sum() + (-log_prob[1] * (reward - self.baseline.value())).sum()
+                elif self.search_space == 'nasbench201':
+                    policy_loss = (-log_prob * (reward - self.baseline.value())).sum()
+                elif self.search_space == 'MobileNetV2':
+                    policy_loss = sum([(-x * (reward - self.baseline.value())).sum() for x in log_prob])
+                else:
+                    raise ValueError('There is no {:} search space.'.format(self.search_space))
+                self.optimizer.zero_grad()
+                policy_loss.backward()
+                self.optimizer.step()
+            else:
+                print('No updating!')
+
+        return best, history, total_eval_time
+
+        for i in tqdm(range(self.N)):
+            '''if i < self.N / 2:
+                lambd = (self.N - 2*i) / self.N
+                p = lambd + 0.1 * (1 - lambd)
+            else:
+                p = 0.1'''
+            p = 1.0
+            samples  = random.sample(population, self.tournament_size)
+            parent   = max(samples, key=cmp_to_key(self.cmp))
+            child    = self.mutate(parent[0], p)
+            measures, eval_time = self.eval_arch(child)
+            total_eval_time += eval_time
+            cur = (child, measures)
+            population.append(cur)
+            history.append(cur)
+            population.popleft()
+            best = cur if best is None else max([cur, best], key=cmp_to_key(self.cmp))
+        return best, history, total_eval_time
+
+
+```
 2. 实验命令中常与 `synflow`、`jacob_cor` 组合形成 SJW 风格投票  
    代码：`README.md:26-30`
 
@@ -272,9 +367,9 @@ m.register_backward_hook(get_counting_backward_hook(2**len(modules)))
 
 ### Eq. (1): 相关矩阵聚合
 
-\[
+$$
 \mathbf{K}^{A/G}=\sum_{i=1}^{N_a}|\mathbf{C}^{A/G}_i|^{x}
-\]
+$$
 
 含义：对层内多个响应单元的相关矩阵做聚合，得到架构级统计矩阵。  
 符号：
@@ -284,20 +379,20 @@ m.register_backward_hook(get_counting_backward_hook(2**len(modules)))
 
 ### Eq. (8)-(9): RCor
 
-\[
+$$
 S_{\text{RCor}}=\log(\det(\mathbf{K})),\quad
 \mathbf{K}=\sum_i\left(|\mathbf{C}^{A}_i|+|\mathbf{C}^{G}_i|\right)
-\]
+$$
 
 含义：统一使用 log-det 将“跨样本线性独立性”映射为标量分数。  
 分数越高，意味着非对角相关更小，样本响应更独立。
 
 ### Eq. (10)-(11): WRCor
 
-\[
+$$
 S_{\text{WRCor}}=\log(\det(\mathbf{K})),\quad
 \mathbf{K}=\sum_{l=1}^{L}\sum_{i=1}^{N_a^l}2^l\cdot\left(|\mathbf{C}^{A}_{l,i}|+|\mathbf{C}^{G}_{l,i}|\right)
-\]
+$$
 
 含义：在 RCor 基础上对层级做指数加权，强化顶层响应贡献。  
 符号：
@@ -376,5 +471,4 @@ S_{\text{WRCor}}=\log(\det(\mathbf{K})),\quad
 - [[Spearman's Rank Correlation]]
 - [[Weighted Response Correlation]]
 - [[Proxy Voting]]
-
 

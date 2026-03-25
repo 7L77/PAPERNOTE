@@ -66,21 +66,43 @@ updated: 2026-03-14
 - Source: Sec. 5, Fig. 5, Table 2/3
 
 ## 伪代码
+> 对应论文 Supplementary 中的 **Algorithm 1**（NCD 主流程），下面给出便于阅读的完整整理版。
 ```text
-Algorithm: NCD-Enhanced AZP
-Input: architecture a, mini-batch X, AZP scorer f_azp, alpha
-Output: NCD-adjusted score s
+Algorithm 1 (Readable): Training-Free NAS with NCD
+Input:
+  task T, dataset D, search space A
+  number of sampled architectures N
+  batch size B
+  AZP scorer f_azp (e.g., NWOT / SWAP)
+  masking ratio alpha
+Output:
+  best architecture F_best
 
-1. Forward 得到候选架构中间激活表示。
-   Source: Sec. 2.1 / Sec. 4
-2. 对卷积评分路径施加随机掩码 M（keep prob = 1-alpha）。
-   Source: Sec. 4.1 / Eq. (4) / Supp. Alg. 1 lines 4-6
-3. 执行 NIR（基于 LN 评估路径的非线性重标定）。
-   Source: Sec. 4.2 / Theorem 4.2 / Supp. Alg. 1 lines 7-8
-4. 计算 s = f_azp(transformed_features)。
-   Source: Sec. 4 / Fig. 5
-5. 用 s 对候选排序并驱动外层搜索。
-   Source: Sec. 5 / Supp. Alg. 1
+1. score_best <- -inf, F_best <- None
+2. for j in {1, ..., N} do
+3.   Sample a mini-batch X = {s_i}_{i=1..B} from dataset D for task T
+4.   Sample an architecture F_j(.) from search space A
+5.   Forward F_j on X to obtain activation representations C_j
+6.   Apply SAM on convolution scoring path:
+       C'_j = SAM(C_j, alpha), with mask M ~ Bernoulli(1 - alpha)
+7.   Apply NIR (LN-style non-linear rescaling) on C'_j:
+       C''_j = NIR(C'_j)
+8.   Compute NCD score:
+       score_j = f_azp(C''_j)
+9.   if score_j > score_best then
+10.      score_best <- score_j
+11.      F_best <- F_j
+12.   end if
+13. end for
+14. return F_best
+
+Subroutine: SAM (per convolution receptive field)
+  y = sum(W ⊙ M ⊙ X),  M(i,j,k) ~ Bernoulli(1 - alpha)
+
+Notes:
+  - Step 6 corresponds to Sec. 4.1, Eq. (4)
+  - Step 7 corresponds to Sec. 4.2, Eq. (5)-(10), Theorem 4.1/4.2
+  - Overall loop corresponds to Supplementary Algorithm 1
 ```
 
 ## 训练流程

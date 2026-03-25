@@ -104,3 +104,51 @@ Supplementary Algorithm 1 uses two stages:
 - [[Zero-Cost Proxy]]
 - [[Spearman's Rank Correlation]]
 - [[Minimum Eigenvalue of Correlation]]
+
+
+MeCo 对应的“特征提取 + 打分”主实现在这里：
+
+1. `D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation/correlation/foresight/pruners/measures/meco.py`
+   - `get_score(...)`：注册 `forward_hook`，收集每个 module 的输出特征；
+   - 对特征做 `reshape` 后计算 `torch.corrcoef`，再取相关矩阵最小特征值并累加；
+   - `compute_meco(...)` 通过 `@measure('meco')` 暴露给外部调用。
+
+2. 调用入口链路
+   - `D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation/nasbench201/networks_proposal.py`
+     - `--proj_crit` 支持 `meco`
+   - `D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation/nasbench201/init_projection.py`
+     - 通过 `predictive.find_measures(..., measure_names=[args.proj_crit])` 调到 `meco`
+   - `D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation/correlation/foresight/pruners/predictive.py`
+     - `find_measures -> find_measures_arrays -> measures.calc_measure(...) -> compute_meco(...)`
+
+核心片段（meco.py）：
+```python
+def get_score(net, x, target, device, split_data):
+    result_list = []
+    x = torch.randn(size=(1, 3, 64, 64)).to(device)
+    net.to(device)
+
+    def forward_hook(module, data_input, data_output):
+        fea = data_output[0].detach()
+        fea = fea.reshape(fea.shape[0], -1)
+        corr = torch.corrcoef(fea)
+        corr[torch.isnan(corr)] = 0
+        corr[torch.isinf(corr)] = 0
+        values = torch.linalg.eig(corr)[0]
+        result = torch.min(torch.real(values))
+        result_list.append(result)
+
+    for name, modules in net.named_modules():
+        modules.register_forward_hook(forward_hook)
+
+    N = x.shape[0]
+    for sp in range(split_data):
+        st = sp * N // split_data
+        en = (sp + 1) * N // split_data
+        y = net(x[st:en])
+
+    return torch.sum(torch.tensor(result_list)).item()
+```
+
+补充：该仓还有一份同构实现路径：
+`D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation/zero-cost-nas/foresight/pruners/measures/meco.py`

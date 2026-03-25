@@ -196,6 +196,18 @@ def extract_cell_features(self, inputs):
 - layer_features[i] 就是 fi​（第 i 个 cell/block 的输出特征）
 ```
 
+extract_cell_features 取的是“**每个 cell/block 的输出特征**”，并且还包含 stem 输出。
+在 NB201 这个实现里，layer_features 的索引是：
+    - layer_features[0] = stem(inputs) 输出
+    - layer_features[1] = cells[0] 输出
+    - layer_features[2] = cells[1] 输出  
+        所以若你把 fl​ 定义为第 l 个 cell 输出，会有一个 +1 的偏移。
+
+- model.cells[0]：第 0 个 cell（通常是 InferCell）
+- model.cells[0].layers[0]：该 cell 的第 1 条边算子
+- 若该边是 ReLUConvBN，则有 model.cells[0].layers[0].op（内部 ReLU+Conv+BN）
+
+
 #### 表达性：
 
 输入[16,3,32,32]
@@ -321,3 +333,42 @@ size_proxy
 快速区分方法：
 - 两个模型参数量几乎一样，但精度差很多：这是 结构 proxy 在起作用。
 - 同一结构把通道数放大后性能提高：这是 size proxy 在起作用。
+
+## NB201 代码定位补充（2026-03-21）
+
+### 1) `layer_features[i]` 到底是什么
+- 在 `NB201/custom/tss_model.py` 中，`extract_cell_features` 会先 append `stem` 输出，再依次 append 每个 `cell` 输出。  
+  位置：`D:/PRO/essays/code_depots/AZ-NAS Assembling Zero-Cost Proxies for Network Architecture Search/NB201/custom/tss_model.py` 第 54-68 行。
+- 在 `NB201/custom/tss_model_supernet.py` 中逻辑一致，只是遇到 `SearchCell` 时走 `forward_dynamic`。  
+  位置：`D:/PRO/essays/code_depots/AZ-NAS Assembling Zero-Cost Proxies for Network Architecture Search/NB201/custom/tss_model_supernet.py` 第 105-122 行。
+- 因此索引关系是：  
+  `layer_features[0] = stem 输出`，`layer_features[1] = cells[0] 输出`，`layer_features[2] = cells[1] 输出`，依此类推。
+
+### 2) `cell[0]` 的结构（离散模型 vs 超网模型）
+cells.0.edges.<i<-j>.<op_idx>\[op.1.weights\\bias\]
+
+
+- 离散单架构模型（`tss_model.py`）中，普通 cell 是 `InferCell`，内部是 `layers`，不是 `edges`。  
+  位置：`.../NB201/xautodl/models/cell_infers/cells.py` 第 13-69 行。  
+  典型参数名更像：`cells.0.layers.0.op.1.weight`。
+- 超网模型（`tss_model_supernet.py`）中，普通 cell 是 `NAS201SearchCell`，内部有 `edges`（`ModuleDict`），每条边是多个候选 op（`ModuleList`）。  
+  位置：`.../NB201/xautodl/models/cell_searchs/search_cells.py` 第 13-47 行。  
+  所以你写的这类名字是对的：  
+  `cells.0.edges.1<-0.2.op.1.weight`、`cells.0.edges.2<-1.2.op.1.weight`。
+- 当 `max_nodes=4` 时，`cells.0` 常见边键有：`1<-0, 2<-0, 2<-1, 3<-0, 3<-1, 3<-2`。  
+  位置：`.../NB201/xautodl/models/cell_searchs/search_cells.py` 第 31-34 行。
+
+### 3) `stem.0` 有没有 bias
+- `stem.0` 是 `Conv2d(..., bias=False)`，所以只有 `stem.0.weight`，没有 `stem.0.bias`。  
+  位置：`.../NB201/custom/tss_model.py` 第 17-19 行；`.../NB201/custom/tss_model_supernet.py` 第 38-40 行。
+- `stem.1` 是 `BatchNorm2d`，所以会有 `stem.1.weight` 和 `stem.1.bias`。
+
+### 4) AZ-NAS 与 MeCo 的“提特征粒度”区别
+- AZ-NAS（本仓 NB201 实现）是 **cell 级输出**：每走完一个 cell（其内部边/节点聚合都完成）才 append 一次特征。  
+  位置：`.../NB201/custom/tss_model_supernet.py` 第 112-120 行；  
+  cell 内部聚合见 `.../NB201/xautodl/models/cell_searchs/search_cells.py` 第 156-166 行。
+- 所以 `extract_cell_features` 不是“每条边提一次”，而是“每个 cell 输出提一次”。
+
+- MeCo（你本地仓这版）是 **module 级 hook**：在 `net.named_modules()` 上注册 `forward_hook`，每个被执行模块都会触发一次特征统计。  
+  位置：`D:/PRO/essays/code_depots/MeCo Zero-Shot NAS with One Data and Single Forward Pass via Minimum Eigenvalue of Correlation/correlation/foresight/pruners/measures/meco.py` 第 29-44 行。
+- 因此直观上 MeCo 的统计粒度更细，但严格讲是“模块级”而不是专门定义的“边级 API”。

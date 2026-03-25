@@ -1,0 +1,1596 @@
+
+
+===== PAGE 1 =====
+
+Predictor-Free and Hardware-Aware Federated
+Neural Architecture Search via Pareto-Guided
+Supernet Training
+Bostan Khan
+M¨alardalen University
+V¨aster˚as, Sweden
+bostan.khan@mdu.se
+Masoud Daneshtalab
+M¨alardalen University
+V¨aster˚as, Sweden
+masoud.daneshtalab@mdu.se
+Abstract—Federated Neural Architecture Search (Fed-
+NAS) aims to automate model design for privacy-preserving
+Federated Learning (FL) but currently faces two crit-
+ical bottlenecks: unguided supernet training that yields
+suboptimal models, and costly multi-hour pipelines for
+post-training subnet discovery. We introduce DeepFedNAS,
+a novel, two-phase framework underpinned by a multi-
+objective fitness function that synthesizes mathematical
+network design with architectural heuristics. Enabled by a
+re-engineered supernet, DeepFedNAS introducesF ederated
+Pareto Optimal Supernet Training, which leverages a pre-
+computed Pareto-optimal cache of high-fitness architec-
+tures as an intelligent curriculum to optimize shared
+supernet weights. Subsequently, itsPredictor-Free Search
+Methodeliminates the need for costly accuracy surrogates
+by utilizing this fitness function as a direct, zero-cost
+proxy for accuracy, enabling on-demand subnet discov-
+ery in mere seconds. DeepFedNAS achieves state-of-the-
+art accuracy (e.g., up to 1.21% absolute improvement
+on CIFAR-100), superior parameter and communication
+efficiency, and a substantial∼61×speedup in total post-
+training search pipeline time. By reducing the pipeline
+from over 20 hours to approximately 20 minutes (including
+initial cache generation) and enabling 20-second individual
+subnet searches, DeepFedNAS makes hardware-aware FL
+deployments instantaneous and practical. The complete
+source code and experimental scripts are available at:
+https://github.com/bostankhan6/DeepFedNAS
+Index Terms—Federated Learning, Neural Architecture
+Search, Supernet, Weight Sharing, Network Design, Effi-
+ciency
+I. INTRODUCTION
+The demand for intelligent, on-device applications,
+such as mobile keyboard prediction [2] and personalized
+The computations in this work were enabled by resources pro-
+vided by the National Academic Infrastructure for Supercomputing in
+Sweden (NAISS), partially funded by the Swedish Research Council
+through grant agreement no. 2022-06725.
+A preliminary version of this work has been accepted at the
+ESANN 2026 conference [1]. This manuscript significantly extends
+the conference version with new theoretical analysis, a hardware-
+aware optimization framework, additional experiments, and deeper
+discussion.
+healthcare [3], has driven the need for machine learning
+paradigms that are simultaneously computationally ef-
+ficient and privacy-preserving. Federated Learning (FL)
+[4] has become the dominant paradigm to address this,
+facilitating collaborative model training on decentralized
+user data without exposing it. While FL provides a robust
+solution forhowto train a given model, the challenge
+of determiningwhatmodel architecture to train remains
+a significant bottleneck. This architectural design, often
+performed manually, is frequently suboptimal given the
+vast heterogeneity of data distributions and hardware
+capabilities across client devices [5].
+To automate this critical design step, the research
+community has developed Federated Neural Architecture
+Search (FedNAS) to discover optimal network architec-
+tures directly within the federated setting [6]. Among
+the various FedNAS techniques, supernet-based meth-
+ods have become the state-of-the-art due to their high
+cost efficiency, building on the success of centralized
+approaches like the Once-For-All (OFA) network [7].
+The SuperFedNAS framework [8], in particular, marked
+a key advancement by decoupling the costly supernet
+training phase from a fast, training-free search phase.
+This innovation effectively reduced the training complex-
+ity of finding specialized subnets for multiple hardware
+targets fromO(N)toO(1).
+Despite this progress, the SuperFedNAS framework
+presents two fundamental challenges that limit its ul-
+timate performance and practicality. First, thetraining
+of the supernet itself is unguided and inefficient. The
+baseline framework predominantly relies on random
+sampling of subnets (e.g., the Sandwich Rule’s uniform
+sampling component [9]) to update the shared weights.
+This unguided approach frequently selects suboptimal
+architectures, whose subsequent training provides noisy
+and conflicting gradient updates that can degrade the
+supernet’s shared weights and hinder the performance
+of higher-performing subnets. Second, thepost-training
+arXiv:2601.15127v2  [cs.LG]  28 Jan 2026
+
+===== PAGE 2 =====
+
+search for optimal subnets remains an energy-intensive,
+multi-stage pipeline. The standard methodology involves
+generating a large dataset of architecture-accuracy pairs
+by exhaustive subnet evaluation to train a separate
+accuracy predictor. This predictor pipeline acts as a
+prohibitive barrier to rapid experimentation and deploy-
+ment, especially when tailoring models to new hardware
+constraints.
+In this paper, we introduceDeepFedNAS(illustrated
+in Fig. 1), a novel, two-phase framework that compre-
+hensively addresses these limitations to significantly ad-
+vance federated supernet training and search. Our work
+is grounded in the observation that a mathematically
+motivated approach to architecture evaluation can fun-
+damentally transform both the supernet training process
+and the subsequent search for optimal subnets. Inspired
+by the mathematical design concepts of DeepMAD [10],
+we construct a unified multi-objective fitness function,
+F(A), that synthesizes network information theory with
+empirical architectural heuristics. Crucially, we opera-
+tionalize structural guidelines (like depth uniformity and
+channel monotonicity) as penalty terms, thereby enabling
+a holistic, single-objective optimization for all desired ar-
+chitectural properties within a federated, weight-sharing
+context. This unified fitness function underpins our two
+primary contributions.
+First, to address the supernet training inefficiency, we
+proposeFederated Pareto Optimal Supernet Training.
+Leveraging our fitness function, we perform an exten-
+sive, independent search to generate a pre-computed
+cache of Pareto-optimal architectures, which we term
+the “Pareto path”. This path serves as a Pareto-Guided
+training curriculum. Instead of random sampling, our
+methodology ensures the supernet’s shared weights are
+consistently updated by gradients from theoretically
+grounded, high-fitness architectures, thereby producing
+a superior final supernet. Additionally, to fully enable
+this guided search and overcome inherent limitations
+of prior supernet implementations, we introduce are-
+engineered, generic ResNet-based [11] supernet frame-
+workthat significantly expands the architectural search
+space and improves model fitness.
+Second, we leverage the properties of our optimal
+path-guided trained supernet to introduce aPredictor-
+Free Search Method 1. After our supernet is trained
+using the path-guided curriculum, its shared weights are
+exceptionally well-conditioned for promising architec-
+tural patterns. We demonstrate that our mathematical
+fitness function,F(A), now serves as a high-fidelity,
+zero-cost proxy for the final accuracy of an extracted
+1In this work, the term ‘Predictor-Free’ specifically denotes the elim-
+ination of computationally expensive accuracy surrogates. However, we
+do utilize negligible-cost latency predictors for hardware constraints,
+as detailed in Section III-G2.
+subnet. Consequently, we can find optimal architectures
+for any new deployment budget or hardware constraint
+by running a fast, on-demand genetic algorithm that
+maximizes this fitness function directly. This completely
+obviates the need for the costly, data-driven predictor
+pipeline used in prior work.
+Our comprehensive DeepFedNAS framework not only
+achieves state-of-the-art accuracy across diverse datasets
+and non-IID conditions but also dramatically acceler-
+ates the post-training search. We demonstrate a61×
+speedup compared to the baseline, replacing a multi-
+hour predictor pipeline with a near-instantaneous search
+for specialized subnets adaptable to explicit hardware
+constraints like parameters and real-world latency.
+In summary, our main contributions are:
+•A unified, multi-objective fitness function for CNN-
+based subnets, which adapts and extends mathemat-
+ical network design concepts [10] to formulate a
+single optimization problem for balancing network
+expressiveness with architectural stability and struc-
+tural soundness within a federated, weight-sharing
+context.
+•Are-engineered, generic ResNet-based supernet
+frameworkoffering unparalleled flexibility in design
+and a significantly expanded architectural search
+space, crucial for enabling guided optimization and
+overcoming limitations of prior fixed supernet de-
+sign [8].
+•AFederated Pareto Optimal Supernet Training
+methodology, which leverages a pre-computed
+cache of elite, high-fitness architectures (the “Pareto
+path”) to serve as an effective and intelligent train-
+ing curriculum, leading to a superior final supernet.
+•APredictor-Free Search Methodthat utilizes our
+multi-objective fitness function as a direct, zero-cost
+proxy for model performance, eliminating the entire
+costly predictor-training pipeline and dramatically
+reducing search costs by∼61×.
+•The end-to-endDeepFedNASframework, which is
+validated through extensive experiments to show
+superior performance over state-of-the-art baseline
+methods, particularly in highly heterogeneous non-
+IID environments, and its capability to effectively
+optimize for diverse hardware constraints.
+II. RELATEDWORK
+Our research is situated at the intersection of FL,
+Neural Architecture Search (NAS), and theory-driven
+network design. This section reviews the foundational
+concepts and key advancements in these areas, thereby
+contextualizing our proposed methodology which builds
+upon recent progress in cost-efficient federated architec-
+ture search.
+
+===== PAGE 3 =====
+
+A. Federated Learning
+FL has emerged as the dominant paradigm for dis-
+tributed machine learning that preserves data privacy
+[12], enabling applications ranging from mobile key-
+board prediction [2] to sensitive healthcare analytics
+[3]. In the standard FL setting, a central server coor-
+dinates the training of a global model across decentral-
+ized clients without requiring access to raw data [4].
+The seminal algorithm, Federated Averaging (FedAvg)
+[4], involves clients training locally and transmitting
+only model updates for aggregation. This paradigm has
+spurred a vast field of research, with open challenges and
+advances cataloged in several comprehensive surveys
+[13]–[15].
+A primary challenge in FL is statistical heterogene-
+ity, where client data is not independent and identi-
+cally distributed (non-IID) [16]. This non-IID nature—
+comprehensively reviewed in [17]—can significantly de-
+grade model performance and slow convergence. A sec-
+ond, equally critical challenge issystem heterogeneity,
+where clients possess diverse hardware with varying
+computational, memory, and energy resources [5]. These
+challenges motivate the need for methods that can pro-
+duce personalized FL models tailored to individual client
+data distributions [18], [19] and hardware capabilities
+[20].
+B. Neural Architecture Search with Weight Sharing
+While FL addresses how to train a model, NAS
+tackles the challenge of designing the model architecture
+itself. Early NAS methods, often based on reinforce-
+ment learning [21] or evolutionary algorithms [22], were
+computationally prohibitive. The introduction of weight-
+sharing via a supernet [23], [24], particularly through
+differentiable approaches like DARTS [25], dramatically
+improved efficiency.
+The OFA network [7] serves as a cornerstone of
+this paradigm. OFA trains a single, large supernet con-
+taining a vast number of sub-architectures. By using
+a progressive shrinking training schedule, OFA ensures
+subnets can be extracted to meet diverse hardware con-
+straints without costly retraining. Similarly, BigNAS [26]
+popularized the “Sandwich Rule” sampling strategy [9]
+to simultaneously optimize the largest, smallest, and
+random subnets.
+However, the weight-sharing paradigm is not with-
+out flaws. Naively sharing weights can lead to poor
+rank correlation between supernet estimation and true
+standalone accuracy [27]. This is often attributed to
+interference or multi-model forgetting, where training
+one subnet degrades the performance of others sharing
+the same weights [28], [29]. While recent centralized
+works have explored advanced strategies to mitigate this
+[30], [31], adapting such concepts to the constrained
+federated setting remains an open challenge and the key
+focus of our work.
+C. Federated Neural Architecture Search
+FedNAS combines FL and NAS to automate archi-
+tecture design in a federated setting. Early works like
+FedNAS [6] and [32] demonstrated the feasibility of this
+concept.
+The central challenge for FedNAS is the confluence
+of statistical (non-IID) and system (hardware) hetero-
+geneity [33]. A “one-size-fits-all” architecture is often
+suboptimal, leading to two main branches of research:
+1)Data Personalization:Many works focus on
+adapting the architecture to local data. For in-
+stance, [34] allows clients to find a locally op-
+timal path through a global supernet for 3D
+medical segmentation. Other methods, such as
+Peaches [35] and FedPNAS [36], use a “base-and-
+personal” structure, while others employ reinforce-
+ment learning [37], [38] or knowledge distillation
+[39], [40] to manage heterogeneity.
+2)System Efficiency (Our Focus):Other approaches
+leverage the supernet paradigm to handlesystem
+heterogeneity. The goal is to create a single global
+supernet from which clients can extract subnets of
+different sizes [41]. However, many such methods
+suffer from two limitations highlighted by [8]:
+(1) prohibitive computational costs due to tightly
+coupled search and training phases [42], [43]; and
+(2) restricted search spaces that limit diversity [44].
+Our research builds upon the SuperFedNAS frame-
+work [8], which addressed the cost limitation by de-
+coupling supernet training from the search phase. While
+efficient (O(1)search cost), we identify that SuperFed-
+NAS relies on unguided random sampling (e.g., Sand-
+wich Rule), leading to inefficient weight updates. Our
+approach resonates with recent advances incentralized
+NAS that critique random sampling: DC-NAS [30] pro-
+poses diversified sampling to balance exploration, while
+PreNAS [31] utilizes a zero-cost proxy to focus training
+on high-quality candidates. We are the first to adapt these
+advanced sampling concepts to the challenging federated
+environment.
+D. Mathematical Frameworks for Architecture Design
+The majority of NAS methods, including OFA [7]
+and SuperFedNAS [8], rely on heuristic-driven search
+algorithms that treat the network as a black box whether
+based on gradient descent [25], evolution [45], or even
+priors from Large Language Models [46], [47]. An
+alternative and emerging direction is to design networks
+based on intrinsic mathematical properties.
+The DeepMAD framework [10] is a prominent ex-
+ample, proposing a mathematical method for design-
+ing efficient CNNs by maximizing metrics representing
+
+===== PAGE 4 =====
+
+network information entropy and effectiveness. Other
+information-theoretic approaches utilize mutual informa-
+tion analysis to guide search by pruning less contributory
+layers [48].
+Our work is the first to adapt and extend these
+mathematical concepts for the fundamentally different
+problem of federated supernet training. We do not use
+DeepMAD as a one-shot architecture generator; instead,
+we synthesize its core concepts with empirical heuristics
+to create a multi-objective fitness function tailored for
+evaluating subnets within a weight-sharing paradigm.
+This unified formulation unlocks our two main contri-
+butions:Federated Pareto Optimal Supernet Training,
+which uses a pre-computed curriculum of elite archi-
+tectures, and aPredictor-Free Search Method, which
+leverages the fitness function as a direct, zero-cost proxy
+for performance.
+III. METHODOLOGY
+Our work introduces DeepFedNAS, a unified, two-
+phase framework that significantly advances federated
+supernet design and search. Central to our methodol-
+ogy is a multi-objective fitness function (Section III-C),
+which synthesizes and adapts the information-theoretic
+concepts of DeepMAD into a unified searchable metric
+for the unique constraints of federated, weight-sharing
+architectures. This function underpins our contributions:
+first, enabling an independent search (Section III-D) to
+generate a Pareto-optimal path of elite architectures;
+second, driving our Federated Pareto Optimal Super-
+net Training (Section III-E), which leverages this path
+as a Pareto-guided curriculum; and finally, facilitating
+a highly efficient Predictor-Free Search Method (Sec-
+tion III-F) that directly optimizes against our fitness func-
+tion. Furthermore, to overcome architectural limitations
+of prior work, we develop a re-engineered, generic su-
+pernet framework (Section III-B) enabling flexibility and
+improved architectural fitness. This comprehensive ap-
+proach ensures a superior final supernet and an extremely
+efficient search mechanism, capable of hardware-aware
+deployment optimization (Section III-G). The overall
+DeepFedNAS pipeline, illustrating the main intercon-
+nected phases, is depicted in Fig. 1. We begin by
+formulating the federated supernet training problem and
+highlighting the limitations of existing random sampling
+approaches.
+A. Problem Formulation: Federated Supernet Training
+The objective of federated supernet training is to learn
+a single set of shared weights,W, that can effectively
+serve a vast architectural search space,S, acrossK
+decentralized clients. Each clientkpossesses a unique
+local data partitionD k. The overarching goal is to find
+a set of weightsWthat minimizes the expected loss
+over all possible architecturesA ∈Sand all client data
+distributions:
+min
+W
+E
+A∈S
+" KX
+k=1
+|Dk|
+|D| Lk(G(W,A))
+#
+(1)
+whereG(W,A)denotes the function that extracts a
+specific subnet’s weights from the shared supernetW,
+andL k is the loss on clientk’s local data.
+The training process involves the following multi-step
+procedure in each roundt:
+1) A subset of available clients,K t, is selected.
+2) For each clientk∈ K t, a subnet architectureA k ∈
+Sis assigned. The corresponding weightsw k,t =
+G(Wt,A k)are extracted and sent.
+3) Each client trainsw k,t onD k, producing updated
+weightsw ′
+k,t.
+4) The server receives updates and performs an
+overlap-aware aggregation to updateW t+1.
+TheSuperFedNAS framework [8]serves as our
+baseline, specifically for its aggregation mechanism. To
+handle the sparse updates inherent in supernet training
+(Step 4), we employMaxNetwith an overlap-aware
+scaling factor. We refine the formalization of this ag-
+gregation using precise binary mask notation to account
+for parameter overlap. LetI k(θ)∈ {0,1}indicate if
+a specific parameterθis active in the architectureA k
+assigned to clientk. The server update∆ θ at roundtis
+computed as:
+∆θ = βtImax(θ)∆kmax(θ) + (1−β t)P
+k∈K′ Ik(θ)∆k(θ)
+βtImax(θ) + (1−β t)P
+k∈K′ Ik(θ) +ϵ
+(2)
+whereK ′ =K t \ {k max}denotes the set of clients
+excluding the one training the largest subnet. The term
+ϵis a small constant added for numerical stability. Here,
+∆k(θ) =w ′
+k,t(θ)−W t(θ)is the local update,k max is the
+client assigned the largest subnet (A max), andβ t ∈[0,1]
+is a dynamic weighting coefficient that anneals over
+time using cosine scheduling. This aggregation ensures
+that shared weights are updated proportionally to their
+usage frequency. The global model is then updated as
+Wt+1(θ) =W t(θ) +η g ·∆ θ.
+The critical challenge lies in the sampling strategy
+(Step 2). SuperFedNAS’s random sampling component
+is unguided. The architectural search spaceSis not only
+vast but also qualitatively uneven; the overwhelming
+majority of possible architectures are mediocre. This
+leads to inefficient gradient updates and a limited training
+curriculum. This fundamental limitation motivates our
+work.
+B. Supernet Framework and Search Space Definition
+Our initial investigation revealed that the baseline
+SuperFedNAS search space was inherently constrained,
+
+===== PAGE 5 =====
+
+Sampled Subnet
+Sampled Subnet
+Principled Fitness Function
+Low Cost: ~20 Minutes for 60 Subnets
+Sampled Subnet
+Federated Supernet Training Post-Training Search
+Pareto Optimal Subnet Cache Generation
+Direct Subnet Search
+Server with Supernet
+Pareto Path Guided
+Subnet Sampling
+Pareto Path
+Subnet Cache
+Offline Pareto Optimal Subnet
+Search 
+Send Subnets Aggregate Subnets Local Subnet
+Training
+Principled Fitness Function
+Low Cost: ~20 Seconds
+Client 1
+Client 2
+Client 3
+Fig. 1:DeepFedNAS Pipeline.This diagram illustrates the three core phases of our framework. First, theOffline
+Pareto Optimal Subnet Searchgenerates a “Pareto Path Subnet Cache” of high-fitness architectures (e.g., 60
+subnets in∼20 minutes) using a multi-objective fitness functionF(A). Second, theFederated Supernet Training
+leverages this cache for “Pareto Path Guided Subnet Sampling,” where clients are assigned highly effective
+architectures for local training, improving supernet weight quality. Finally, thePost-Training Searchdirectly
+optimizes againstF(A)to find an optimal subnet for deployment (e.g., in∼20 seconds), completely bypassing the
+need for a costly predictor pipeline.
+yielding architectures with consistently low fitness scores
+(Section III-C), as clearly illustrated by the limitations
+of the baseline’s constrained search space and unguided
+random sampling shown in Fig. 2. This motivated a re-
+engineered, generic ResNet-based supernet framework.
+This new framework is highly configurable, supporting
+a variable number of stages (S) and fine-grained control
+over architectural choices within each stage.
+We formally define the search spaceS. For a supernet
+withSstages, we define three distinct sets of discrete
+choices:
+•D={d 1, . . . , dK}: The set of choices for the
+number of blocks (depth) in a stage.
+•C={c 1, . . . , cM }: The set of choices for channel
+width multipliers.
+•E={e 1, . . . , eP }: The set of choices for bottle-
+neck expansion ratios.
+An architectureA ∈Sis uniquely represented by a
+genome consisting of three concatenated vectors:
+A= (d,e,w)(3)
+where:
+•d∈D S: A depth vector of lengthS, whered i is
+the number of extra blocks in stagei.
+•e∈E S×Nblocks: An expansion ratio vector. To allow
+for a fixed-length genome despite variable depth,
+we assign an expansion gene to every possible block
+slot in the supernet (totalS×N blocks slots), even if
+inactive.
+•w∈C S+1: A width vector of lengthS+ 1,
+specifying the multiplier for the stem (w 0) and each
+stage (w 1, . . . , wS).
+The full search spaceSis the Cartesian product of
+these vector spaces:
+S=D S ×E S×Nblocks ×C S+1 (4)
+This formal definition accurately reflects our implemen-
+tation, where the genome is a flat vector concatenating
+depth, expansion, and width decisions. As demonstrated
+in our experimental setup (see Table I), this design en-
+ables a significantly broader range of model complexities
+compared to the baseline.
+C. An Entropy-Based, Multi-Objective Fitness Function
+To overcome random sampling, we require a mecha-
+nism to evaluate an architecture’s quality without costly
+training. We develop a multi-objective fitness function,
+F(A), inspired by the mathematical design framework of
+DeepMAD [10], which balances network expressiveness
+(entropy) against architectural stability (effectiveness).
+We synthesize these concepts with structural guidelines
+(depth uniformity, channel monotonicity), reformulating
+them as penalty terms.
+
+===== PAGE 6 =====
+
+0 0.5 1 1.5 2 2.5 3 3.5
+1,000
+1,500
+2,000
+2,500
+GigaMACs (GMACs)
+Network Fitness Score
+Comparison of Network Fitness vs. Computational Cost
+Pareto Path (Ours)
+Random (Baseline)
+Fig. 2: Comparison of architectures discovered by our
+multi-objective search (Pareto Path) versus a uniform
+random sampling baseline. Our search method consis-
+tently discovers a Pareto-optimal frontier of architec-
+tures with significantly higher network fitness scores
+for any given computational budget (GigaMACs). This
+pre-computed cache of elite subnets forms the basis of
+our path-guided training, avoiding the suboptimal, low-
+fitness architectures frequently chosen by the baseline’s
+random sampler.
+Our unified fitness function for an architectureA ∈S
+is:
+F(A) =
+SX
+j=1
+αjHj(A)−ωQ(A) +λρ(A)−γV(A)
+s.t.ρ(A)≤ρ 0
+(5)
+whereα j, ω, λ, γare weighting hyper-parameters.
+Given the architecture genomeA= (d,e,w), the
+components are defined as follows:
+•Stage-wise Network Entropy (H j(A)):A proxy
+for the expressive power of stagej. Letr j be the
+feature map resolution at stagej’s end, andc out,j
+be the output width. Letc in,ℓ(A)be the input width
+of layerℓ(determined bywande), andk ℓ be
+its kernel size. The entropy for stagejsums the
+contributions of its active layers:
+Hj(A) = log(r2
+j ·c out,j)
+X
+ℓ∈Stagej
+log(cin,ℓ ·k 2
+ℓ )(6)
+Here, the inner summation iterates only over the
+active layersℓconfigured by the depth vectordfor
+stagej.
+•Effectiveness (ρ(A)):A measure of architectural
+stability. LetL(A)be the total depth of active
+layers.
+ρ(A) = L(A)
+exp
+
+1
+L(A)
+P
+ℓ∈Active log(cin,ℓ(A)·k 2
+ℓ )
+
+(7)
+•Depth Uniformity Penalty (Q(A)):A penalty for
+non-uniform stage depths, captured by the variance
+of the stage depth vectord.
+Q(A) = exp(Var(d))(8)
+•Channel Monotonicity Penalty (V(A)):A penalty
+for violating non-decreasing channel counts. Let
+wout,i(A)be the output channel count of stagei
+derived fromw.
+V(A) =
+S−1X
+i=0
+max(0, wout,i(A)−w out,i+1(A))(9)
+This unified function is maximized during our offline
+search, subject to hard constraints MACs(A)≤Budget
+andρ(A)≤ρ 0.
+D. Search for Optimal Path Generation
+We perform an extensive, offline search to generate
+a cache of elite subnets,C, termed the “optimal path
+cache.” We discretize the computational range intoN
+target budgets,B={B 1, . . . , BN }. We then solve
+Nindependent optimization problems to find, for each
+budgetB i ∈ B, the optimal architectureA ∗
+i :
+A∗
+i = arg max
+A∈S
+F(A)subject to MACs(A)≤B i
+(10)
+Each optimization (Eq. 10) is solved using a dedicated
+instance of a standard genetic algorithm. To ensure
+efficiency and validity, we employ arejection sampling
+initialization: we randomly generate architectures and
+immediately discard any that violate the MACs orρ 0
+constraints, repeating until the initial populationP (0)
+consists entirely of valid candidates.
+The GA proceeds as follows:
+1)Selection:Tournament selection is used to choose
+parents from the current populationP (g).
+2)Crossover:Single-point crossover combines the
+genomesA a,A b to produce offspring.
+3)Mutation:With probabilityp m, genes ind,e, or
+ware randomly reset to new valid values from
+their respective choice sets.
+4)Elitism:The best architecture found so far is
+preserved across generations.
+The final aggregated set of elite architectures,C=
+{A∗
+1, . . . ,A∗
+N }, forms a robust approximation of the true
+Pareto-optimal frontier. The size of this cache,N, is a
+hyperparameter chosen to ensure sufficient granularity
+
+===== PAGE 7 =====
+
+Algorithm 1DeepFedNAS: Federated Pareto Optimal
+Supernet Training
+Require:Supernet weightsW 0, Pareto CacheC, Clients
+K, RoundsT, Clients per roundC, Learning rateη.
+Ensure:Optimized Supernet WeightsW T .
+1:Server:Generate Pareto Path CacheC(Sec-
+tion III-D).
+2:fort= 0toT−1do
+3:Server:Select subset of clientsK t (sizeC·K).
+4:foreach clientk∈ K t do
+5:Server:Determine architecture assignmentA k
+using Pareto Path Sampling:
+6:A k ←S(k,C)(Eq. 11)
+7:Server:Send active weightsw k,t =G(W t,A k)
+to clientk.
+8:Clientk:Update weights locally onD k:
+9:w ′
+k,t ←w k,t −η∇L k(wk,t)
+10:Clientk:Compute update∆ k =w ′
+k,t −W t
+and upload.
+11:end for
+12:Server:Aggregation using Overlap-Aware
+MaxNet:
+13:foreach parameterθin supernetdo
+14:Compute∆ θ using binary masksI k(θ)
+(Eq. 2)
+15:W t+1(θ)←W t(θ) +η g∆θ
+16:end for
+17:end for
+18:returnW T
+across the FL computational spectrum; in our experi-
+ments, we analyze the convergence properties ofNto
+ensure statistical robustness (see Section IV-H1).
+E. Federated Pareto Optimal Supernet Training
+We formalize our training procedure in Algorithm 1.
+This training algorithm replaces the unguided random
+sampling of the baseline with a structured curriculum
+derived from the Pareto path cacheC. In each federated
+roundt, the assignment of an architectureA k to a client
+kis governed by our Pareto Path assignment function
+S(k,C):
+Ak =S(k,C) =
+
+
+
+Amin ifk∈ K t,min
+Amax ifk∈ K t,max
+Uniform(C)otherwise
+(11)
+whereA min,A max ∈ Care the boundary architectures
+from our cache, andK t,min,K t,max are the sets of
+clients who have trained these boundary architectures
+least frequently. This strategy ensures the supernet’s
+weights are consistently updated based on gradients from
+a curriculum of optimized, high-entropy architectures.
+F . Entropy-Based Fitness as a Predictor for Efficient
+Search
+A major contribution of DeepFedNAS is a Predictor-
+Free Search Method, which circumvents the high com-
+putational cost of training and maintaining accuracy
+predictors (e.g., surrogate models). This capability stems
+directly from our unified multi-objective fitness formu-
+lation,F(A), and our Path-Guided Training strategy.
+We posit that by constraining the supernet training to
+a curriculum of high-fitness architectures (via the Pareto
+Path Subnet Cache), we condition the shared weights
+W ∗ such that the structural fitnessF(A)becomes a
+direct proxy for validation accuracy. While grounded in
+the information-theoretic concepts of entropy and effec-
+tiveness [10], our unified formulation transforms these
+theoretical bounds into a practical, searchable metric for
+federated supernets.
+Formally, this relationship allows us to substitute the
+expensive expectation of accuracy with our zero-cost
+fitness function:
+arg max
+A∈S
+E[Acc(A, W ∗)]≈arg max
+A∈S
+F(A)(12)
+Consequently, the deployment search forA ∗
+deploy be-
+comes a swift, direct optimization of Eq. 5 using a
+genetic algorithm, completely obviating the need for a
+data-driven predictor pipeline. This allows the search
+to complete in seconds rather than hours. We provide
+empirical validation of the correlation betweenF(A)
+and true accuracy in Section IV-H3.
+G. Additional Hardware Constraints for Deployment
+Our framework supports hardware-aware deployment
+by integrating constraints such as parameters and latency
+into the final search.
+1) Integrating Model Parameters:For memory-
+limited devices, we integrate an explicit upper bound on
+parameters (Params(A)) as ahard constraintduring the
+deployment search:
+Params(A)≤ParamBudget M (13)
+2) Integrating Inference Latency:We employ aLa-
+tency Predictor Model(LPM) to estimate inference
+latency, denoted asL pred(A,Device). It is crucial to
+distinguish the computational nature of this LPM from
+the accuracy predictors used in prior work. Accuracy
+predictors require the generation of a dataset containing
+(subnet architecture, accuracy) pairs. Constructing this
+dataset is prohibitively expensive because measuring the
+ground-truth accuracy of a single subnet necessitates a
+full inference pass over the entire validation set. Iterating
+this process for thousands of architectures to train a
+predictor creates a computational bottleneck.
+
+===== PAGE 8 =====
+
+In sharp contrast, training an LPM requires a dataset of
+(subnet architecture, latency) pairs. Measuring ground-
+truth latency is computationally inexpensive: it involves
+passing a single sample input (e.g., one image tensor)
+through the subnet on the target device to record the
+inference time. This process is deterministic and inde-
+pendent of the validation dataset size. Consequently, data
+collection for the LPM is orders of magnitude faster
+than for accuracy predictors. We define our approach as
+“Predictor-Free” in the specific sense that it eliminates
+the need for expensive accuracy surrogates, while uti-
+lizing lightweight, negligible-cost latency predictors to
+ensure hardware compliance.
+The LPM is implemented as a lightweight MLP,
+fθLP M , trained offline. We formalize its components:
+1)Architecture Featurization:An architectureA=
+(d,e,w)is transformed into a fixed-length vector
+vA via concatenation of values from the depth,
+expansion, and width vectors:
+vA = Concat(feat(d),feat(e),feat(w),
+MACs(A),Params(A)) (14)
+We explicitly include MACs and Parameters as
+features to enhance prediction accuracy.
+2)Model Definition:The LPM maps the feature
+vector to a scalar latency:L pred(A,Device) =
+fθLP M (vA).
+3)Training Objective:The parametersθ LP M are
+learned by minimizing the Mean Squared Er-
+ror (MSE) on a measured datasetD lat =
+{(vAi ,L true,i)}M
+i=1 for a specific target Device:
+min
+θLP M
+1
+M
+MX
+i=1
+(fθLP M (vAi)− L true,i)2 (15)
+This fast-to-train LPM allows latency to be incor-
+porated into the deployment search as either ahard
+constraint(L pred(A,Device)≤LatencyBudget ms) or as
+asoft objectiveby modifying the fitness function:
+Fdeploy(A) =F(A)−δ· L pred(A,Device)(16)
+whereδ >0is a tunable penalty weight.
+The final, hardware-aware deployment search for
+A∗
+deploy is formulated as a comprehensive, multi-objective
+optimization:
+A∗
+deploy = arg max
+A∈S
+Fdeploy(A)
+subject to MACs(A)≤Budget deploy,
+Params(A)≤ParamBudget M,
+Lpred(A,Device)≤LatencyBudget ms
+(optional hard constraint)
+(17)
+whereF deploy(A)uses Eq. 16 if a soft latency objective
+is chosen, or Eq. 5 otherwise.
+IV. EXPERIMENTS
+We conduct a series of experiments to validate the
+effectiveness of the DeepFedNAS framework. Our eval-
+uation is designed to answer four primary research
+questions:
+1)Does Pareto Optimal Supernet Training pro-
+duce a superior supernet?We compare the
+performance of subnets extracted from our
+DeepFedNAS-trained supernet against those from
+a supernet trained with other methods, specifically,
+the standard SuperFedNAS baseline.
+2)How effective is our Predictor-Free Search?
+We evaluate the quality of architectures found by
+our on-demand fitness-driven search and quantify
+the reduction in computational cost compared to
+traditional predictor-based pipelines.
+3)How robust is our methodology?We analyze the
+performance of our framework under varying FL
+conditions, including data heterogeneity and sparse
+client participation.
+4)Can DeepFedNAS effectively optimize for di-
+verse hardware constraints?We demonstrate the
+framework’s ability to discover high-performing
+subnets while adhering to explicit parameter and
+latency budgets.
+We begin by detailing our experimental setup before
+presenting our main results and ablation studies.
+A. Experimental Setup
+a) Datasets and Data Partitioning:Our experi-
+ments are conducted onCIFAR-10,CIFAR-100, and
+CINIC-10. To ensure a fair and direct comparison,
+we replicate the exact data partitioning and federated
+setup described in the original SuperFedNAS paper [8].
+Statistical heterogeneity is introduced by partitioning
+data among clients using a Dirichlet distribution [49]. For
+our main comparison, we use a concentration parameter
+ofα= 100to maintain consistency with the baseline.
+We further evaluate robustness by varying this parameter
+toα= 1andα= 0.1in our heterogeneity analysis
+(Section IV-C). The partition settings are:K= 20clients
+forCIFAR-10andCIFAR-100, andK= 100clients for
+the largerCINIC-10dataset.
+b) Evaluation Protocol:We adopt an evaluation
+protocol consistent with established resource-constrained
+federated NAS research [6], [8]. The training set is used
+TABLE I: Supernet Search Space Comparison
+Metric SuperFedNAS DeepFedNAS
+Min. MACs (M) 458.977.55
+Min. Params (M) 10.400.13
+Max. MACs (M) 3,403.37 3,403.37
+Max. Params (M) 71.73 71.73
+
+===== PAGE 9 =====
+
+TABLE II: Comparison on Image Datasets. We compare DeepFedNAS with baselines on CIFAR-10, CIFAR-100,
+and CINIC-10 for different MACs targets. DeepFedNAS consistently finds superior architectures, especially on
+more complex datasets like CIFAR-100.
+Billion MACs Method Test Accuracy (%)
+CIFAR-10 CIFAR-100 CINIC-10
+0.45-0.95
+FedAvg85.25±0.46 43.19±0.54 61.76±0.78
+FedNAS77.33±0.31 40.92±2.21 58.15±0.18
+FedPNAS88.83±0.5 45.77±0.68 64.3±0.98
+SuperFedNAS93.47±0.08 60.92±0.10 75.69±0.29
+DeepFedNAS (Ours)94.16±0.18 62.60±0.16 77.04±0.39
+0.95-1.45
+FedAvg86.36±0.22 43.92±0.57 63.00±0.17
+FedPNAS89.27±0.81 47.8±2.6 65.74±0.32
+SuperFedNAS93.52±0.16 61.66±0.37 76.53±0.19
+DeepFedNAS (Ours)94.51±0.02 62.87±0.13 77.60±0.02
+1.45-2.45
+FedAvg87.59±0.27 44.4±0.56 64.00±0.07
+FedNAS86.41±0.1 45.82±0.29 59.97±0.27
+SuperFedNAS93.72±0.01 62.06±0.06 77.09±0.07
+DeepFedNAS (Ours)94.50±0.02 63.09±0.08 77.80±0.06
+2.45-3.75
+FedAvg89.44±0.67 45.00±0.27 65.02±0.13
+FedNAS89.43±0.36 58.39±0.23 71.93±0.13
+SuperFedNAS93.72±0.02 62.30±0.01 77.09±0.07
+DeepFedNAS (Ours)94.51±0.00 63.20±0.00 77.85±0.09
+exclusively for local client model updates. The validation
+set serves a dual critical role: (1) monitoring progress to
+select the best supernet checkpoint, and (2) performing
+the final evaluation (accuracy, parameters, latency) of the
+subnets identified by the respective search algorithms.
+This strictly separated protocol ensures a consistent and
+computationally feasible comparison.
+c) Supernetwork Architecture:To evaluate our
+method across a complex design space, we utilize the
+generic ResNet-style supernet framework detailed in
+Section III-B. For these experiments, we instantiate a
+4-stage supernet with base channel sizes of [256, 512,
+1024, 2048]. The search space is defined by three
+variable dimensions: depthd∈ {1,2,3}blocks per
+stage; widthwwith multipliers from 0.1 to 1.0 in
+steps of 0.1; and bottleneck expansion ratiose∈
+{0.1,0.14,0.18,0.22,0.25}. This results in a combina-
+torial space of approximately1.98×10 15 architectures,
+significantly larger than prior work (see Table I).
+d) Search Space Exploration and Budget Align-
+ment:Our re-engineered supernet is capable of repre-
+senting architectures ranging from a mere 7.55 M MACs
+up to 3,403 M MACs. However, the SuperFedNAS base-
+line is structurally limited to a narrower range (458 M to
+3,403 M MACs). To ensure a strictly fair comparison, we
+focus our architecture search and reporting within this
+shared performance-budget intersection. Specifically, our
+Pareto path cache (Section III-D) is generated starting
+from≈458.2 M MACs. This alignment ensures that
+our performance gains are attributable to our proposed
+training methodology rather than simply expanding the
+search space into ultra-low resource regimes that the
+baseline cannot access.
+e) Federated Training:We adhere to the base-
+line training parameters: a client participation rate of
+C= 0.4, 5 local epochs per round, and an SGD
+optimizer with cosine decay. Notably, during replication,
+we observed that increasing gradient clipping from 1.0 to
+10.0 consistently improved the SuperFedNAS baseline;
+to ensure rigor, we adopted this stronger setting for both
+the baseline and DeepFedNAS. We also implement the
+dynamic weighted averaging scheme from [8], annealing
+aggregation weights from the largest subnet to a uniform
+distribution over 80% of the rounds. Total communica-
+tion rounds are set to 1500 (CIFAR-10), 2000 (CIFAR-
+100), and 1000 (CINIC-10).
+f) Baselines for Comparison:We compare against
+FedAvg[4],FedNAS[6],FedPNAS[36], and our
+primary baseline,SuperFedNAS[8].
+B. Comparison on Image Datasets
+We first evaluate DeepFedNAS on three benchmark
+datasets. As shown in Table II, our method consistently
+outperforms all baselines across varied computational
+budgets. The results validate our primary hypothesis:
+training the supernet on a curriculum of elite, high-
+fitness architectures yields shared weights that are better
+conditioned for fine-grained architectural search. On the
+challenging CIFAR-100 dataset, DeepFedNAS achieves
+63.20%accuracy in the highest MACs bracket, surpass-
+ing the tuned SuperFedNAS baseline by nearly a full
+percentage point and demonstrating a substantial1.21%
+absolute improvement in the 0.95-1.45B MACs range.
+C. Impact of Data Heterogeneity
+We evaluate robustness against non-IID data by vary-
+ing the Dirichlet parameterα∈ {100,1,0.1}[50]. As
+shown in Table III, while all methods degrade with
+
+===== PAGE 10 =====
+
+TABLE III: Comparison across varying degrees of non-IID data on CIFAR-10. DeepFedNAS demonstrates superior
+robustness, maintaining a significant accuracy advantage, especially in the highly heterogeneous (α= 0.1) setting.
+Billion MACs Method Test Accuracy (%)
+non-iid-100 (α= 100) non-iid-1 (α= 1) non-iid-0.1 (α= 0.1)
+0.45-0.95
+FedAvg85.25±0.46 83.42±0.19 77.15±2.5
+FedNAS77.33±0.31 71.38±0.37 61.57±3.3
+FedPNAS88.83±0.5 85.7±0.4 78.73±0.45
+SuperFedNAS93.47±0.08 91.73±0.0 85.16±0.14
+DeepFedNAS (Ours)94.16±0.18 92.84±0.25 86.01±0.36
+0.95-1.45
+FedAvg86.36±0.22 84.65±0.11 77.99±1.6
+FedPNAS89.27±0.51 87.53±0.32 81.13±0.4
+SuperFedNAS93.52±0.17 92.13±0.12 85.56±0.18
+DeepFedNAS (Ours)94.51±0.02 93.22±0.05 86.56±0.11
+1.45-2.45
+FedAvg87.59±0.27 86.14±0.23 79.93±1.34
+FedNAS86.41±0.1 82.13±0.65 75.03±2.57
+SuperFedNAS93.72±0.01 92.53±0.03 85.95±0.08
+DeepFedNAS (Ours)94.50±0.02 93.29±0.01 86.80±0.05
+2.45-3.75
+FedAvg89.44±0.67 87.88±0.7 81.24±1.99
+FedNAS89.43±0.36 85.85±0.35 68.13±5.04
+SuperFedNAS93.72±0.02 92.63±0.02 86.00±0.12
+DeepFedNAS (Ours)94.51±0.00 93.33±0.00 86.83±0.00
+TABLE IV: Comparison across different client participation rates (C) on CIFAR-10. DeepFedNAS maintains its
+performance lead even with fewer participating clients per round.
+Billion MACs Method Test Accuracy (%)
+C = 0.1 C = 0.2 C = 0.4 C = 0.6
+0.45-0.95
+FedNAS -76.23±0.5 77.33±0.3-
+FedPNAS -86.63±0.5 88.83±0.5-
+SuperFedNAS91.52±0.09 92.41±0.26 93.47±0.08 92.99±0.00
+DeepFedNAS (Ours)92.98±0.04 93.59±0.29 94.16±0.18 94.13±0.17
+0.95-1.45
+FedPNAS -87.83±0.21 89.27±0.51-
+SuperFedNAS92.06±0.05 92.81±0.02 93.52±0.17 93.32±0.10
+DeepFedNAS (Ours)93.07±0.06 94.03±0.03 94.51±0.02 94.54±0.06
+1.45-2.45
+FedNAS -84.65±0.14 86.41±0.1-
+SuperFedNAS92.35±0.07 93.01±0.12 93.72±0.01 93.93±0.05
+DeepFedNAS (Ours)93.30±0.04 94.05±0.02 94.50±0.02 94.79±0.02
+2.45-3.75
+FedNAS -88.0±0.38 89.43±0.36-
+SuperFedNAS92.31±0.00 93.04±0.10 93.72±0.02 93.94±0.01
+DeepFedNAS (Ours)93.29±0.00 93.98±0.00 94.51±0.00 94.80±0.00
+- Values for FedNAS and FedPNAS were taken from the SuperFedNAS paper and their data at C=0.1 and C=0.6 was not available for this comparison.
+increased heterogeneity (lowerα), DeepFedNAS widens
+its performance lead. In the extreme non-IID setting
+(α= 0.1), our method achieves86.83%accuracy in
+the highest MACs bracket, outperforming the baseline
+by0.83%. This suggests that our Pareto-guided fitness
+curriculum acts as a regularizer, producing a supernet
+that is more resilient to the conflicting gradients inherent
+in heterogeneous data.
+D. Impact of Client Participation
+We evaluate communication efficiency by varying
+the client participation rateC∈ {0.1,0.2,0.4,0.6}.
+Table IV presents results on CIFAR-10. DeepFedNAS
+demonstrates superior data efficiency, achieving higher
+accuracy with fewer client updates. For example, in
+the 0.95-1.45B MACs range, DeepFedNAS with only
+10% participation (C= 0.1) achieves93.07%accuracy.
+This not only surpasses SuperFedNAS at the same rate
+(92.06%) but remains competitive with SuperFedNAS
+at significantly higher participation (C= 0.4,93.52%).
+This implies that DeepFedNAS can significantly reduce
+communication overhead without compromising model
+quality.
+E. Predictor-Free Search Efficiency
+A primary contribution of this work is the elimination
+of the costly predictor pipeline. We instrumented our
+framework to measure wall-clock time for each phase
+(Table V).
+The baseline SuperFedNAS approach is burdened by
+a substantial post-training setup cost: constructing its
+10,000-sample predictor dataset requires an exorbitant
+20.65 hours on an NVIDIA A5000 GPU. In sharp
+contrast, DeepFedNAS eliminates this step entirely. After
+supernet training, our entropy-based fitness function acts
+as a zero-cost proxy. While DeepFedNAS introduces
+a pre-training setup (generating the Pareto cache), this
+process takes only∼20 minutes.
+Consequently, DeepFedNAS delivers a substantial61x
+speedupin total pipeline time (auxiliary costs excluding
+supernet training). An on-demand deployment search
+completes in a mere∼20 seconds, validating that our
+
+===== PAGE 11 =====
+
+unified fitness function eradicates the primary computa-
+tional bottleneck of existing FedNAS methods.
+F . Parameter and Communication Efficiency
+Efficient federated deployment relies on minimizing
+model parameters to reduce transmission costs. Figure 3
+presents the Pareto frontiers of Test Accuracy vs. Param-
+eters.
+DeepFedNAS consistently identifies subnets that
+achieve higher accuracy with significantly fewer param-
+eters. On CIFAR-100, DeepFedNAS achieves≈62.60%
+accuracy with only 19.43M parameters (0.95B MACs),
+whereas the baseline requires 55.03M parameters (3.44B
+MACs) to achieve a lower accuracy of 62.22%. This
+parameter efficiency directly translates to reduced band-
+width usage and faster aggregation rounds, positioning
+DeepFedNAS as a superior solution for bandwidth-
+constrained environments.
+20 40 60
+60
+61
+62
+63
+64
+0.95
+1.26
+1.88
+2.51
+3.44
+0.95
+1.57
+2.19
+2.51
+2.82
+Parameters (M)
+Accuracy (%)
+SuperFedNAS DeepFedNAS
+(a) Cifar-100
+20 40 60
+75
+76
+77
+78
+79
+0.95 1.26
+1.57
+1.88 2.19
+2.51
+0.95
+1.26
+1.57
+1.88 2.19
+Parameters (M)
+Accuracy (%)
+SuperFedNAS DeepFedNAS
+(b) CINIC-10
+Fig. 3:Accuracy vs. Parameters (Millions).Pareto
+frontiers for test accuracy percentage against model pa-
+rameters (Millions) on (a) CIFAR-100 and (b) CINIC-10.
+DeepFedNAS subnets are blue squares; SuperFedNAS
+subnets are red circles. Numerical annotations denote
+MACs in billions.
+G. Hardware-Aware Latency Optimization
+Neural network design necessitates a trade-off be-
+tween accuracy and computational efficiency (latency,
+MACs). DeepFedNAS addresses this by optimizing sub-
+nets via a genetic algorithm guided by device-specific
+latency prediction models. We empirically validated the
+discovered architectures on a dedicated Intel Xeon Silver
+4210R CPU (@ 2.40 GHz) and an NVIDIA A5000 GPU.
+Fig. 4 depicts the accuracy-latency Pareto front for CPU
+deployment, where increased latency correlates with
+higher accuracy. For example, a subnet achieving 93.67%
+accuracy (0.62B MACs,≈13.24 ms) contrasts with a
+higher-capacity model achieving 94.5% accuracy (3.00B
+MACs,≈31.67 ms). Conversely, inference latency on the
+A5000 GPU remained consistent (≈3.80–4.02 ms) across
+the search space. This divergence in hardware scaling be-
+haviors demonstrates the necessity of the device-specific
+optimization provided by DeepFedNAS.
+5 10 15 20 25 30 35
+90
+92
+94
+0.62
+0.80
+0.97
+1.84 2.00 3.00
+0.46
+0.64
+1.54
+2.65
+True Latency (ms)
+Test Accuracy (%)
+Test Accuracy vs True Latency (CPU and GPU)
+CPU
+GPU
+Fig. 4: Test Accuracy vs. True Latency (CPU and GPU).
+The CPU target is an Intel Xeon Silver 4210R CPU
+(@ 2.40 GHz), and the GPU target is an NVIDIA RTX
+A5000. Annotations show subnet MACs in billions.
+H. Ablation Studies and Analysis
+In this section, we empirically validate the robustness
+of the DeepFedNAS framework, specifically analyzing
+the sensitivity of the cache size, the individual contri-
+butions of our multi-objective fitness components, and
+the efficacy of the fitness function as a predictor-free
+accuracy proxy.
+1) Sensitivity Analysis of Subnet Cache Size:The size
+of the optimal path cache,N, determines the granular-
+ity of the curriculum used during Federated Supernet
+Training. To determine the optimalN, we conducted
+a sensitivity analysis using an equidistant sampling
+strategy across the computational budget. We measured
+
+===== PAGE 12 =====
+
+TABLE V: Comparison of search costs for a single subnet. DeepFedNAS’s predictor-free approach delivers a
+dramatic reduction in overall search time.
+Search Pipeline Stage SuperFedNAS (Baseline) DeepFedNAS (Ours)
+Prior to SuperNet Training
+Subnet Cache Generation TimeN/A∼20 minutes (for 60 subnets)
+After SuperNet Training
+Predictor Data Generation Time∼20.65 hoursN/A
+Predictor Training Timefew minutesN/A
+Search Time per MAC target∼43 seconds∼20 seconds
+Total Pipeline Time∼20.65 hours∼20.33 minutes
+Speedup Factor1x∼61x
+Baseline’s data generation time is for a 10,000-sample subnet-accuracy dataset.
+the population statistics of the generated subnets asN
+increased from 2 to 200.
+0 50 100
+2,150
+2,200
+2,250
+2,300
+2,350
+Cache Size (N)
+Avg. Fitness
+(a)
+0 50 100
+100
+200
+300
+Cache Size (N)
+Std. Fitness
+(b)
+Fig. 5: Analysis of cache size effects: (a) average fitness
+score and (b) standard deviation of fitness, both vs. cache
+size (N= 60marked).
+As shown in Fig. 5a, we observed a rapid improvement
+in average architectural fitness, which plateaued in the
+range ofN= 10–16. Concurrently, the standard devia-
+tion of fitness scores stabilized in the range ofN= 16–
+20. Consequently, we selectedN= 60for all main
+experiments. This value provides a safety margin that
+ensures a dense representation of the Pareto frontier and
+maximizes the diversity of the training curriculum, while
+remaining computationally efficient.
+2) Component-wise Ablation of Fitness Function:To
+validate the individual contributions of the DeepMAD-
+inspired fitness components defined in Eq. 5, we con-
+ducted an ablation study at a constrained computational
+budget of∼600M MACs on CIFAR-10. We performed
+independent evolutionary searches (N= 5) for each
+configuration and evaluated the mean test accuracy of
+the discovered subnets. The results are summarized in
+Table VI.
+a) Impact of Effectiveness (ρ):The baseline ap-
+proach, maximizing only theoretical entropy (Eq. 6),
+yields an accuracy of 92.74%. Introducing the effec-
+tiveness constraint (ρ) improves performance by 0.43%,
+confirming that constraining the depth-to-width ratio
+prevents the selection of degenerate, hard-to-train archi-
+tectures that theoretically maximize entropy but fail in
+TABLE VI: Ablation of Fitness Components (∼600M
+MACs, CIFAR-10)
+Configuration MACs Acc. (%) Gain
+1. Entropy Only 599 M 92.74±1.21-
+2. + Effectiveness (ρ) 600 M 93.17±0.77+0.43%
+3. + Depth Pen. (Q) 600 M 93.58±0.33+0.84%
+4. + Chan. Pen. (V) 598 M93.80±0.16+1.06%
+practice.
+b) Impact of Structural Alignment:Incorporating
+structural regularizers yields further significant gains.
+The Depth Variance Penalty (Q), which encourages
+balanced stage depths, improves accuracy to 93.58%.
+Finally, the Non-Decreasing Channel Penalty (V), which
+enforces standard channel expansion conventions, boosts
+the final accuracy to93.80%(+1.06% over entropy-only
+based search).
+Crucially, Table VI highlights that these structural
+priors act as powerful regularizers. The inclusion ofρ,Q
+andVdrastically reduces the performance variance from
+±1.21% to±0.16%. This stability is vital in federated
+settings, ensuring that the search consistently discovers
+optimal architectures regardless of initialization noise.
+3) Validation of Predictor-Free Search Hypothesis:
+A central hypothesis of DeepFedNAS is that our con-
+strained supernet training aligns the structural fitness
+F(A)with the actual validation accuracy. To validate
+this, we sampled 60 distinct new architectures evenly
+distributed along the computational spectrum and eval-
+uated their true validation accuracy against their fitness
+scores.
+The results, presented in Fig. 6, reveal a strong
+monotonic relationship. We calculated a Spearman rank
+correlation coefficient of 0.764, confirming a significant
+positive dependence. This strong correlation substanti-
+ates our methodological choice to bypass the training
+of a latency-heavy accuracy predictor, as maximizing
+F(A)is effectively equivalent to maximizing expected
+accuracy within our supernet regime.
+
+===== PAGE 13 =====
+
+2,000 2,200 2,400
+88
+90
+92
+94
+Fitness Score
+Test Accuracy (%)
+Pareto Frontier: Fitness vs. Accuracy
+Spearman: 0.764, Kendall: 0.591
+1,000
+2,000
+3,000
+MACs (M)
+Fig. 6: Correlation analysis validating the predictor-free
+hypothesis. We observe a strong monotonic relationship
+(Spearmanρ= 0.764) between our fitness scoreF(A)
+and true validation accuracy.
+V. LIMITATIONS
+While DeepFedNAS demonstrates significant im-
+provements in search efficiency and supernet optimiza-
+tion, we acknowledge certain limitations that open av-
+enues for future research.
+First, our experimental evaluation primarily focuses on
+ResNet-style convolutional search spaces. While these
+architectures remain the de facto standard for resource-
+constrained edge deployment due to their hardware
+friendliness, we have not yet extended ourPareto-Guided
+Supernet Trainingmethodology to Transformer-based
+architectures (ViTs). Integrating Transformers into a fed-
+erated supernet introduces distinct challenges regarding
+stability and communication overhead, which we leave
+for future work.
+Second, our multi-objective fitness function combines
+information-theoretic concepts with structural regular-
+izers, specificallydepth uniformityandchannel mono-
+tonicity, to operationalize architectural best practices.
+While our ablation studies confirm the robustness of
+these terms across the varied image datasets evalu-
+ated (CIFAR-10, CIFAR-100, CINIC-10), adapting the
+framework to radically different data modalities may
+benefit from task-specific calibration of these weighting
+hyperparameters.
+Third, consistent with the baseline SuperFedNAS
+framework [8], our current experimental setup assumes
+that participating clients possess sufficient computational
+resources to train the assigned subnets during the su-
+pernet training phase. While our framework explicitly
+solves the problem of constraineddeployment(inference)
+by discovering hardware-optimized architectures, we do
+not simulate hard hardware constraints (e.g., memory
+limits preventing backward passes) during thetraining
+process itself. We identify the integration of system-
+aware sampling strategies as the immediate next step for
+DeepFedNAS. By restricting client-subnet assignments
+based on real-time device capabilities, this extension will
+bridge the gap towards fully heterogeneous on-device
+training.
+Finally, while ourPredictor-Free Searchdramatically
+reduces computational costs by using fitness as a zero-
+shot proxy, it relies on the strong rank correlation
+established during our path-guided training (Spearman
+ρ= 0.764). While this correlation is robust across
+the benchmarks evaluated, in theoretical scenarios with
+extreme noise or insufficient training data, a fully trained
+surrogate predictor might offer marginally higher ranking
+precision. DeepFedNAS explicitly prioritizes search effi-
+ciency (61×speedup) over this potential marginal gain.
+VI. CONCLUSION
+This paper presented DeepFedNAS, a novel frame-
+work that fundamentally advances federated neural ar-
+chitecture search by addressing the inefficiencies of
+unguided supernet training and the prohibitive costs
+of post-training subnet discovery. Central to DeepFed-
+NAS is a unified, multi-objective fitness function that,
+combined with a re-engineered supernet, enables two
+core innovations: Federated Pareto Optimal Supernet
+Training and a Predictor-Free Search Method. The for-
+mer leverages a pre-computed “Pareto path” of elite
+architectures as an intelligent curriculum for supernet
+weight optimization, yielding robust models. The latter
+capitalizes on this well-conditioned supernet, allowing
+our fitness function to serve as a direct, zero-cost proxy
+for subnet accuracy, enabling on-demand architectural
+searches in just 20 seconds. DeepFedNAS consistently
+achieved state-of-the-art accuracy, demonstrated superior
+parameter and communication efficiency, and crucially,
+delivered a substantial∼61x speedup in total post-
+training search pipeline time (reducing from over 20
+hours to 20 minutes, including initial cache generation).
+These results position DeepFedNAS as a highly efficient,
+accurate, and adaptable solution for deploying optimal
+neural networks in diverse and resource-constrained fed-
+erated environments, marking a significant step towards
+truly practical and scalable FedNAS.
+REFERENCES
+[1] B. Khan and M. Daneshtalab, “Deepfednas: Pareto optimal
+supernet training for improved and predictor-free federated
+neural architecture search,” in34th European Symposium
+on Artificial Neural Networks, Computational Intelligence
+and Machine Learning, 2026. [Online]. Available: http:
+//www.es.mdu.se/publications/7335-
+
+===== PAGE 14 =====
+
+[2] A. Hard, K. Rao, R. Mathews, F. Beaufays, S. Augenstein,
+H. Eichner, C. Kiddon, and D. Ramage, “Federated learning for
+mobile keyboard prediction,”CoRR, vol. abs/1811.03604, 2018.
+[Online]. Available: http://arxiv.org/abs/1811.03604
+[3] S. Silva, B. A. Gutman, E. Romero, P. M. Thompson, A. Alt-
+mann, and M. Lorenzi, “Federated learning in distributed medical
+databases: Meta-analysis of large-scale subcortical brain data,” in
+2019 IEEE 16th International Symposium on Biomedical Imaging
+(ISBI 2019), 2019, pp. 270–274.
+[4] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y.
+Arcas, “Communication-Efficient Learning of Deep Networks
+from Decentralized Data,” inProceedings of the 20th Interna-
+tional Conference on Artificial Intelligence and Statistics, ser.
+Proceedings of Machine Learning Research, A. Singh and J. Zhu,
+Eds., vol. 54. PMLR, 20–22 Apr 2017, pp. 1273–1282.
+[5] T. Li, A. K. Sahu, M. Zaheer, M. Sanjabi, A. Talwalkar, and
+V . Smith, “Federated optimization in heterogeneous networks,”
+inProceedings of Machine Learning and Systems, I. Dhillon,
+D. Papailiopoulos, and V . Sze, Eds., vol. 2, 2020, pp. 429–450.
+[6] C. He, M. Annavaram, and S. Avestimehr, “FedNAS: Federated
+deep learning via neural architecture search,”CoRR, vol.
+abs/2004.08546, 2020. [Online]. Available: https://arxiv.org/abs/
+2004.08546
+[7] H. Cai, C. Gan, and S. Han, “Once-for-All: Train one
+network and specialize it for efficient deployment,”CoRR, vol.
+abs/1908.09791, 2019. [Online]. Available: http://arxiv.org/abs/
+1908.09791
+[8] A. Khare, A. Agrawal, A. Annavajjala, P. Behnam, M. Lee,
+H. Latapie, and A. Tumanov, “SuperFedNAS: Cost-efficient
+federated neural architecture search for on-device inference,” in
+Computer Vision – ECCV 2024, A. Leonardis, E. Ricci, S. Roth,
+O. Russakovsky, T. Sattler, and G. Varol, Eds. Cham: Springer
+Nature Switzerland, 2024, pp. 161–179.
+[9] J. Yu and T. S. Huang, “Universally slimmable networks and
+improved training techniques,” inProceedings of the IEEE/CVF
+International Conference on Computer Vision (ICCV), October
+2019.
+[10] X. Shen, Y . Wang, M. Lin, Y . Huang, H. Tang, X. Sun,
+and Y . Wang, “DeepMAD: Mathematical architecture design
+for deep convolutional neural network,” inProceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recog-
+nition (CVPR), June 2023, pp. 6163–6173.
+[11] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for
+image recognition,”CoRR, vol. abs/1512.03385, 2015. [Online].
+Available: http://arxiv.org/abs/1512.03385
+[12] B. Liu, N. Lv, Y . Guo, and Y . Li, “Recent advances on federated
+learning: A systematic survey,”Neurocomputing, vol. 597, p.
+128019, 2024. [Online]. Available: https://www.sciencedirect.
+com/science/article/pii/S0925231224007902
+[13] P. Kairouz, H. B. McMahan, B. Avent, A. Bellet, M. Bennis,
+A. N. Bhagoji, K. Bonawitz, Z. Charles, G. Cormode,
+R. Cummings, R. G. L. D’Oliveira, H. Eichner, S. E. Rouayheb,
+D. Evans, J. Gardner, Z. Garrett, A. Gasc ´on, B. Ghazi,
+P. B. Gibbons, M. Gruteser, Z. Harchaoui, C. He, L. He,
+Z. Huo, B. Hutchinson, J. Hsu, M. Jaggi, T. Javidi, G. Joshi,
+M. Khodak, J. Konecn ´y, A. Korolova, F. Koushanfar, S. Koyejo,
+T. Lepoint, Y . Liu, P. Mittal, M. Mohri, R. Nock, A. ¨Ozg¨ur,
+R. Pagh, H. Qi, D. Ramage, R. Raskar, M. Raykova, D. Song,
+W. Song, S. U. Stich, Z. Sun, A. T. Suresh, F. Tram `er,
+P. Vepakomma, J. Wang, L. Xiong, Z. Xu, Q. Yang, F. X.
+Yu, H. Yu, and S. Zhao, “Advances and open problems
+in federated learning,”Foundations and Trends® in Machine
+Learning, vol. 14, no. 1–2, pp. 1–210, 2021. [Online]. Available:
+http://dx.doi.org/10.1561/2200000083
+[14] T. Li, A. K. Sahu, A. Talwalkar, and V . Smith, “Federated learn-
+ing: Challenges, methods, and future directions,”IEEE Signal
+Processing Magazine, vol. 37, no. 3, pp. 50–60, 2020.
+[15] L. Cooray, J. Sendanayake, P. Vithanaarachchi, and Y . H.
+P. P. Priyadarshana, “Deep federated learning: a systematic
+review of methods, applications, and challenges,”Frontiers
+in Computer Science, vol. V olume 7 - 2025, 2025. [Online].
+Available: https://www.frontiersin.org/journals/computer-science/
+articles/10.3389/fcomp.2025.1617597
+[16] J. Kone ˇcn´y, H. B. McMahan, F. X. Yu, P. Richt´arik, A. T. Suresh,
+and D. Bacon, “Federated learning: Strategies for improving
+communication efficiency,”CoRR, vol. abs/1610.05492, 2016.
+[Online]. Available: http://arxiv.org/abs/1610.05492
+[17] Z. Lu, H. Pan, Y . Dai, X. Si, and Y . Zhang, “Federated learning
+with non-iid data: A survey,”IEEE Internet of Things Journal,
+vol. 11, no. 11, pp. 19 188–19 209, 2024.
+[18] D. Makhija, J. Ghosh, and N. Ho, “A bayesian approach for
+personalized federated learning in heterogeneous settings,” inAd-
+vances in Neural Information Processing Systems, A. Globerson,
+L. Mackey, D. Belgrave, A. Fan, U. Paquet, J. Tomczak, and
+C. Zhang, Eds., vol. 37. Curran Associates, Inc., 2024, pp.
+102 428–102 455.
+[19] Y . Tan, G. Long, L. Liu, T. Zhou, Q. Lu, J. Jiang, and C. Zhang,
+“Fedproto: Federated prototype learning across heterogeneous
+clients,” 2022. [Online]. Available: https://arxiv.org/abs/2105.
+00243
+[20] A.-J. Farcas, X. Chen, Z. Wang, and R. Marculescu, “Model
+elasticity for hardware heterogeneity in federated learning
+systems,” inProceedings of the 1st ACM Workshop on Data
+Privacy and Federated Learning Technologies for Mobile Edge
+Network, ser. FedEdge ’22. New York, NY , USA: Association
+for Computing Machinery, 2022, p. 19–24. [Online]. Available:
+https://doi.org/10.1145/3556557.3557954
+[21] B. Zoph and Q. V . Le, “Neural architecture search with
+reinforcement learning,”CoRR, vol. abs/1611.01578, 2016.
+[Online]. Available: http://arxiv.org/abs/1611.01578
+[22] C. Liu, B. Zoph, M. Neumann, J. Shlens, W. Hua, L.-J. Li, L. Fei-
+Fei, A. Yuille, J. Huang, and K. Murphy, “Progressive neural
+architecture search,” inProceedings of the European Conference
+on Computer Vision (ECCV), September 2018.
+[23] G. Bender, P.-J. Kindermans, B. Zoph, V . Vasudevan, and Q. Le,
+“Understanding and simplifying one-shot architecture search,” in
+Proceedings of the 35th International Conference on Machine
+Learning, ser. Proceedings of Machine Learning Research, J. Dy
+and A. Krause, Eds., vol. 80. PMLR, 10–15 Jul 2018, pp. 550–
+559.
+[24] L. Xie, X. Chen, K. Bi, L. Wei, Y . Xu, L. Wang, Z. Chen,
+A. Xiao, J. Chang, X. Zhang, and Q. Tian, “Weight-sharing neural
+architecture search: A battle to shrink the optimization gap,”ACM
+Comput. Surv., vol. 54, no. 9, Oct. 2021.
+[25] H. Liu, K. Simonyan, and Y . Yang, “DARTS: Differentiable
+architecture search,” inInternational Conference on Learning
+Representations, 2019. [Online]. Available: https://openreview.
+net/forum?id=S1eYHoC5FX
+[26] J. Yu, P. Jin, H. Liu, G. Bender, P.-J. Kindermans, M. Tan,
+T. Huang, X. Song, R. Pang, and Q. Le, “Bignas: Scaling
+up neural architecture search with big single-stage models,” in
+Computer Vision – ECCV 2020, A. Vedaldi, H. Bischof, T. Brox,
+and J.-M. Frahm, Eds. Cham: Springer International Publishing,
+2020, pp. 702–717.
+[27] J. Pan, C. Sun, Y . Zhou, Y . Zhang, and C. Li, “Distribution con-
+sistent neural architecture search,” in2022 IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR), 2022, pp.
+10 874–10 883.
+[28] M. Zhang, H. Li, S. Pan, X. Chang, and S. Su, “Overcoming
+multi-model forgetting in one-shot nas with diversity maximiza-
+tion,” in2020 IEEE/CVF Conference on Computer Vision and
+Pattern Recognition (CVPR), 2020, pp. 7806–7815.
+[29] L. Ma, Y . Zhou, Y . Ma, G. Yu, Q. Li, Q. He, and Y . Pei,
+“Defying multi-model forgetting in one-shot neural architecture
+search using orthogonal gradient learning,”IEEE Transactions
+on Computers, vol. 74, no. 5, pp. 1678–1689, 2025.
+[30] Y . Venkatesha, Y . Kim, H. Park, and P. Panda, “Divide-
+and-conquer the nas puzzle in resource-constrained federated
+learning systems,”Neural Networks, vol. 168, pp. 569–
+579, 2023. [Online]. Available: https://www.sciencedirect.com/
+science/article/pii/S0893608023005609
+
+===== PAGE 15 =====
+
+[31] H. Wang, C. Ge, H. Chen, and X. Sun, “PreNAS: Preferred
+one-shot learning towards efficient neural architecture search,”
+inProceedings of the 40th International Conference on
+Machine Learning, ser. Proceedings of Machine Learning
+Research, A. Krause, E. Brunskill, K. Cho, B. Engelhardt,
+S. Sabato, and J. Scarlett, Eds., vol. 202. PMLR, 23–
+29 Jul 2023, pp. 35 642–35 654. [Online]. Available: https:
+//proceedings.mlr.press/v202/wang23f.html
+[32] A. Garg, A. K. Saha, and D. Dutta, “Direct federated
+neural architecture search,” 2020. [Online]. Available: https:
+//arxiv.org/abs/2010.06223
+[33] J. Yuan, M. Xu, Y . Zhao, K. Bian, G. Huang, X. Liu, and
+S. Wang, “Resource-aware federated neural architecture search
+over heterogeneous mobile devices,”IEEE Transactions on Big
+Data, pp. 1–11, 2022.
+[34] H. R. Roth, D. Yang, W. Li, A. Myronenko, W. Zhu, Z. Xu,
+X. Wang, and D. Xu, “Federated whole prostate segmentation
+in mri with personalized neural architectures,” inMedical Image
+Computing and Computer Assisted Intervention – MICCAI 2021,
+M. de Bruijne, P. C. Cattin, S. Cotin, N. Padoy, S. Speidel,
+Y . Zheng, and C. Essert, Eds. Cham: Springer International
+Publishing, 2021, pp. 357–366.
+[35] J. Yan, J. Liu, H. Xu, Z. Wang, and C. Qiao, “Peaches: Person-
+alized federated learning with neural architecture search in edge
+computing,”IEEE Transactions on Mobile Computing, vol. 23,
+no. 11, pp. 10 296–10 312, 2024.
+[36] M. Hoang and C. Kingsford, “Personalized neural architecture
+search for federated learning,”1st NeurIPS Workshop on New
+Frontiers in Federated Learning (NFFL 2021), 2021.
+[37] D. Yao, L. Wang, J. Xu, L. Xiang, S. Shao, Y . Chen, and Y . Tong,
+“Federated model search via reinforcement learning,” in2021
+IEEE 41st International Conference on Distributed Computing
+Systems (ICDCS), 2021, pp. 830–840.
+[38] D. Yao and B. Li, “Perfedrlnas: One-for-all personalized
+federated neural architecture search,”Proceedings of the
+AAAI Conference on Artificial Intelligence, vol. 38, no. 15,
+pp. 16 398–16 406, Mar. 2024. [Online]. Available: https:
+//ojs.aaai.org/index.php/AAAI/article/view/29576
+[39] Y . Liu, S. Guo, J. Zhang, Z. Hong, Y . Zhan, and Q. Zhou, “Col-
+laborative neural architecture search for personalized federated
+learning,”IEEE Transactions on Computers, vol. 74, no. 1, pp.
+250–262, 2025.
+[40] A. Yang and Y . Liu, “Heterogeneity-aware personalized federated
+neural architecture search,”Entropy, vol. 27, no. 7, 2025.
+[Online]. Available: https://www.mdpi.com/1099-4300/27/7/759
+[41] S. Horvath, S. Laskaridis, M. Almeida, I. Leontiadis, S. Venieris,
+and N. Lane, “Fjord: Fair and accurate federated learning under
+heterogeneous targets with ordered dropout,”Advances in Neural
+Information Processing Systems, vol. 34, pp. 12 876–12 889,
+2021.
+[42] X. Wang, Y . Zhao, C. Qiu, F. Gao, Z. Zhao, H. Yao, and
+X. Li, “Energy-friendly federated neural architecture search for
+industrial cyber-physical systems,”IEEE Journal on Selected
+Areas in Communications, vol. 43, no. 10, pp. 3502–3518, 2025.
+[43] J. Liu, J. Yan, H. Xu, Z. Wang, J. Huang, and Y . Xu, “Finch:
+Enhancing federated learning with hierarchical neural architec-
+ture search,”IEEE Transactions on Mobile Computing, vol. 23,
+no. 5, pp. 6012–6026, 2024.
+[44] J. Yuan, M. Xu, Y . Zhao, K. Bian, G. Huang, X. Liu, and
+S. Wang, “Resource-aware federated neural architecture search
+over heterogeneous mobile devices,”IEEE Transactions on Big
+Data, pp. 1–11, 2022.
+[45] E. Real, A. Aggarwal, Y . Huang, and Q. V . Le, “Regularized
+evolution for image classifier architecture search,”Proceedings
+of the AAAI Conference on Artificial Intelligence, vol. 33,
+no. 01, pp. 4780–4789, Jul. 2019. [Online]. Available:
+https://ojs.aaai.org/index.php/AAAI/article/view/4405
+[46] H. Fang, Y . Gao, P. Zhang, J. Yao, H. Chen, and H. Wang,
+“Large language models enhanced personalized graph neural
+architecture search in federated learning,”Proceedings of
+the AAAI Conference on Artificial Intelligence, vol. 39,
+no. 16, pp. 16 514–16 522, Apr. 2025. [Online]. Available:
+https://ojs.aaai.org/index.php/AAAI/article/view/33814
+[47] R. Qin, Y . Hu, Z. Yan, J. Xiong, A. Abbasi, and Y . Shi, “Fl-nas:
+Towards fairness of nas for resource constrained devices via
+large language models,” inProceedings of the 29th Asia and
+South Pacific Design Automation Conference, ser. ASPDAC
+’24. IEEE Press, 2024, p. 429–434. [Online]. Available:
+https://doi.org/10.1109/ASP-DAC58780.2024.10473847
+[48] S. Namekawa and T. Tezuka, “Evolutionary neural architecture
+search by mutual information analysis,” in2021 IEEE Congress
+on Evolutionary Computation (CEC), 2021, pp. 966–972.
+[49] L. Gao, H. Fu, L. Li, Y . Chen, M. Xu, and C.-Z. Xu, “Feddc:
+Federated learning with non-iid data via local drift decoupling
+and correction,” inProceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR), June 2022,
+pp. 10 112–10 121.
+[50] T.-M. H. Hsu, H. Qi, and M. Brown, “Measuring the effects of
+non-identical data distribution for federated visual classification,”
+2019. [Online]. Available: https://arxiv.org/abs/1909.06335

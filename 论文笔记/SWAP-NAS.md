@@ -166,7 +166,8 @@ $$
             
             return self.swap.calSWAP(self.regular_factor)
 ```
-
+forward 负责先得到“样本为行”的矩阵。
+SWAP 真正的创新是在后续转置后，用“神经元为行”去 unique 计数
 
 ### 二值化后用于 SWAP 评分
 在 [swap.py](D:/PRO/essays/code_depots/SWAP-NAS Sample-Wise Activation Patterns for Ultra-Fast NAS/src/metrics/swap.py#L21)，对激活做 torch.sign，再转置成 (neurons, samples) 去重计数（torch.unique）得到 SWAP 分数。

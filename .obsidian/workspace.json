@@ -27,44 +27,30 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "论文笔记/REP.md",
+                "file": "综述/综述.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "REP"
+              "title": "综述"
             }
           },
           {
-            "id": "077418b39299f54d",
+            "id": "24ad67afb273bed0",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "IDEA.md",
+                "file": "综述/特征提取.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "IDEA"
-            }
-          },
-          {
-            "id": "879e53497c8c604e",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "论文笔记/LRNAS.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "LRNAS"
+              "title": "特征提取"
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -137,7 +123,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "IDEA.md",
+                "file": "论文笔记/AZ-NAS.md",
                 "collapseAll": true,
                 "extraContext": true,
                 "sortOrder": "alphabetical",
@@ -147,7 +133,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "IDEA 的反向链接列表"
+              "title": "AZ-NAS 的反向链接列表"
             }
           },
           {
@@ -212,52 +198,52 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "077418b39299f54d",
+  "active": "f5bd1879c6ba245f",
   "lastOpenFiles": [
-    "论文笔记/_概念/Catastrophic Overfitting_ch.md",
-    "论文笔记/_概念/Catastrophic Overfitting.md",
-    "论文笔记/_概念/Vulnerability-aware Data Filtering_ch.md",
-    "论文笔记/_概念/Vulnerability-aware Data Filtering.md",
-    "论文笔记/_概念/Decision Margin_ch.md",
-    "论文笔记/_概念/Decision Margin.md",
-    "论文笔记/NAS方法/VDAT_ch.md",
-    "论文笔记/NAS方法/VDAT.md",
-    "论文笔记/VDAT.md",
-    "papers/Vulnerable Data-Aware Adversarial Training.pdf",
-    "code_depots/Zero-Shot Neural Architecture Search Challenges, Solutions, and Opportunities/requirement.txt",
-    "code_depots/Zero-Shot Neural Architecture Search Challenges, Solutions, and Opportunities/main.py",
-    "论文笔记/_概念/Neural Graph Features (GRAF)_ch.md",
-    "论文笔记/_概念/Neural Graph Features (GRAF).md",
-    "论文笔记/_概念/Random Forest Regressor_ch.md",
-    "论文笔记/_概念/Random Forest Regressor.md",
-    "论文笔记/NAS方法/ZCP-Eval_ch.md",
-    "论文笔记/NAS方法/ZCP-Eval.md",
-    "论文笔记/ZCP-Eval.md",
-    "论文笔记/_概念/N@K_ch.md",
-    "论文笔记/_概念/Piecewise Loss Function_ch.md",
-    "论文笔记/_概念/Listwise Ranking Loss_ch.md",
-    "论文笔记/_概念/Entropy_ch.md",
-    "论文笔记/_概念/Entropy.md",
-    "论文笔记/_概念/tiered-ImageNet_ch.md",
-    "论文笔记/_概念/tiered-ImageNet.md",
-    "论文笔记/_概念/mini-ImageNet_ch.md",
-    "论文笔记/_概念/mini-ImageNet.md",
-    "论文笔记/_概念/Jacobian Matrix_ch.md",
-    "papers/Lukasik - An Evaluation of Zero-Cost Proxies - from Neural Architecture Performance Prediction to Model Robust.pdf",
-    "papers/Revisiting Neural Networks for Few-Shot Learning A Zero-Cost NAS Perspective.pdf",
-    "papers/Neural Architecture Search by Learning a Hierarchical Search Space.pdf",
+    "综述/特征提取.md",
+    "综述/综述.md",
+    "论文笔记/W-PCA.md",
+    "IDEA.md",
+    "论文笔记/MeCo.md",
+    "论文笔记/_概念/Wide Residual Network_ch.md",
+    "论文笔记/_概念/Wide Residual Network.md",
+    "论文笔记/_概念/Robust Overfitting_ch.md",
+    "论文笔记/_概念/Robust Overfitting.md",
+    "论文笔记/_概念/Stable Accuracy_ch.md",
+    "论文笔记/_概念/Stable Accuracy.md",
+    "论文笔记/NAS方法/NARes_ch.md",
+    "论文笔记/NAS方法/NARes.md",
+    "论文笔记/NARes.md",
+    "综述/数据集.md",
+    "论文笔记/VKDNW.md",
+    "论文笔记/AZ-NAS.md",
+    "综述/缺点.md",
+    "论文笔记/NEAR.md",
+    "综述",
+    "论文笔记/_概念/Open Code Space_ch.md",
+    "论文笔记/_概念/Open Code Space.md",
+    "论文笔记/_概念/One-Epoch Proxy Evaluation_ch.md",
+    "论文笔记/_概念/One-Epoch Proxy Evaluation.md",
+    "论文笔记/_概念/Diagnostic Triple_ch.md",
+    "论文笔记/_概念/Diagnostic Triple.md",
+    "论文笔记/_概念/Historical Feedback Memory_ch.md",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/_archive_meta.json",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/train_script.py",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/run_ablation.sh",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/run.sh",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/requirements.txt",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/prompt_improver.py",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/pipeline.py",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/llm_client.py",
+    "code_depots/Resource-Efficient Iterative LLM-Based NAS with Feedback Memory/evaluator.py",
+    "Pasted image 20260319231646.png",
     "code_depots/Loss Functions for Predictor-based Neural Architecture Search/figs/loss_overview.png",
-    "code_depots/Loss Functions for Predictor-based Neural Architecture Search/figs",
-    "papers/Loss Functions for Predictor-based Neural Architecture Search.pdf",
-    "papers/Feng 等 - Vulnerable Data-Aware Adversarial Training.pdf",
-    "code_depots/Loss Functions for Predictor-based Neural Architecture Search",
     "code_depots/Group Fisher Pruning for Practical Network Compression/resources/structures.png",
     "code_depots/Group Fisher Pruning for Practical Network Compression/resources/sota.png",
     "code_depots/Group Fisher Pruning for Practical Network Compression/resources/speed_up.png",
     "code_depots/Zero-Shot Neural Architecture Search Challenges, Solutions, and Opportunities/stat.svg",
     "code_depots/Multi-agent Architecture Search via Agentic Supernet/assets/MaAS.png",
     "code_depots/Multi-agent Architecture Search via Agentic Supernet/assets/framework.png",
-    "Pasted image 20260319231646.png",
     "code_depots/Neural architecture search for wide spectrum adversarial robustness/ewss.PNG",
     "code_depots/Neural architecture search for wide spectrum adversarial robustness/demo2.PNG"
   ]

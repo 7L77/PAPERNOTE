@@ -188,3 +188,205 @@ $$
 - [[Genetic Algorithm]]
 - [[Kendall's Tau]]
 - [[Spearman's Rank Correlation]]
+
+
+## 代码
+
+
+- `D:/PRO/essays/.tmp/W-PCA_repo/models/mysupernet.py`
+  - `MySupernetFeedForwardNetwork.forward(...)` 中先取 FFN 中间输出：
+    `output = self.dense1(hidden_states)`
+  - 然后对该输出做 PCA 维度统计：
+    `pca_sum = pca_torch(output.view(-1, out_size), (0.99, ))[0]`
+
+
+关键实现片段：
+```python
+# models/mysupernet.py
+def forward(self, hidden_states, is_calc_pca=True, min_pca=1):
+    output = self.dense1(hidden_states)         # FFN 隐状态
+    out_size = self.dense1.get_out_dimension().item()
+    pca_sum = 0
+    if is_calc_pca:
+        pca_sum = pca_torch(output.view(-1, out_size), (0.99, ))[0]
+    ...
+    return output, pca_sum
+```
+
+- `D:/PRO/essays/.tmp/W-PCA_repo/models/pca_torch.py`
+  - `pca_torch(data, energy)` 负责：
+    1) 去均值
+    2) 计算协方差
+    3) `torch.linalg.eigh` 求特征值
+    4) 统计达到能量阈值（如 0.99）所需主成分数
+```
+def cov(tensor, rowvar=True, bias=False):
+    """Estimate a covariance matrix (np.cov)
+    https://gist.github.com/ModarTensai/5ab449acba9df1a26c12060240773110
+    """
+    tensor = tensor if rowvar else tensor.transpose(-1, -2)
+    tensor = tensor - tensor.mean(dim=-1, keepdim=True)
+    factor = 1 / (tensor.shape[-1] - int(not bool(bias)))
+    return factor * tensor @ tensor.transpose(-1, -2).conj()
+```
+```
+@torch.no_grad()
+def pca_torch(data, energy):
+    # retuerns eig vals and vecs as well as the number of pc's needed to capture proportions of variance
+    data = data - data.mean(0)
+    covariance = cov(data, rowvar=False)
+    #covariance = np.nan_to_num(covariance)  # I added this to fix one problem that one matrix was causing in one opt
+    eigenvalues, eigenvectors = torch.linalg.eigh(covariance)  # eigenvals are sorted small to large
+
+    en_evecs = np.zeros(len(energy))
+    total = torch.sum(eigenvalues)
+    eigenvalues = eigenvalues.cpu().numpy()
+    for en, idx_en in zip(energy, range(len(energy))):
+        accum = 0
+        k = 1
+        while accum <= en:
+            accum += eigenvalues[-k] / total
+            k += 1
+        en_evecs[idx_en] = k - 1  # en_evecs is num of eigenvectors needed to explain en proportion of variance
+    return en_evecs  #, eigenvalues, eigenvectors
+
+def pca(data, energy):
+    # retuerns eig vals and vecs as well as the number of pc's needed to capture proportions of variance
+    data = data - data.mean(axis=0)
+    covariance = np.cov(data, rowvar=False)
+    covariance = np.nan_to_num(covariance)  # I added this to fix one problem that one matrix was causing in one opt
+    eigenvalues, eigenvectors = np.linalg.eigh(covariance)  # eigenvals are sorted small to large
+
+    en_evecs = np.zeros(len(energy))
+    total = np.sum(eigenvalues)
+    for en, idx_en in zip(energy, range(len(energy))):
+        accum = 0
+        k = 1
+        while accum <= en:
+            accum += eigenvalues[-k] / total
+            k += 1
+        en_evecs[idx_en] = k - 1  # en_evecs is num of eigenvectors needed to explain en proportion of variance
+    return en_evecs #, eigenvalues, eigenvectors
+```
+
+
+
+本地已定位（临时克隆目录）：
+- `D:/PRO/essays/.tmp/W-PCA_repo`
+
+### 代码对照：input 到特征
+
+#### 1) 输入从哪里来
+
+- `finetune_search.py` 每个 batch 解包为：
+  `task_ids, token_ids, segment_ids, position_ids, attn_mask, labels`
+
+```python
+# finetune_search.py
+for batch_idx, data in enumerate(train_loader):
+    ...
+    task_ids, token_ids, segment_ids, position_ids, attn_mask, labels = data
+```
+
+- `train_loader` 来自 `utils/dataset_utils.py` 的 `create_multi_task_dataset(...)`，底层由 `DataLoader` 构建。
+
+```python
+# utils/dataset_utils.py
+def create_multi_task_dataset(...):
+    ...
+    if split == 'train':
+        loader = _create_multi_task_dataset_loader(...)
+    ...
+    return examples, encoded_inputs, all_datasets, loader
+```
+
+#### 2) input 如何进模型
+
+- `finetune_search.py` 中调用：
+
+```python
+# finetune_search.py
+student_outputs = student_model(
+    task_id, token_ids, segment_ids, position_ids, attn_mask,
+    args.type_blocks, select_arch
+)
+```
+
+- 模型选择在 `models/__init__.py`，`mt_mysupernet` 对应 `MultiTaskMySupernet`。
+
+```python
+# models/__init__.py
+elif model_name in ['mt_mysupernet', 'mt_mysupernet_5M', 'mt_mysupernet_10M']:
+    return MultiTaskMySupernet(config, task, return_hid, issingle=issingle)
+```
+
+#### 3) token 如何变成层特征
+
+- 在 `models/mysupernet.py` 中先 embedding，再按 `select_arch` 逐层过 block：
+
+```python
+# models/mysupernet.py
+output = self.embeddings(token_ids, segment_ids, position_ids)
+for archs, arch_id in zip(self.encoder, select_arch):
+    output, attn_output, attn_score, one_cka, one_pca = archs[arch_id](
+        output, attn_mask, is_calc_pca_cka=is_calc_pca_cka, min_pca=min_pca
+    )
+```
+
+#### 4) 真正的 W-PCA 特征提取点
+
+- 在 `MySupernetFeedForwardNetwork.forward(...)` 里，FFN 第一层线性输出就是中间特征；
+- 然后直接对这个特征做 PCA 维度统计（阈值 `0.99`）：
+
+```python
+# models/mysupernet.py
+def forward(self, hidden_states, is_calc_pca=True, min_pca = 1):
+    #output = self.activation(self.dense1(hidden_states))
+    output = self.dense1(hidden_states)
+    in_size = self.dense1.get_in_dimension().item()
+    out_size = self.dense1.get_out_dimension().item()
+    pca_sum = 0
+    if is_calc_pca:
+        pca_sum = pca_torch(output.view(-1, out_size), (0.99, ))[0]
+    output = self.activation(output)
+    output = self.dropout(self.dense2(output))
+    output = self.layernorm(hidden_states + output)
+    if min_pca == 1:
+        return output, pca_sum #/ min(in_size, out_size)
+    else:
+        return output, pca_sum #/ out_size
+```
+
+#### 5) PCA 维度怎么算
+
+- `pca_torch` 在 `models/pca_torch.py`：
+  去均值 -> 协方差 -> `torch.linalg.eigh` -> 统计达到能量阈值的主成分数。
+
+```python
+# models/pca_torch.py
+@torch.no_grad()
+def pca_torch(data, energy):
+    # retuerns eig vals and vecs as well as the number of pc's needed to capture proportions of variance
+    data = data - data.mean(0)
+    covariance = cov(data, rowvar=False)
+    #covariance = np.nan_to_num(covariance)  # I added this to fix one problem that one matrix was causing in one opt
+    eigenvalues, eigenvectors = torch.linalg.eigh(covariance)  # eigenvals are sorted small to large
+
+    en_evecs = np.zeros(len(energy))
+    total = torch.sum(eigenvalues)
+    eigenvalues = eigenvalues.cpu().numpy()
+    for en, idx_en in zip(energy, range(len(energy))):
+        accum = 0
+        k = 1
+        while accum <= en:
+            accum += eigenvalues[-k] / total
+            k += 1
+        en_evecs[idx_en] = k - 1  # en_evecs is num of eigenvectors needed to explain en proportion of variance
+    return en_evecs  #, eigenvalues, eigenvectors
+```
+
+补充：
+- 同逻辑调用还在
+  `D:/PRO/essays/.tmp/W-PCA_repo/models/attention_transformer_ls.py`
+  的 `FeedForwardNetworkLS.forward(...)`：
+  `pca_torch(output.view(-1, out_size), (0.99, ))[0]`。
