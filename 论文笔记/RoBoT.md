@@ -1,5 +1,5 @@
 ---
-title: "Robustifying and Boosting Training-Free Neural Architecture Search"
+title: "RoBoT：鲁棒且增强的免训练神经架构搜索"
 method_name: "RoBoT"
 authors: [Zhenfeng He, Yao Shu, Zhongxiang Dai, Bryan Kian Hsiang Low]
 year: 2024
@@ -13,110 +13,110 @@ local_code: D:/PRO/essays/code_depots/Robustifying and Boosting Training-Free Ne
 created: 2026-03-17
 ---
 
-# Paper Note: RoBoT
+# 论文笔记：RoBoT
 
 ## TL;DR
-> RoBoT combines multiple training-free metrics with BO-optimized linear weights to get a more robust estimator, then spends remaining budget on greedy exploitation of top-ranked architectures to close the estimation gap.
+> RoBoT 通过 BO 优化的线性加权融合多个免训练指标，得到更鲁棒的估计器；随后将剩余预算用于对高排名架构的贪心开发，以缩小代理评分与真实性能之间的估计差距。
 
-## Metadata
-| Item | Value |
+## 元信息
+| 条目 | 内容 |
 |---|---|
-| Paper | Robustifying and Boosting Training-Free Neural Architecture Search |
-| Venue | ICLR 2024 |
+| 论文 | Robustifying and Boosting Training-Free Neural Architecture Search |
+| 会议 | ICLR 2024 |
 | OpenReview | https://openreview.net/forum?id=qPloNoDJZn |
 | arXiv | https://arxiv.org/abs/2403.07591 |
 | Code | https://github.com/hzf1174/RoBoT |
-| Local PDF | `D:/PRO/essays/papers/Robustifying and Boosting Training-Free Neural Architecture Search.pdf` |
-| Local Code | `D:/PRO/essays/code_depots/Robustifying and Boosting Training-Free Neural Architecture Search` |
+| 本地 PDF | `D:/PRO/essays/papers/Robustifying and Boosting Training-Free Neural Architecture Search.pdf` |
+| 本地代码 | `D:/PRO/essays/code_depots/Robustifying and Boosting Training-Free Neural Architecture Search` |
 
-## Problem Setup
-- Goal: make training-free NAS stable across diverse tasks and improve final selected architecture quality under a fixed search budget.
-- RQ1: can we robustify unstable single training-free metrics across tasks?
-- RQ2: after building a robust metric, how do we quantify and exploit the estimation gap between proxy score and true architecture performance?
+## 问题设定
+- 目标：在固定搜索预算下，让免训练 NAS 在多任务场景中更稳定，并提升最终选中架构的质量。
+- RQ1：能否将跨任务不稳定的单一免训练指标变得更鲁棒？
+- RQ2：在得到鲁棒指标后，如何量化并利用代理评分与真实性能之间的估计差距？
 
-## Core Contributions
-1. Weighted ensemble of training-free metrics, with BO to optimize the weight vector for the current task.
-2. Precision@T-based gap quantification and greedy exploitation over top-ranked candidates to boost final architecture selection.
-3. Partial-monitoring-based analysis with a bound on expected ranking performance under mild assumptions.
-4. Strong empirical results on NAS-Bench-201, TransNAS-Bench-101 (micro/macro), and DARTS search space.
+## 核心贡献
+1. 提出免训练指标的加权集成，并用 BO 为当前任务优化权重向量。
+2. 基于 Precision@T 量化估计差距，并在高排名候选上进行贪心开发，提升最终架构选择质量。
+3. 基于部分监测（Partial Monitoring）给出理论分析，在较温和假设下对期望排序性能提供界。
+4. 在 NAS-Bench-201、TransNAS-Bench-101（micro/macro）和 DARTS 搜索空间上取得较强实证结果。
 
-## Method
+## 方法
 
-### 1) Robust metric via weighted combination (Sec. 4.1)
-The robust metric is:
+### 1) 通过加权组合构建鲁棒指标（Sec. 4.1）
+鲁棒指标定义为：
 
-\[
+$$
 M(A; w) = \sum_{i=1}^{M} w_i M_i(A)
-\]
+$$
 
-with target weight:
+目标权重为：
 
-\[
+$$
 w^* = \arg\max_w f(A(w)), \quad A(w)=\arg\max_{A \in \mathcal{A}} M(A;w)
-\]
+$$
 
-Source: Sec. 4.1, Eq. (1).
+来源：Sec. 4.1, Eq. (1)。
 
-### 2) BO exploration for weight optimization (Sec. 4.2, Alg. 1)
-- BO iteratively proposes weight vectors.
-- For each weight vector, RoBoT picks its top-scoring architecture and queries objective performance if not queried before.
-- Best queried weight yields the robust estimator \(M(\cdot; \tilde{w}^*)\).
+### 2) 用 BO 探索权重优化（Sec. 4.2, Alg. 1）
+- BO 迭代提出权重向量。
+- 对每个权重向量，RoBoT 选择其评分最高的架构；若该架构此前未被查询，则获取其目标性能反馈。
+- 查询到的最优权重对应鲁棒估计器 \(M(\cdot; \tilde{w}^*)\)。
 
-### 3) Precision@T and exploitation (Sec. 4.3, Alg. 2)
-Precision@T:
+### 3) Precision@T 与开发阶段（Sec. 4.3, Alg. 2）
+Precision@T 定义为：
 
-\[
+$$
 \rho_T(M,f)=\frac{|\{A\;|\;R_M(A)\le T \land R_f(A)\le T\}|}{T}
-\]
+$$
 
-Then use remaining budget for greedy search over top \(T-T_0\) architectures ranked by the robust metric.
+随后将剩余预算用于在鲁棒指标排序后的前 \(T-T_0\) 个架构中进行贪心搜索。
 
-Source: Sec. 4.3, Eq. (2), Eq. (3), Alg. 2.
+来源：Sec. 4.3, Eq. (2), Eq. (3), Alg. 2。
 
-### 4) Theory (Sec. 5)
-- The paper maps Algorithm 1 to [[Partial Monitoring]].
-- Under global observability-style conditions and BO strategy assumptions, they derive a bounded expected ranking for RoBoT's selected architecture.
-- Key bound reported in Theorem 2 (Eq. 5).
+### 4) 理论分析（Sec. 5）
+- 论文将 Algorithm 1 映射到 [[Partial Monitoring]] 框架。
+- 在类似全局可观测性条件和 BO 策略假设下，作者推导了 RoBoT 所选架构的期望排序上界。
+- 关键结论见 Theorem 2（Eq. 5）。
 
-## Key Results
+## 关键结果
 
-### NAS-Bench-201 (Table 2)
+### NAS-Bench-201（Table 2）
 - RoBoT: 94.36 / 73.51 / 46.34 (C10/C100/IN-16), search cost 3051 GPU-sec.
-- Outperforms or matches best listed training-free/hybrid baselines at similar or lower cost than many training-based methods.
+- 在与大量训练式方法相当或更低的成本下，优于或持平于表中最佳免训练/混合基线。
 
-### TransNAS-Bench-101 (Table 3)
-- Under budget 100, RoBoT achieves top-tier or best validation rankings across most micro and macro tasks.
-- Example (micro): Scene 2, Object 1, Jigsaw 17, Segment 4, Normal 8 (lower is better).
+### TransNAS-Bench-101（Table 3）
+- 在预算 100 下，RoBoT 在多数 micro 与 macro 任务上达到第一梯队或最优验证排名。
+- 示例（micro）：Scene 2、Object 1、Jigsaw 17、Segment 4、Normal 8（越小越好）。
 
-### DARTS space ImageNet transfer (Table 4)
+### DARTS 搜索空间上的 ImageNet 迁移（Table 4）
 - RoBoT reports 24.1% top-1 error / 7.3% top-5 error, 0.6 GPU days search cost.
-- Competitive against TE-NAS, HNAS, NASI-ADA, and many classical NAS baselines.
+- 与 TE-NAS、HNAS、NASI-ADA 及多种经典 NAS 基线相比具有竞争力。
 
-## Implementation Cross-check with Archived Code
+## 与归档代码的一致性核对
 
-Repository inspected:
+已核对仓库：
 `D:/PRO/essays/code_depots/Robustifying and Boosting Training-Free Neural Architecture Search`
 
-Observed alignment:
-1. Metric combination and min-max normalization are implemented in both `search_nb201.py` and `search_tnb101.py`.
-2. BO searches over metric weights in \([-1,1]\), tracks best queried architecture-value pair, and records unique queried architectures (`T0` behavior).
-3. Exploitation phase fills remaining budget by scanning top-ranked architectures under optimized weights.
+观察到的一致点：
+1. `search_nb201.py` 与 `search_tnb101.py` 都实现了指标组合和 min-max 归一化。
+2. BO 在 \([-1,1]\) 范围内搜索指标权重，跟踪最优已查询架构-性能对，并记录不重复查询的架构（对应 `T0` 行为）。
+3. 开发阶段会在优化权重下扫描高排名架构，用完剩余预算。
 
-Notable implementation detail:
-1. Scripts use BO acquisition `ucb` directly; paper theory discussion mentions IDS conditions in analysis section, so practical code path is a simplified BO instantiation.
-2. In benchmark scripts, objective feedback is tabular validation performance; in DARTS space, scripts train sampled architectures to obtain validation signal.
+值得注意的实现细节：
+1. 脚本直接使用 BO 的 `ucb` 采集函数；论文理论部分提到 IDS 条件，因此实际代码路径可视为更简化的 BO 实例化。
+2. 在 benchmark 脚本中，目标反馈来自表格化验证性能；在 DARTS 空间中，脚本会训练采样架构以获得验证信号。
 
-## Strengths
-1. Clean separation between robustification (metric ensemble) and boosting (budgeted exploitation).
-2. Practical: can reuse existing training-free metrics and benchmark tables.
-3. Provides both empirical gains and explicit theoretical framing.
+## 优点
+1. 清晰分离了鲁棒化（指标集成）与增强（预算约束下的开发）两个阶段。
+2. 实用性强：可复用现有免训练指标与基准数据表。
+3. 同时提供了实证收益与明确的理论框架。
 
-## Limitations
-1. Dependence on available candidate pool quality and objective-query budget.
-2. Theory relies on assumptions (e.g., observability-related conditions) that may not hold uniformly in real search spaces.
-3. Weight optimization still introduces BO overhead and hyperparameter sensitivity.
+## 局限性
+1. 依赖候选池质量与目标查询预算。
+2. 理论依赖若干假设（如可观测性相关条件），在真实搜索空间中不一定始终成立。
+3. 权重优化仍引入 BO 额外开销，并对超参数较敏感。
 
-## Related Concepts
+## 相关概念
 - [[Training-free NAS]]
 - [[Bayesian Optimization]]
 - [[Precision@T]]
