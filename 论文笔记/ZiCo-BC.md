@@ -30,7 +30,7 @@ created: 2026-03-20
 ## Core Contributions
 1. Validates that gradient-based [[Training-free NAS]] can perform direct macro-architecture search for semantic segmentation, not just image classification benchmarks (Sec. 2, Table 1).
 2. Identifies a concrete [[Depth-Width Bias]] in ZiCo during repeated-block micro-architecture search: the score tends to prefer thinner and deeper models (Sec. 3, Fig. 1).
-3. Proposes a simple corrected score `ZiCo-BC = ZiCo - \beta \sum_l \log(H_l W_l / \sqrt{C_l})`, adding a structural penalty based on feature-map size and channel width (Eq. 2).
+3. Proposes a simple corrected score `ZiCo-BC = ZiCo - \beta \sum_l \log(C_l / (H_l W_l))`, adding a structural penalty based on feature-map size and channel width (Eq. 2).
 4. Shows better ranking correlation on [[NATS-Bench-SSS]] and better latency/accuracy trade-offs on ImageNet, COCO detection, and Cityscapes segmentation (Table 2-4).
 
 ## Problem Context
@@ -60,7 +60,7 @@ $$
 \mathrm{ZiCo\text{-}BC}
 =
 \mathrm{ZiCo}
-- \beta \sum_{l=1}^{D} \log\left(\frac{H_l W_l}{\sqrt{C_l}}\right)
+- \beta \sum_{l=1}^{D} \log\left(\frac{C_l}{H_l W_l}\right)
 $$
 
 - `H_l, W_l`: feature-map spatial resolution at layer `l`.
@@ -147,7 +147,7 @@ Takeaway:
 
 ### Weaknesses
 1. The correction is hand-designed and only lightly justified theoretically.
-2. The paper reports end results, but not a deeper ablation on why `H_l W_l / \sqrt{C_l}` is the right form versus other penalties.
+2. The paper reports end results, but not a deeper ablation on why `C_l / (H_l W_l)` is the right form versus other penalties.
 3. Absence of released code makes the exact engineering recipe harder to verify.
 
 ## Related Concepts

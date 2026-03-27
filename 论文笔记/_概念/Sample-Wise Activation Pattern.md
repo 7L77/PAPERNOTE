@@ -24,6 +24,8 @@ Given network \(N\), parameters \(\theta\), and \(S\) samples, sample-wise activ
 
 ## How This Paper Uses It
 - [[SWAP-NAS]]: Defines SWAP-Score as the cardinality of sample-wise activation pattern set.
+- [[L-SWAG]]: Uses the same pattern-cardinality idea as `\Psi` (Def. 1/2, Eq. 7/8), but does not explicitly describe a transpose step in the paper text.
+- [[SWAP-NAS]]: States/implements the operation more explicitly as transposing activations to `(neurons, samples)` before unique counting.
 
 ## Representative Papers
 - [[SWAP-NAS]]: Introduces sample-wise activation patterns for training-free NAS scoring.
@@ -31,4 +33,3 @@ Given network \(N\), parameters \(\theta\), and \(S\) samples, sample-wise activ
 ## Related Concepts
 - [[Network Expressivity]]
 - [[Zero-Cost Proxy]]
-

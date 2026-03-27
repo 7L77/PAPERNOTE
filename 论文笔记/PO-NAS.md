@@ -10,7 +10,7 @@ image_source: online
 arxiv_html: ""
 project_page: "https://anonymous.4open.science/r/PO-NAS-2953"
 local_pdf: D:/PRO/essays/papers/Per-Architecture Training-Free Metric Optimization for Neural Architecture Search.pdf
-local_code: "Not archived (anonymous repository not found as of 2026-03-16)"
+local_code: D:/PRO/essays/code_depots/PO-NAS/PO-NAS-2953
 created: 2026-03-16
 ---
 
@@ -23,7 +23,7 @@ created: 2026-03-16
 | 状态 | 投稿 NeurIPS 2025（匿名投稿） |
 | 代码链接 | https://anonymous.4open.science/r/PO-NAS-2953 |
 | 本地 PDF | `D:/PRO/essays/papers/Per-Architecture Training-Free Metric Optimization for Neural Architecture Search.pdf` |
-| 本地代码 | 未归档（匿名仓库不可访问） |
+| 本地代码 | `D:/PRO/essays/code_depots/PO-NAS/PO-NAS-2953` |
 
 ## 一句话总结
 > PO-NAS 通过代理模型学习**每个架构专属的多元免训练指标融合权重**，并结合贝叶斯优化 + 进化搜索，在有限真实训练预算下显著提升 NAS 排序质量。
@@ -115,6 +115,82 @@ $$
 2. 预训练包括架构掩码和 100 epoch 调度
 3. BO 阶段使用损失阈值和差距阈值 \(T_{th}\)（默认约 0.1）
 4. DARTS 设置使用 10k 初始架构，有限真实训练预算（CIFAR 25 个，ImageNet 10 个）
+
+## 与代码实现的对照（本地 PO-NAS 仓库）
+代码地址：
+- 匿名仓库（论文给出的实现地址）：`https://anonymous.4open.science/r/PO-NAS-2953`
+- 本地代码：`D:/PRO/essays/code_depots/PO-NAS/PO-NAS-2953`
+
+本地代码路径：
+`D:/PRO/essays/code_depots/PO-NAS/PO-NAS-2953`
+
+关键文件（NAS-Bench-201 分支）：
+- `NAS-Bench-201/genotype_to_pretrain_data_nb201.py`
+- `NAS-Bench-201/pretrain_dataloader_nb201.py`
+- `NAS-Bench-201/search_nb201.py`
+- `NAS-Bench-201/att_network_nb201.py`
+
+### 输入如何转化为特征（代码对照）
+1. **架构字符串 -> 图特征（GNN 输入）**
+   - 从架构字符串解析 `edges / edge_ops`；
+   - 构造节点特征 `node_features`、边连接 `edge_index`、边特征 `edge_attr`；
+   - 组装成 `torch_geometric.data.Data`。
+```python
+# NAS-Bench-201/genotype_to_pretrain_data_nb201.py
+def parse_arch_to_graph(arch):
+    ...
+    node_features = torch.tensor(node_features, dtype=torch.float)
+    edge_index = torch.tensor(edges, dtype=torch.long).t()
+    edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
+    return data
+```
+
+2. **多 ZC 指标 -> 指标向量（metrics 输入）**
+   - 对每个架构按 `metric_names` 取 `data_metrics[name][arch_id]`；
+   - 叠成 `metrics_tensor`，和图特征一起保存为 dataset。
+```python
+# NAS-Bench-201/genotype_to_pretrain_data_nb201.py
+metric_values = [data_metrics[name][int(item['i'])] for name in metric_names if name in item["logmeasures"]]
+metrics_tensors.append(torch.tensor(metric_values, dtype=torch.float32))
+...
+dataset = {"arch": arch_graphs, "metrics": metrics_tensor, "arch_ids": ...}
+```
+
+3. **DataLoader 拼批次 -> 模型前向输入**
+   - `arch` 用 `Batch.from_data_list` 组成图 batch；
+   - `metrics` 用 `torch.stack` 组成矩阵；
+   - 在线阶段额外构造 `metric_ids = torch.arange(len(metric_names))`。
+```python
+# NAS-Bench-201/pretrain_dataloader_nb201.py
+def nas_collate_fn(batch):
+    return {
+        'arch': Batch.from_data_list([item['arch'] for item in batch]),
+        'metrics': torch.stack([item['metrics'] for item in batch]),
+        'arch_ids': torch.stack([item['arch_id'] for item in batch]),
+    }
+```
+```python
+# NAS-Bench-201/search_nb201.py
+online_out = online_trainer.model(
+    arch=arch_batch,
+    metric_ids=metric_ids_batch,
+    metrics=metrics_batch
+)
+```
+
+4. **代理分数生成（架构专属权重）**
+   - `arch_encoder` 把图编码成 `z_arch`；
+   - `metric_embed(metric_ids)` + cross-attention + `weight_mlp` 产出每架构权重；
+   - 正/负权重分别作用在 `metrics` 与 `(1-metrics)` 上得到最终 `score`。
+```python
+# NAS-Bench-201/att_network_nb201.py
+weights = self.weight_mlp(fused_feat).squeeze(-1)
+normalized_weights = weights / (weights.abs().sum(dim=1, keepdim=True) + 1e-8)
+positive_weights = torch.relu(normalized_weights)
+negative_weights = torch.relu(-normalized_weights)
+metric_score = (positive_weights * metrics + negative_weights * (1.0 - metrics)).sum(dim=1, keepdim=True)
+```
 
 ## 批判性思考
 

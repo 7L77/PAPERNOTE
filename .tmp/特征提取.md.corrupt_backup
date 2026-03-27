@@ -1,5 +1,5 @@
-# 免训练代理
-## AZ-NAS，VKDNW
+﻿# 鍏嶈缁冧唬鐞?
+## AZ-NAS锛孷KDNW
 ```
 layer_features = model.extract_cell_features(input_)
 
@@ -16,7 +16,7 @@ def extract_cell_features(self, inputs):
 		cell_features.append(feature)
 	return cell_features
 	
-- layer_features[i] 就是 fi​（第 i 个 cell/block 的输出特征）
+- layer_features[i]聽灏辨槸聽fi鈥嬶紙绗爄聽涓?cell/block 鐨勮緭鍑虹壒寰侊級
 ```
 
 ## NEAR
@@ -26,14 +26,14 @@ def get_activation(layer_id):
             # pylint: disable-msg=redefined-builtin
             called.add(layer_id)
             if isinstance(output, tuple):
-                output = output[0] # tuple 输出只取第一个（如某些模型返回多项）
+                output = output[0] # tuple 杈撳嚭鍙彇绗竴涓紙濡傛煇浜涙ā鍨嬭繑鍥炲椤癸級
             size = output.shape[-1]
             if output.dim() > 2:
                 output = torch.transpose(output, 1, 3).flatten(0, 2)
-                # 若是卷积特征图（dim>2），先 transpose(1,3) 再 flatten(0,2) 变成 2D 矩阵
+                # 鑻ユ槸鍗风Н鐗瑰緛鍥撅紙dim>2锛夛紝鍏?transpose(1,3) 鍐?flatten(0,2) 鍙樻垚 2D 鐭╅樀
             activations[layer_id] = torch.cat((activations[layer_id], output), dim=0)
             if activations[layer_id].shape[0] >= activations[layer_id].shape[1]:
-                # 不断拼接样本后，当行数 >= 列数时,随机取一段连续行子矩阵,然后删除该层hook
+                # 涓嶆柇鎷兼帴鏍锋湰鍚庯紝褰撹鏁?>= 鍒楁暟鏃?闅忔満鍙栦竴娈佃繛缁瀛愮煩闃?鐒跺悗鍒犻櫎璇ュ眰hook
                 start = (
                     np.random.randint(0, activations[layer_id].shape[0] // size - 1) * size
                     if activations[layer_id].shape[0] // size - 1 > 0
@@ -48,7 +48,7 @@ def get_activation(layer_id):
 ```
 
 ## swap
-forward 负责先得到“样本为行”的矩阵
+forward 璐熻矗鍏堝緱鍒扳€滄牱鏈负琛屸€濈殑鐭╅樀
 ```
     def forward(self):
         self.interFeature = []
@@ -60,8 +60,7 @@ forward 负责先得到“样本为行”的矩阵
             
             return self.swap.calSWAP(self.regular_factor)
 ```
-如果不转置，直接对 (batch_size, total_neurons) 去重，那就更接近传统“样本模式”计数思路。
-SWAP 真正的创新是在后续转置后，用“神经元为行”去 unique 计数
+濡傛灉涓嶈浆缃紝鐩存帴瀵?(batch_size, total_neurons) 鍘婚噸锛岄偅灏辨洿鎺ヨ繎浼犵粺鈥滄牱鏈ā寮忊€濊鏁版€濊矾銆?SWAP 鐪熸鐨勫垱鏂版槸鍦ㄥ悗缁浆缃悗锛岀敤鈥滅缁忓厓涓鸿鈥濆幓 unique 璁℃暟
 ```
 def calSWAP(self, regular_factor):
         self.activations = self.activations.T # transpose the activation matrix: (samples, neurons) to (neurons, samples)
@@ -114,24 +113,24 @@ def get_score(net, x, target, device, split_data):
 ## W-PCA
 
 
-关键实现片段：
+鍏抽敭瀹炵幇鐗囨锛?
 ```python
 # models/mysupernet.py
 def forward(self, hidden_states, is_calc_pca=True, min_pca = 1):
-    #output = self.activation(self.dense1(hidden_states))
-    output = self.dense1(hidden_states)
-    in_size = self.dense1.get_in_dimension().item()
-    out_size = self.dense1.get_out_dimension().item()
-    pca_sum = 0
-    if is_calc_pca:
-        pca_sum = pca_torch(output.view(-1, out_size), (0.99, ))[0]
-    output = self.activation(output)
-    output = self.dropout(self.dense2(output))
-    output = self.layernorm(hidden_states + output)
-    if min_pca == 1:
-        return output, pca_sum #/ min(in_size, out_size)
-    else:
-        return output, pca_sum #/ out_size
+聽 聽 #output = self.activation(self.dense1(hidden_states))
+聽 聽 output = self.dense1(hidden_states)
+聽 聽 in_size = self.dense1.get_in_dimension().item()
+聽 聽 out_size = self.dense1.get_out_dimension().item()
+聽 聽 pca_sum = 0
+聽 聽 if is_calc_pca:
+聽 聽 聽 聽 pca_sum = pca_torch(output.view(-1, out_size), (0.99, ))[0]
+聽 聽 output = self.activation(output)
+聽 聽 output = self.dropout(self.dense2(output))
+聽 聽 output = self.layernorm(hidden_states + output)
+聽 聽 if min_pca == 1:
+聽 聽 聽 聽 return output, pca_sum #/ min(in_size, out_size)
+聽 聽 else:
+聽 聽 聽 聽 return output, pca_sum #/ out_size
 ```
 
 ```python
@@ -158,7 +157,7 @@ def pca_torch(data, energy):
 ```
 
 ## WRCor
-前向传播
+鍓嶅悜浼犳挱
 ```
 @measure('act_grad_cor_weighted', bn=True, mode='param')
 def compute_act_grad_cor_weighted(net, device, inputs, targets, mode, loss_fn, split_data=1):
@@ -177,7 +176,7 @@ def compute_act_grad_cor_weighted(net, device, inputs, targets, mode, loss_fn, s
                 print(e)
         return counting_forward_hook
 ```
-反向传播
+鍙嶅悜浼犳挱
 ```
 
     def get_counting_backward_hook(weight):
@@ -196,8 +195,7 @@ def compute_act_grad_cor_weighted(net, device, inputs, targets, mode, loss_fn, s
 ```
 
 ## Dextr
-用一个无标签输入 x 做前向，把各层输出抓出来（hook）
-```
+鐢ㄤ竴涓棤鏍囩杈撳叆聽x聽鍋氬墠鍚戯紝鎶婂悇灞傝緭鍑烘姄鍑烘潵锛坔ook锛?```
     
     def forward_hook(module, data_input, data_output):
         fea = data_output[0].clone().detach()
@@ -283,26 +281,17 @@ def get_extrinsic_curvature(network, curve_inputs=None, size_curve=None, batch_s
     print('Dextr: ',dextr)
 ```
 
-
 ## RBFlex-NAS
 
-代码位置
+浠ｇ爜浣嶇疆
 
 - `D:\PRO\essays\code_depots\RBFleX-NAS Training-Free Neural Architecture Search Using Radial Basis Function Kernel and Hyperparameter Detection\RBFleX_NAS-Bench-201.py`
 - `D:\PRO\essays\code_depots\RBFleX-NAS Training-Free Neural Architecture Search Using Radial Basis Function Kernel and Hyperparameter Detection\HDA.py`
 
-input 如何进行特征提取
+input 濡備綍杩涜鐗瑰緛鎻愬彇
 
-1. 先取一个 mini-batch（脚本里 `batch_size_NE=3`），作为训练前打分输入。
-2. 在模型上挂两个 forward hook：
-   - ReLU 层输出 -> 作为激活特征流 `K`；
-   - 最后一个模块的输入 -> 作为最后层输入特征流 `Q`。
-3. 对 batch 内每个样本单独前向一次，把该样本的 `K/Q` 向量写到矩阵：
-   - `Output_matrix[i, :]` 对应样本 `i` 的激活拼接向量 `x_i`；
-   - `Last_matrix[i, :]` 对应样本 `i` 的最后层输入向量 `y_i`。
-4. 对 `Output_matrix` 与 `Last_matrix` 做按列归一化（column-wise），保留样本间相对关系。
-
-关键实现片段（特征采集）
+1. 鍏堝彇涓€涓?mini-batch锛堣剼鏈噷 `batch_size_NE=3`锛夛紝浣滀负璁粌鍓嶆墦鍒嗚緭鍏ャ€?2. 鍦ㄦā鍨嬩笂鎸備袱涓?forward hook锛?   - ReLU 灞傝緭鍑?-> 浣滀负婵€娲荤壒寰佹祦 `K`锛?   - 鏈€鍚庝竴涓ā鍧楃殑杈撳叆 -> 浣滀负鏈€鍚庡眰杈撳叆鐗瑰緛娴?`Q`銆?3. 瀵?batch 鍐呮瘡涓牱鏈崟鐙墠鍚戜竴娆★紝鎶婅鏍锋湰鐨?`K/Q` 鍚戦噺鍐欏埌鐭╅樀锛?   - `Output_matrix[i, :]` 瀵瑰簲鏍锋湰 `i` 鐨勬縺娲绘嫾鎺ュ悜閲?`x_i`锛?   - `Last_matrix[i, :]` 瀵瑰簲鏍锋湰 `i` 鐨勬渶鍚庡眰杈撳叆鍚戦噺 `y_i`銆?4. 瀵?`Output_matrix` 涓?`Last_matrix` 鍋氭寜鍒楀綊涓€鍖栵紙column-wise锛夛紝淇濈暀鏍锋湰闂寸浉瀵瑰叧绯汇€?
+鍏抽敭瀹炵幇鐗囨锛堢壒寰侀噰闆嗭級
 ```python
 # RBFleX_NAS-Bench-201.py
 def counting_forward_hook(module, inp, out):
@@ -322,20 +311,10 @@ for i in range(batch_size_NE):
     Last_matrix[i, :] = network.Q
 ```
 
-然后又是如何计算免训练代理
-
-1. （可选但论文主流程推荐）先在若干候选网络上用 HDA 自动检测核参数 `gamma_k/gamma_q`：
-   - 对任意样本对 `(i,j)`，计算 `M=(m_i-m_j)^2` 和方差项 `s_i,s_j`；
-   - 候选 `gamma = M / (2*(s_i+s_j))`；
-   - 最终取最小有效值作为 `GAMMA_K/GAMMA_Q`。
-2. 用 RBF 核构建两个样本相似矩阵：
-   - `K_Matrix = exp(-GAMMA_K * ||x_i-x_j||^2)`；
-   - `Q_Matrix = exp(-GAMMA_Q * ||y_i-y_j||^2)`。
-3. 用 `slogdet` 计算对数行列式并合成分数：
-   - `score = batch_size_NE * (log|K_Matrix| + log|Q_Matrix|)`。
-4. 用该 `score` 进行候选架构排序，分数越大越优先进入后续搜索/验证。
-
-关键实现片段（代理计算）
+鐒跺悗鍙堟槸濡備綍璁＄畻鍏嶈缁冧唬鐞?
+1. 锛堝彲閫変絾璁烘枃涓绘祦绋嬫帹鑽愶級鍏堝湪鑻ュ共鍊欓€夌綉缁滀笂鐢?HDA 鑷姩妫€娴嬫牳鍙傛暟 `gamma_k/gamma_q`锛?   - 瀵逛换鎰忔牱鏈 `(i,j)`锛岃绠?`M=(m_i-m_j)^2` 鍜屾柟宸」 `s_i,s_j`锛?   - 鍊欓€?`gamma = M / (2*(s_i+s_j))`锛?   - 鏈€缁堝彇鏈€灏忔湁鏁堝€间綔涓?`GAMMA_K/GAMMA_Q`銆?2. 鐢?RBF 鏍告瀯寤轰袱涓牱鏈浉浼肩煩闃碉細
+   - `K_Matrix = exp(-GAMMA_K * ||x_i-x_j||^2)`锛?   - `Q_Matrix = exp(-GAMMA_Q * ||y_i-y_j||^2)`銆?3. 鐢?`slogdet` 璁＄畻瀵规暟琛屽垪寮忓苟鍚堟垚鍒嗘暟锛?   - `score = batch_size_NE * (log|K_Matrix| + log|Q_Matrix|)`銆?4. 鐢ㄨ `score` 杩涜鍊欓€夋灦鏋勬帓搴忥紝鍒嗘暟瓒婂ぇ瓒婁紭鍏堣繘鍏ュ悗缁悳绱?楠岃瘉銆?
+鍏抽敭瀹炵幇鐗囨锛堜唬鐞嗚绠楋級
 ```python
 # RBFleX_NAS-Bench-201.py
 K_Matrix = Simularity_Mat(Output_matrix, GAMMA_K)
@@ -356,22 +335,15 @@ GAMMA_Q = np.min(np.array(GAMMA_Q_list))
 ```
 
 ## PO-NAS
-
-代码位置（本地）：
-
+浠ｇ爜浣嶇疆锛堟湰鍦帮級锛?
 - `D:\PRO\essays\code_depots\PO-NAS\PO-NAS-2953\NAS-Bench-201\genotype_to_pretrain_data_nb201.py`
 - `D:\PRO\essays\code_depots\PO-NAS\PO-NAS-2953\NAS-Bench-201\pretrain_dataloader_nb201.py`
 - `D:\PRO\essays\code_depots\PO-NAS\PO-NAS-2953\NAS-Bench-201\att_network_nb201.py`
 - `D:\PRO\essays\code_depots\PO-NAS\PO-NAS-2953\NAS-Bench-201\search_nb201.py`
 
-input 如何转化为特征（方便后续提取）：
-
-1. 架构字符串 `arch` 先被解析成图结构：`Data(x, edge_index, edge_attr)`。
-2. 每个架构对应的多种 zero-cost 指标拼成 `metrics` 向量。
-3. DataLoader 把图样本合并为 `Batch`，把 `metrics` 堆成矩阵。
-4. 前向中将图嵌入与指标 id 融合，输出每个架构的 proxy `score`。
-
-关键实现 1：架构字符串 -> 图特征
+input 濡備綍杞寲涓虹壒寰侊紙鍙洿鎺ュ鐓т唬鐮侊級锛?
+1. 鏋舵瀯瀛楃涓?`arch` 鍏堣瑙ｆ瀽鎴愬浘缁撴瀯鐗瑰緛锛歚Data(x, edge_index, edge_attr)`銆?2. 姣忎釜鏋舵瀯瀵瑰簲鐨勫绉?zero-cost 鎸囨爣琚嫾鎴?`metrics` 鍚戦噺銆?3. DataLoader 鎶婂浘鏍锋湰鍚堝苟涓?`Batch`锛屾妸鎸囨爣鍚戦噺鍫嗘垚鐭╅樀銆?4. 妯″瀷涓啀鎶婃灦鏋勫浘缂栫爜涓?`z_arch`锛屽苟涓?`metric_ids` 鍋?cross-attention 铻嶅悎锛屽緱鍒版灦鏋勪笓灞炴潈閲嶅苟杈撳嚭 score銆?
+鍏抽敭瀹炵幇 1锛氭灦鏋勫瓧绗︿覆 -> 鍥剧壒寰侊紙鑺傜偣/杈癸級
 ```python
 # NAS-Bench-201/genotype_to_pretrain_data_nb201.py
 import torch
@@ -428,7 +400,7 @@ def parse_arch_to_graph(arch):
     return data
 ```
 
-关键实现 2：zero-cost 指标 -> `metrics` 向量
+鍏抽敭瀹炵幇 2锛氬鎸囨爣 -> metrics 鍚戦噺锛堜笌鍥剧壒寰佷竴璧疯惤鐩橈級
 ```python
 # NAS-Bench-201/genotype_to_pretrain_data_nb201.py
 def build_dynamic_dataset_with_id(
@@ -466,7 +438,7 @@ def build_dynamic_dataset_with_id(
     torch.save(dataset, save_path)
 ```
 
-关键实现 3：批处理组织（后续最常用提取入口）
+鍏抽敭瀹炵幇 3锛氭壒澶勭悊缁勮锛堝悗缁彁鍙栨渶甯哥敤鍏ュ彛锛?
 ```python
 # NAS-Bench-201/pretrain_dataloader_nb201.py
 import torch
@@ -480,7 +452,7 @@ def nas_collate_fn(batch):
     }
 ```
 
-关键实现 4：融合特征并输出代理分数
+鍏抽敭瀹炵幇 4锛氭ā鍨嬪墠鍚戦噷鈥滅壒寰佽瀺鍚?-> score鈥?
 ```python
 # NAS-Bench-201/att_network_nb201.py (DynamicNASFramework.forward, online mode)
 def forward(self, arch, metric_ids=None, metrics=None):
@@ -518,7 +490,7 @@ def forward(self, arch, metric_ids=None, metrics=None):
         return {'weights': normalized_weights, 'score': metric_score}
 ```
 
-搜索时的真实调用（定位提取点）：
+鎼滅储鏃剁湡瀹炶皟鐢紙鏂逛究鍚庣画浣犵洿鎺ュ榻愭彁鍙栫偣锛夛細
 ```python
 # NAS-Bench-201/search_nb201.py
 online_out = online_trainer.model(
@@ -527,27 +499,19 @@ online_out = online_trainer.model(
     metrics=metrics_batch
 )
 ```
+# 椴佹鎬т唬鐞?## Robust_ZCP
 
-
-
-
-# 鲁棒性代理
-## Robust_ZCP
-
-代码位置
+浠ｇ爜浣嶇疆
 
 - `D:\PRO\essays\code_depots\ZERO-COST PROXY FOR ADVERSARIAL ROBUSTNESS EVALUATION\exps\Robust_ZCP\search_robust.py`
 - `D:\PRO\essays\code_depots\ZERO-COST PROXY FOR ADVERSARIAL ROBUSTNESS EVALUATION\exps\Robust_ZCP\functions.py`
 - `D:\PRO\essays\code_depots\ZERO-COST PROXY FOR ADVERSARIAL ROBUSTNESS EVALUATION\exps\Robust_ZCP\regularizer.py`
 - `D:\PRO\essays\code_depots\ZERO-COST PROXY FOR ADVERSARIAL ROBUSTNESS EVALUATION\lib\utils\utils.py`
 
-核心观察
+鏍稿績瑙傚療
 
-- `NTK` 项在实现中没有显式构造成标准 `N x N` NTK Gram 矩阵，而是通过多次单样本反传后收集参数梯度，拼出一个压缩的梯度相关性统计量 `conv`。
-- `input` 也没有先提一个单独的 embedding 特征；它主要是直接对输入图像求 `loss` 对输入的梯度 `∂L/∂x`，再构造扰动方向 `z`，用有限差分近似输入损失地形项。
-- 最终 robust score 在代码里写成 `RF = -exp(conv * 5000000) * regularizer_average`。
-
-搜索入口：如何调用 proxy
+- `NTK` 椤瑰湪瀹炵幇涓病鏈夋樉寮忔瀯閫犳垚鏍囧噯 `N x N` NTK Gram 鐭╅樀锛岃€屾槸閫氳繃澶氭鍗曟牱鏈弽浼犲悗鏀堕泦鍙傛暟姊害锛屾嫾鍑轰竴涓帇缂╃殑姊害鐩稿叧鎬х粺璁￠噺 `conv`銆?- `input` 涔熸病鏈夊厛鎻愪竴涓崟鐙殑 embedding 鐗瑰緛锛涘畠涓昏鏄洿鎺ュ杈撳叆鍥惧儚姹?`loss` 瀵硅緭鍏ョ殑姊害 `鈭侺/鈭倄`锛屽啀鏋勯€犳壈鍔ㄦ柟鍚?`z`锛岀敤鏈夐檺宸垎杩戜技杈撳叆鎹熷け鍦板舰椤广€?- 鏈€缁?robust score 鍦ㄤ唬鐮侀噷鍐欐垚 `RF = -exp(conv * 5000000) * regularizer_average`銆?
+鎼滅储鍏ュ彛锛氬浣曡皟鐢?proxy
 
 ```python
 # exps/Robust_ZCP/search_robust.py
@@ -565,12 +529,9 @@ score_robust, _, _, _ = procedure(
     train_loader_1, train_loader_2, network, criterion, None, None, 'train', grad=False, h=args.h)
 ```
 
-这里有两个关键点：
-
-- `train_loader_1` 默认 `batch_size_1=1`，主要用于逐次收集梯度，近似 `NTK` 项。
-- `train_loader_2` 默认 `batch_size_2=32`，主要用于计算 input-loss-landscape 项。
-
-输入预处理：input 如何进入网络
+杩欓噷鏈変袱涓叧閿偣锛?
+- `train_loader_1` 榛樿 `batch_size_1=1`锛屼富瑕佺敤浜庨€愭鏀堕泦姊害锛岃繎浼?`NTK` 椤广€?- `train_loader_2` 榛樿 `batch_size_2=32`锛屼富瑕佺敤浜庤绠?input-loss-landscape 椤广€?
+杈撳叆棰勫鐞嗭細input 濡備綍杩涘叆缃戠粶
 
 ```python
 # lib/utils/utils.py
@@ -589,9 +550,8 @@ def _data_transforms_cifar10_eval(args):
   return train_transform, valid_transform
 ```
 
-`search_robust.py` 里实际把 `valid_transform` 传给了 `CIFAR10`，所以这里进入 proxy 的输入基本就是原始图像经过 `ToTensor()` 后的张量，没有标准化。
-
-NTK 相关项：代码里是怎么来的
+`search_robust.py` 閲屽疄闄呮妸 `valid_transform` 浼犵粰浜?`CIFAR10`锛屾墍浠ヨ繖閲岃繘鍏?proxy 鐨勮緭鍏ュ熀鏈氨鏄師濮嬪浘鍍忕粡杩?`ToTensor()` 鍚庣殑寮犻噺锛屾病鏈夋爣鍑嗗寲銆?
+NTK 鐩稿叧椤癸細浠ｇ爜閲屾槸鎬庝箞鏉ョ殑
 
 ```python
 # exps/Robust_ZCP/functions.py
@@ -629,25 +589,17 @@ for i, (inputs, targets) in enumerate(train_loader_1):
 RF = -torch.exp(conv * 5000000) * regularizer_average
 ```
 
-这段实现表示：
-
-- 每次取一个样本做前向和反向。
-- 遍历参数，只保留前面少数参数张量，并且每个参数张量只截前 `100` 个梯度坐标。
-- 收集到 `50` 次梯度快照后，把前 `25` 次和后 `25` 次在同一坐标上的梯度组成两个长度为 `25` 的向量，做点积并累加得到 `conv`。
-
-所以这里更像是“参数梯度相关性的压缩 proxy”，而不是严格把所有样本 Jacobian 拼成标准 NTK 矩阵再做谱分析。
-
-另外一个实现细节是：
-
+杩欐瀹炵幇琛ㄧず锛?
+- 姣忔鍙栦竴涓牱鏈仛鍓嶅悜鍜屽弽鍚戙€?- 閬嶅巻鍙傛暟锛屽彧淇濈暀鍓嶉潰灏戞暟鍙傛暟寮犻噺锛屽苟涓旀瘡涓弬鏁板紶閲忓彧鎴墠 `100` 涓搴﹀潗鏍囥€?- 鏀堕泦鍒?`50` 娆℃搴﹀揩鐓у悗锛屾妸鍓?`25` 娆″拰鍚?`25` 娆″湪鍚屼竴鍧愭爣涓婄殑姊害缁勬垚涓や釜闀垮害涓?`25` 鐨勫悜閲忥紝鍋氱偣绉苟绱姞寰楀埌 `conv`銆?
+鎵€浠ヨ繖閲屾洿鍍忔槸鈥滃弬鏁版搴︾浉鍏虫€х殑鍘嬬缉 proxy鈥濓紝鑰屼笉鏄弗鏍兼妸鎵€鏈夋牱鏈?Jacobian 鎷兼垚鏍囧噯 NTK 鐭╅樀鍐嶅仛璋卞垎鏋愩€?
+鍙﹀涓€涓疄鐜扮粏鑺傛槸锛?
 ```python
 # functions.py
 # if mode == 'train': optimizer.zero_grad()
 ```
 
-这一行被注释了，所以代码里收集到的是累计梯度，不是严格独立的逐样本梯度。
-
-Input loss landscape 项：input 如何被“提特征”
-
+杩欎竴琛岃娉ㄩ噴浜嗭紝鎵€浠ヤ唬鐮侀噷鏀堕泦鍒扮殑鏄疮璁℃搴︼紝涓嶆槸涓ユ牸鐙珛鐨勯€愭牱鏈搴︺€?
+Input loss landscape 椤癸細input 濡備綍琚€滄彁鐗瑰緛鈥?
 ```python
 # exps/Robust_ZCP/regularizer.py
 # D:\PRO\essays\code_depots\ZERO-COST PROXY FOR ADVERSARIAL ROBUSTNESS EVALUATION\exps\Robust_ZCP\regularizer.py
@@ -676,14 +628,10 @@ def regularizer(self, inputs, targets, h=3., lambda_=4):
     return torch.sum(self.lambda_ * reg) / float(inputs.size(0)), norm_grad
 ```
 
-这里的 “input 特征提取” 其实是输入敏感性提取：
+杩欓噷鐨?鈥渋nput 鐗瑰緛鎻愬彇鈥?鍏跺疄鏄緭鍏ユ晱鎰熸€ф彁鍙栵細
 
-- 先求 `∂L/∂x`。
-- 用 `sign(∂L/∂x)` 构造归一化方向 `z`。
-- 再比较 `x + z` 和 `x` 两点的损失差。
-- 对这个差再对 `input` 求梯度，得到 `grad_diff`。
-- 把 `grad_diff` 的样本内向量范数作为输入地形项 `regularizer_average`。
-
-因此，Robust_ZCP 的 input 侧 proxy 不是显式中间层 feature，而是“输入梯度 + 有限差分曲率近似”。
-
+- 鍏堟眰 `鈭侺/鈭倄`銆?- 鐢?`sign(鈭侺/鈭倄)` 鏋勯€犲綊涓€鍖栨柟鍚?`z`銆?- 鍐嶆瘮杈?`x + z` 鍜?`x` 涓ょ偣鐨勬崯澶卞樊銆?- 瀵硅繖涓樊鍐嶅 `input` 姹傛搴︼紝寰楀埌 `grad_diff`銆?- 鎶?`grad_diff` 鐨勬牱鏈唴鍚戦噺鑼冩暟浣滀负杈撳叆鍦板舰椤?`regularizer_average`銆?
+鍥犳锛孯obust_ZCP 鐨?input 渚?proxy 涓嶆槸鏄惧紡涓棿灞?feature锛岃€屾槸鈥滆緭鍏ユ搴?+ 鏈夐檺宸垎鏇茬巼杩戜技鈥濄€?
 ## CRoZe
+
+

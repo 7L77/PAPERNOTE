@@ -26,6 +26,8 @@ batch 大小为 4 时，某神经元可能是 `[1,0,1,1]`，另一个是 `[0,0,1
 
 ## 这篇论文里怎么用
 - [[SWAP-NAS]]: 直接把样本维激活模式集合基数定义为 SWAP-Score。
+- [[L-SWAG]]: 使用同类的 sample-wise pattern 基数作为 `Psi`（Def. 1/2, Eq. 7/8），但论文正文未显式写“先转置矩阵再 unique”。
+- [[SWAP-NAS]]: 论文与实现更明确地采用“激活矩阵转置为 `(neurons, samples)` 后做 unique 计数”的写法。
 
 ## 代表工作
 - [[SWAP-NAS]]: 首次系统提出并用于 ultra-fast NAS。
@@ -33,4 +35,3 @@ batch 大小为 4 时，某神经元可能是 `[1,0,1,1]`，另一个是 `[0,0,1
 ## 相关概念
 - [[Network Expressivity]]
 - [[Zero-Cost Proxy]]
-
