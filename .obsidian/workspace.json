@@ -64,19 +64,6 @@
         "type": "tabs",
         "children": [
           {
-            "id": "706965593cce3a96",
-            "type": "leaf",
-            "state": {
-              "type": "file-explorer",
-              "state": {
-                "sortOrder": "alphabetical",
-                "autoReveal": false
-              },
-              "icon": "lucide-folder-closed",
-              "title": "文件列表"
-            }
-          },
-          {
             "id": "f51b818e3c3f6fb6",
             "type": "leaf",
             "state": {
@@ -102,8 +89,22 @@
               "icon": "lucide-bookmark",
               "title": "书签"
             }
+          },
+          {
+            "id": "9e506d5de326e07d",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "horizontal",
@@ -200,42 +201,42 @@
   },
   "active": "f5bd1879c6ba245f",
   "lastOpenFiles": [
-    "code_depots.zip",
-    "论文笔记/_概念/Pruning-by-Importance NAS_ch.md",
-    "论文笔记/_概念/Pruning-by-Importance NAS.md",
-    "论文笔记/NAS方法/TE-NAS_ch.md",
-    "论文笔记/NAS方法/TE-NAS.md",
-    "论文笔记/TE-NAS.md",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/requirements.txt",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/prune_tenas.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/prune_launch.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/lib/models/shape_infers/__init__.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/lib/models/shape_infers/shared_utils.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/lib/models/cell_searchs/__init__.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/lib/models/shape_infers/InferTinyCellNet.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/lib/models/cell_searchs/search_model_darts_nasnet.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/lib/models/cell_infers/tiny_network.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/lib/models/cell_infers/__init__.py",
-    "code_depots/Neural Architecture Search on ImageNet in Four GPU Hours A Theoretically Inspired Perspective/README.md",
-    "论文笔记/_概念/Efficient Channel Attention_ch.md",
-    "论文笔记/_概念/Efficient Channel Attention.md",
-    "论文笔记/_概念/Interquartile Range_ch.md",
-    "论文笔记/_概念/Interquartile Range.md",
-    "论文笔记/_概念/Median-of-Means_ch.md",
-    "论文笔记/_概念/Median-of-Means.md",
-    "论文笔记/NAS方法/RDNAS_ch.md",
-    "论文笔记/NAS方法/RDNAS.md",
-    "论文笔记/RDNAS.md",
-    "code_depots/Robust Dual-Branch Neural Architecture Search/README.md",
-    "论文笔记/_概念/NAS-Bench-Suite-Zero_ch.md",
-    "论文笔记/_概念/NAS-Bench-Suite-Zero.md",
-    "论文笔记/_概念/Multi-objective NAS_ch.md",
-    "论文笔记/_概念/Multi-objective NAS.md",
-    "论文笔记/_概念/Single-objective NAS_ch.md",
-    "论文笔记/_概念/Single-objective NAS.md",
-    "论文笔记/_概念/NAS-RobBench-201_ch.md",
-    "论文笔记/_概念/Predictive Coding_ch.md",
-    "论文笔记/_概念/NAS-RobBench-201.md",
+    "_iAmSkill",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/meta/system.txt",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/meta/run_id.txt",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/meta/nvidia_smi.txt",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/meta/name.txt",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/meta/git_root.txt",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/meta/cwd.txt",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/meta",
+    "_SKILLS/fsdownload/skill/out/exp/20260211_011216/verify_paths/cmd.sh",
+    "_SKILLS/fsdownload/skill/nco_skill/utils/__pycache__/__init__.cpython-39.pyc",
+    "_SKILLS/fsdownload/skill/nco_skill/utils/__pycache__/__init__.cpython-311.pyc",
+    "_SKILLS/fsdownload/skill/train_debug/references/pytorch_snippets.md",
+    "_SKILLS/fsdownload/skill/train_debug/references/drl_checklist.md",
+    "_SKILLS/fsdownload/skill/paper_writing/references/playbook.md",
+    "_SKILLS/fsdownload/skill/exp_harness/references/plan_format.md",
+    "_SKILLS/fsdownload/skill/train_debug/SKILL.md",
+    "_SKILLS/fsdownload/skill/references/recommend_method.md",
+    "_SKILLS/fsdownload/skill/references/repos_inventory.md",
+    "_SKILLS/fsdownload/skill/references/problem_analysis.md",
+    "_SKILLS/fsdownload/skill/references/parameters.md",
+    "_SKILLS/fsdownload/skill/references/method_tags.md",
+    "_SKILLS/fsdownload/skill/references/method_selection.md",
+    "_SKILLS/fsdownload/skill/references/method_brain_lint.md",
+    "_SKILLS/fsdownload/skill/references/innovation.md",
+    "_SKILLS/fsdownload/skill/references/experiments.md",
+    "_SKILLS/fsdownload/skill/references/benchmark_harness.md",
+    "_SKILLS/fsdownload/skill/references/constraint_handling.md",
+    "_SKILLS/fsdownload/skill/paper_writing/SKILL.md",
+    "_SKILLS/fsdownload/skill/exp_harness/SKILL.md",
+    "_SKILLS/fsdownload/skill/skill.md",
+    "_SKILLS/fsdownload/skill/README.md",
+    "_SKILLS/skills/paper-reader/references/quality-standards.md",
+    "_SKILLS/skills/paper-reader/references/zotero-guide.md",
+    "_SKILLS/skills/paper-reader/references/image-troubleshooting.md",
+    "_SKILLS/skills/paper-reader/references/cv-dl-terminology.md",
+    "_SKILLS/skills/paper-reader/assets/paper-note-template.md",
     "Pasted image 20260319231646.png",
     "code_depots/Loss Functions for Predictor-based Neural Architecture Search/figs/loss_overview.png",
     "code_depots/Group Fisher Pruning for Practical Network Compression/resources/structures.png",

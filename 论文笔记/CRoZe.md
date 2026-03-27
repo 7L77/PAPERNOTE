@@ -150,19 +150,45 @@ created: 2026-03-15
 
 ## 与代码实现的对照
 
-- `zero_cost_methods/pruners/measures/croze.py`
-  - 构造 `advnet = copy.deepcopy(net)`；
-  - `adj_weights(...)` 做参数扰动；
-  - `fgsm_attack(...)` 生成 perturbed input；
-  - 计算 `feat_sim * w_sim * grad_sim` 的层级指标并聚合。
-- `zero_cost_methods/pruners/p_utils.py`
-  - `adj_weights` 通过一次优化步构造权重扰动；
-  - `get_layer_metric_array_adv_feats` 按层对齐 clean/robust 特征并计算代理项。
-- `main.py`
-  - `sample_arch` 实现 `random/mutate/warmup` 采样并用 proxy 选最好架构。
-- `sampling.py`
-  - DARTS 侧做架构随机/变异采样；
-  - 与论文的 warmup+move 采样策略对应。
+- 代码根目录（绝对路径）：
+  `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations`
+
+- 代理入口链路（绝对路径）：
+  - `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations/main.py`
+    - `main(args)` 里根据 `--proxy_types` 组装 `ZERO_COST_PROXY_LIST`，再调用 `zero_cost_proxy(args)`（L75-L98）。
+  - `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations/proxy.py`
+    - 逐个架构调用 `predictive.find_measures(...)` 计算代理（L94-L99）。
+  - `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations/zero_cost_methods/pruners/measures/__init__.py`
+    - `load_all()` 注册 `croze` measure（L50-L59）。
+
+- 三个一致性代理在代码中的对应（绝对路径）：
+  - 文件：
+    `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations/zero_cost_methods/pruners/measures/croze.py`
+  - `P_m`（Parameter Consistency）：
+    `w_sim = (1+cos(layer_adv.weight, layer.weight)).sum()`（L77）。
+  - `G_m`（Gradient Consistency）：
+    `sim = abs(cos(layer_adv.weight.grad, layer.weight.grad)).sum()`（L78）。
+  - `Z_m`（Feature Consistency）：
+    `feat_sim = (1+cos(feat_adv, feat)).sum()`（L79）。
+  - 层级乘积项：
+    `abs(w_sim * sim * feat_sim)`（L80），即每层先做 `Z_m * P_m * G_m`。
+
+- clean / perturbed 双分支构造（绝对路径）：
+  - 文件：
+    `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations/zero_cost_methods/pruners/measures/croze.py`
+  - `advnet = copy.deepcopy(net)`（L51）。
+  - `adj_weights(..., loss_maximize=True)` 构造 robust surrogate（L65）。
+  - `fgsm_attack(...)` 生成 `x'`（L66；函数定义 L10-L22）。
+  - clean/perturbed 特征通过 `return_activated_feats=True` 提取（L62, L69）。
+
+- 跨层聚合与最终标量分数（绝对路径）：
+  - 文件：
+    `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations/zero_cost_methods/pruners/p_utils.py`
+  - `get_layer_metric_array_adv_feats(...)` 对各层 `Conv/Linear` 追加 metric（L132-L161），得到层级数组（对应 `Σ_m` 的逐层项）。
+  - 文件：
+    `D:/PRO/essays/code_depots/Generalizable Lightweight Proxy for Robust NAS against Diverse Perturbations/zero_cost_methods/pruners/predictive.py`
+  - `sum_arr(v)` 对层级数组求和，输出单个 proxy 值（L115-L121, L139），对应论文公式
+    `CRoZe = Σ_m Z_m·P_m·G_m`。
 
 ## 批判性思考
 
